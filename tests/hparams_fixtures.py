@@ -1,5 +1,3 @@
-import collections
-import json
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -7,9 +5,10 @@ from typing import Any, Dict, NamedTuple
 
 import pytest
 import yaml
-from mosaicml import hparams
-from mosaicml.hparams import Hparams
-from mosaicml.hparams.hparams_types import JSON
+
+from hparams import hparams
+from hparams.hparams import Hparams
+from hparams.types import JSON
 
 
 class YamlInput(NamedTuple):
