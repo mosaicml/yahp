@@ -7,7 +7,6 @@ from typing import Any, Dict, NamedTuple
 
 import pytest
 import yaml
-
 from mosaicml import hparams
 from mosaicml.hparams import Hparams
 from mosaicml.hparams.hparams_types import JSON
