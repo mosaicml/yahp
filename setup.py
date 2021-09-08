@@ -26,5 +26,5 @@ setup(
     ],
     install_requires=get_requirements("requirements.txt"),
     python_requires='>=3.8',
-    ext_package="moscaicml-hparams",
+    ext_package="hparams",
 )
