@@ -208,7 +208,7 @@ class Hparams:
         # Check against the schema.
         cls._validate_keys(data=data)
 
-        from mosaicml.hparams.hparams_create import _create_from_dict
+        from hparams.create import _create_from_dict
         return _create_from_dict(cls=cls, data=data)
 
     @classmethod
@@ -226,7 +226,7 @@ class Hparams:
         if not argparse_overrides:
             return cls.create_from_dict(data=data)
 
-        from mosaicml.hparams.hparams_argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
+        from hparams.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
         yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data)
         original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
         parser = argparse.ArgumentParser()
@@ -343,7 +343,7 @@ class Hparams:
         Optionally, add all of these arguments to an argument group called `group_name` with
             description `group_description`.
         """
-        from mosaicml.hparams.hparams_argparse import _add_args
+        from hparams.argparse import _add_args
         _add_args(
             cls=cls,
             parser=parser,
@@ -360,7 +360,7 @@ class Hparams:
         choice_option_column=35,
         interactive=False,
     ) -> None:
-        from mosaicml.hparams.hparams_commented_map import _to_commented_map as commented_map
+        from hparams.commented_map import _to_commented_map as commented_map
         cm = commented_map(
             cls=cls,
             comment_helptext=comment_helptext,
@@ -379,7 +379,7 @@ class Hparams:
         choice_option_column=35,
         interactive=False,
     ) -> str:
-        from mosaicml.hparams.hparams_commented_map import _to_commented_map as commented_map
+        from hparams.commented_map import _to_commented_map as commented_map
         cm = commented_map(
             cls=cls,
             comment_helptext=comment_helptext,
