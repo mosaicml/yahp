@@ -1,0 +1,13 @@
+name: Pytest
+inputs:
+  working_directory:
+    required: true
+    description: Directory containing the Makefile
+runs:
+  using: composite
+  steps:
+    - name: Run Pytest
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        pytest
