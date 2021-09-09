@@ -1,0 +1,4 @@
+---
+parameters:
+  instance_folder_structure: referencing stuff in other directories works too
+
