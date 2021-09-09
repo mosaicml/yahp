@@ -15,6 +15,9 @@ from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union, get_ty
 import yaml
 
 from hparams import type_helpers
+from hparams.argparse import _add_args
+from hparams.commented_map import _to_commented_map as commented_map
+from hparams.create import _create_from_dict
 from hparams.interactive import list_options, query_yes_no
 from hparams.objects_helpers import HparamsException, StringDumpYAML
 from hparams.types import JSON, THparams
@@ -208,7 +211,6 @@ class Hparams:
         # Check against the schema.
         cls._validate_keys(data=data)
 
-        from hparams.create import _create_from_dict
         return _create_from_dict(cls=cls, data=data)
 
     @classmethod
@@ -343,7 +345,6 @@ class Hparams:
         Optionally, add all of these arguments to an argument group called `group_name` with
             description `group_description`.
         """
-        from hparams.argparse import _add_args
         _add_args(
             cls=cls,
             parser=parser,
@@ -360,7 +361,6 @@ class Hparams:
         choice_option_column=35,
         interactive=False,
     ) -> None:
-        from hparams.commented_map import _to_commented_map as commented_map
         cm = commented_map(
             cls=cls,
             comment_helptext=comment_helptext,

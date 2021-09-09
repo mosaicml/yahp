@@ -1,0 +1,11 @@
+---
+parameters:
+  label_smoothing_how:
+    - uniform
+  label_smoothing_parameter:
+    - 0.1
+  mixup_alpha:
+    - 0.2
+  workers_per_gpu:
+    - 12
+

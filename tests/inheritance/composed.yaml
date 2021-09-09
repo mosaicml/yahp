@@ -1,0 +1,18 @@
+command: bash -c "echo 'do stuff'"
+image: mosaicml/research:latest
+parameters:
+  instance_folder_structure: referencing stuff in other directories works too
+  instance_types:
+  - cota-g1-3080
+  label_smoothing_how:
+  - uniform
+  label_smoothing_parameter:
+  - 0.1
+  mixup_alpha:
+  - 0.4
+  seed: 1
+  shaved_bears:
+    first_action: Procure bears
+    last_action: Release bears into wild with stylish new haircuts
+  workers_per_gpu:
+  - 12
