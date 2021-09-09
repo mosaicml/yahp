@@ -1,0 +1,12 @@
+# FORMAT
+# Put your extra requirements here in the following format
+#
+# package[version_required]: tag1, tag2, ...
+# See https://hanxiao.io/2019/11/07/A-Better-Practice-for-Managing-extras-require-Dependencies-in-Python/
+
+junitparser==2.1.1: test
+coverage==5.5: test
+pytest==6.2.4: test
+yapf==0.31.0: test
+isort==5.9.3: test
+yamllint==1.26.2: test

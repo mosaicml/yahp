@@ -1,0 +1,13 @@
+---
+image: mosaicml/research:latest
+parameters:
+  inherits:
+    - folder_structure/instance.yaml
+    - scale_schedule.yaml
+  mixup_alpha:
+    - 0.4
+  shaved_bears:
+    inherits: shaving_bears.yaml
+command: >-
+  bash -c "echo 'do stuff'"
+
