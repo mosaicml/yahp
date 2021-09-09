@@ -20,4 +20,3 @@ def test_yaml_inheritance(tmpdir: py.path.local):
         actual_output = yaml.load(f)
 
     assert actual_output == expected_output
-
