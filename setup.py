@@ -37,11 +37,11 @@ def get_extra_requires(path, add_all=True):
 
 
 setup(
-    name="mosaicml-hparams",
+    name="yahp",
     version="0.0.1",
     author="MosaicML",
     author_email="team@mosaicml.com",
-    description="The most amazing Hparams thing for ML",
+    description="Yet Another Hyper Parameter Framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mosaicml/hparams",
@@ -52,5 +52,5 @@ setup(
     install_requires=get_requirements("requirements.txt"),
     extras_require=get_extra_requires("extra-requirements.txt"),
     python_requires='>=3.8',
-    ext_package="hparams",
+    ext_package="yahp",
 )
