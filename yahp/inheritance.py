@@ -7,7 +7,7 @@ from typing import Dict, List, Sequence, Tuple, Union, cast
 
 import yaml
 
-from hparams.types import JSON
+from yahp.types import JSON
 
 
 def _get_inherits_paths(

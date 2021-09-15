@@ -7,14 +7,15 @@ import textwrap
 from dataclasses import fields
 from typing import Any, Dict, List, Type, cast, get_type_hints
 
-from hparams import hparams, type_helpers
-from hparams.objects_helpers import HparamsException
-from hparams.types import JSON, THparams
+from yahp import type_helpers
+from yahp import yahp as hp
+from yahp.objects_helpers import HparamsException
+from yahp.types import JSON, THparams
 
 logger = logging.getLogger(__name__)
 
 
-def _create_from_dict(cls: Type[hparams.Hparams], data: Dict[str, JSON], prefix: List[str] = []) -> hparams.Hparams:
+def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List[str] = []) -> hparams.Hparams:
     kwargs: Dict[str, THparams] = {}
     cls_module = importlib.import_module(cls.__module__)
 
@@ -57,7 +58,7 @@ def _create_from_dict(cls: Type[hparams.Hparams], data: Dict[str, JSON], prefix:
                             data[f.name] = {}
                     assert isinstance(data[f.name], dict)
                     hparams_cls = type_helpers._get_real_ftype(ftype)
-                    assert issubclass(hparams_cls, hparams.Hparams)
+                    assert issubclass(hparams_cls, hp.Hparams)
                     sub_hparams = _create_from_dict(
                         cls=hparams_cls,
                         data=cast(Dict[str, JSON], data[f.name]),
@@ -67,8 +68,7 @@ def _create_from_dict(cls: Type[hparams.Hparams], data: Dict[str, JSON], prefix:
                     kwargs[f.name] = sub_hparams
                 else:
                     # Found in registry to unwrap custom Hparams subclasses
-                    registry_items: Dict[str,
-                                         Type[hparams.Hparams]] = dict(cls._get_possible_items_for_registry_key(f.name))
+                    registry_items: Dict[str, Type[hp.Hparams]] = dict(cls._get_possible_items_for_registry_key(f.name))
                     sub_data = data[f.name]
                     # For empty Hparams with no fields
                     if sub_data is None and len(fields(ftype_origin)) == 0:
@@ -112,9 +112,9 @@ def _create_from_dict(cls: Type[hparams.Hparams], data: Dict[str, JSON], prefix:
 def _dict_to_hparams(
     fname_key: str,
     input_dict: Dict[str, Any],
-    flat_registry: Dict[str, Type[hparams.Hparams]],
+    flat_registry: Dict[str, Type[hp.Hparams]],
     input_prefix: List[str],
-) -> hparams.Hparams:
+) -> hp.Hparams:
     assert isinstance(input_dict, collections.abc.Mapping), "Should be only nesting dicts"
     for k, v in input_dict.items():
         if k in flat_registry:

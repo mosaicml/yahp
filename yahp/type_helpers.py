@@ -3,13 +3,13 @@ from dataclasses import MISSING, Field
 from enum import Enum
 from typing import Any, Dict, Tuple, Type, Union, get_args, get_origin
 
-from hparams import hparams
-from hparams.objects_helpers import HparamsException
-from hparams.types import JSON, THparams
+from yahp import yahp as hp
+from yahp.objects_helpers import HparamsException
+from yahp.types import JSON, THparams
 
 
 def _is_hparams_type(item: Any) -> bool:
-    return _safe_subclass_checker(item, hparams.Hparams)
+    return _safe_subclass_checker(item, hp.Hparams)
 
 
 def _safe_subclass_checker(item: Any, check_class: Any) -> bool:

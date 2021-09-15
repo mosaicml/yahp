@@ -8,13 +8,14 @@ from dataclasses import MISSING, fields
 from enum import Enum
 from typing import Any, Dict, List, Tuple, Type, get_type_hints
 
-from hparams import hparams, type_helpers
-from hparams.objects_helpers import ParserArgument
-from hparams.types import JSON
+from yahp import type_helpers
+from yahp import yahp as hp
+from yahp.objects_helpers import ParserArgument
+from yahp.types import JSON
 
 
 def _retrieve_args(
-    cls: Type[hparams.Hparams],
+    cls: Type[hp.Hparams],
     parser: argparse.ArgumentParser,
     prefix: List[str] = [],
     passed_args: dict = {},
@@ -64,7 +65,7 @@ def _retrieve_args(
             if field.name not in cls.hparams_registry:
                 # Defaults to direct nesting if missing from hparams_registry
                 assert isinstance(real_type, type), f"{real_type} is not a class"
-                assert issubclass(real_type, hparams.Hparams), f"{real_type} is not a class"
+                assert issubclass(real_type, hp.Hparams), f"{real_type} is not a class"
                 added_args += _retrieve_args(
                     cls=real_type,
                     parser=parser,
@@ -89,7 +90,7 @@ def _retrieve_args(
                         selected_subhparam = passed_args[new_arg.get_namespace_name()]
                         if isinstance(selected_subhparam, list):
                             for subhparam_selected in selected_subhparam:
-                                subhparam_class: Type[hparams.Hparams] = registry_entry[subhparam_selected]
+                                subhparam_class: Type[hp.Hparams] = registry_entry[subhparam_selected]
                                 added_args += _retrieve_args(
                                     cls=subhparam_class,
                                     parser=parser,
@@ -97,7 +98,7 @@ def _retrieve_args(
                                     passed_args=passed_args,
                                 )
                         elif isinstance(selected_subhparam, str):
-                            subhparam_class: Type[hparams.Hparams] = registry_entry[selected_subhparam]
+                            subhparam_class: Type[hp.Hparams] = registry_entry[selected_subhparam]
                             added_args += _retrieve_args(
                                 cls=subhparam_class,
                                 parser=parser,
@@ -183,7 +184,7 @@ def _add_parser_argument_list_to_parser(arg_list: List[ParserArgument], parser_t
 
 
 def _add_args(
-        cls: Type[hparams.Hparams],
+        cls: Type[hp.Hparams],
         parser: argparse.ArgumentParser,
         prefix: List[str] = [],
         defaults: Dict[str, Any] = dict(),
@@ -309,7 +310,7 @@ def _yaml_data_to_argparse_namespace(
 
 
 def _namespace_to_hparams_dict(
-    cls: Type[hparams.Hparams],
+    cls: Type[hp.Hparams],
     namespace: List[Tuple[str, Any]],
 ) -> Dict[str, Any]:
     """
@@ -399,7 +400,7 @@ def _namespace_to_hparams_dict(
                         path=f.name,
                     )
                     subhparam_class = type_helpers._get_real_ftype(ftype)
-                    assert issubclass(subhparam_class, hparams.Hparams)
+                    assert issubclass(subhparam_class, hp.Hparams)
                     res[f.name] = _namespace_to_hparams_dict(
                         cls=subhparam_class,
                         namespace=subhparam_namespace,
