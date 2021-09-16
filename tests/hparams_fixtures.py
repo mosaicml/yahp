@@ -1,7 +1,7 @@
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, NamedTuple, Optional
+from typing import Any, Dict, NamedTuple
 
 import pytest
 import yaml
@@ -374,7 +374,7 @@ class ChoiceHparamRoot(Hparams):
 
 @dataclass
 class ChoiceOptionalFieldsHparam(Hparams):
-    maybe: Optional[int] = hparams.optional(doc="some optional field", default=0)
+    maybe: int = hparams.optional(doc="some optional field", default=0)
 
     def validate(self):
         assert isinstance(self.maybe, int)

@@ -229,13 +229,17 @@ class Hparams:
             return cls.create_from_dict(data=data)
 
         from hparams.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
+        print('----')
+        print(data)
         yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data)
+        print(yaml_argparse_namespace)
+        print('----')
         original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
         parser = argparse.ArgumentParser()
-        cls.add_args(parser=parser, defaults=yaml_argparse_namespace)
-
-        print(data)
         print(yaml_argparse_namespace)
+        cls.add_args(parser=parser, defaults=yaml_argparse_namespace)
+        print(yaml_argparse_namespace)
+
 
         args, unknown_args = parser.parse_known_args()
         if len(unknown_args):
@@ -244,14 +248,22 @@ class Hparams:
 
         arg_items: List[Tuple[str, Any]] = list((vars(args)).items())
 
+        print(arg_items)
+
         argparse_data = _namespace_to_hparams_dict(
             cls=cls,
             namespace=arg_items,
         )
 
+
+        print('----')
+        print(argparse_data)
         parsed_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=argparse_data)
+        print(parsed_argparse_namespace)
+        print('----')
         parsed_argparse_keys = set(parsed_argparse_namespace.keys())
         yaml_argparse_keys = set(original_yaml_argparse_namespace.keys())
+
 
         intersection_keys = parsed_argparse_keys.intersection(yaml_argparse_keys)
         first_override = True

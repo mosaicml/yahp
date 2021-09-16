@@ -196,6 +196,8 @@ def _add_args(
     Optionally, add all of these arguments to an argument group called `group_name` with
         description `group_description`.
     """
+    print('S AA')
+    print(defaults)
 
     found_subparsers = 0
     found_subparser_args = dict()
@@ -211,8 +213,10 @@ def _add_args(
             prefix=prefix,
             passed_args=found_subparser_args,
         )
+        print(all_args)
         subparser_args = [x for x in all_args if x.is_hparams_subclass]
         subparser_args = _add_short_arg_names_to_parser_argument_list(arg_list=subparser_args)
+        print(subparser_args)
         for subparser_arg in subparser_args:
             subparser_arg.required = False
             # Use the subarguments in defaults to determine if a subparser has been selected
@@ -223,6 +227,7 @@ def _add_args(
             found_nested_defaults = set(
                 [x[len(subparser_namespace) + 1:].split(".")[0] for x in unfiltered_nested_defaults])
 
+            print('foo', subparser_namespace, found_nested_defaults)
             if "" in found_nested_defaults:
                 found_nested_defaults.remove("")
             if subparser_arg.nargs == "+":
@@ -263,6 +268,9 @@ def _add_args(
         arg_list=all_args,
         parser_to_add=parser,
     )
+
+    print(defaults)
+    print('E AA')
 
 
 def _yaml_data_to_argparse_namespace(
