@@ -41,7 +41,7 @@ setup(
     version="0.0.1",
     author="MosaicML",
     author_email="team@mosaicml.com",
-    description="Yet Another Hyper Parameter Framework",
+    description="Yet Another Hyperparameter Framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mosaicml/hparams",
