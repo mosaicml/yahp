@@ -216,13 +216,16 @@ def _add_args(
         print(all_args)
         subparser_args = [x for x in all_args if x.is_hparams_subclass]
         subparser_args = _add_short_arg_names_to_parser_argument_list(arg_list=subparser_args)
-        print(subparser_args)
         for subparser_arg in subparser_args:
+            print('WWW')
+            print(subparser_arg)
             subparser_arg.required = False
             # Use the subarguments in defaults to determine if a subparser has been selected
             subparser_namespace = subparser_arg.get_namespace_name()
+            print(subparser_namespace)
             # TODO: Make robust to lists of subhparams
             unfiltered_nested_defaults = [x for x in defaults.keys() if x.startswith(subparser_namespace)]
+            print(unfiltered_nested_defaults)
 
             found_nested_defaults = set(
                 [x[len(subparser_namespace) + 1:].split(".")[0] for x in unfiltered_nested_defaults])
