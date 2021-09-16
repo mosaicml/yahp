@@ -373,7 +373,7 @@ class ChoiceHparamRoot(Hparams):
 
 
 @dataclass
-class ChoiceOptionalFieldsHparamParent(Hparams):
+class ChoiceOptionalFieldsHparam(Hparams):
     maybe: Optional[int] = hparams.optional(doc="some optional field", default=0)
 
     def validate(self):
@@ -382,28 +382,10 @@ class ChoiceOptionalFieldsHparamParent(Hparams):
 
 
 @dataclass
-class ChoiceOneOptionalFieldsHparam(ChoiceOptionalFieldsHparamParent):
-    key: Optional[int] = hparams.optional(doc="identifier", default=1)
-
-    def validate(self):
-        assert isinstance(self.key, int)
-        super().validate()
-
-
-@dataclass
-class ChoiceTwoOptionalFieldsHparam(ChoiceOptionalFieldsHparamParent):
-    key: Optional[int] = hparams.optional(doc="identifier", default=2)
-
-    def validate(self):
-        assert isinstance(self.key, int)
-        super().validate()
-
-
-@dataclass
 class OptionalFieldHparam(Hparams):
-    hparams_registry = {"choice": {"one": ChoiceOneOptionalFieldsHparam, "two": ChoiceTwoOptionalFieldsHparam}}
+    hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam}}
 
-    choice: ChoiceOptionalFieldsHparamParent = hparams.required(doc="choice Hparam field")
+    choice: ChoiceOptionalFieldsHparam = hparams.required(doc="choice Hparam field")
 
 
 @pytest.fixture
