@@ -1,7 +1,7 @@
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, NamedTuple
+from typing import Any, Dict, NamedTuple, Optional
 
 import pytest
 import yaml
@@ -373,13 +373,42 @@ class ChoiceHparamRoot(Hparams):
 
 
 @dataclass
+class ChoiceOptionalFieldsHparamParent(Hparams):
+    maybe: Optional[int] = hparams.optional(doc="some optional field", default=0)
+
+    def validate(self):
+        assert isinstance(self.maybe, int)
+        super().validate()
+
+
+@dataclass
+class ChoiceOneOptionalFieldsHparam(ChoiceOptionalFieldsHparamParent):
+    key: Optional[int] = hparams.optional(doc="identifier", default=1)
+
+    def validate(self):
+        assert isinstance(self.key, int)
+        super().validate()
+
+
+@dataclass
+class ChoiceTwoOptionalFieldsHparam(ChoiceOptionalFieldsHparamParent):
+    key: Optional[int] = hparams.optional(doc="identifier", default=2)
+
+    def validate(self):
+        assert isinstance(self.key, int)
+        super().validate()
+
+
+@dataclass
 class OptionalFieldHparam(Hparams):
-    hparams_registry = {"field": hparams.optional(doc="some optional field", default=0)}
+    hparams_registry = {"choice": {"one": ChoiceOneOptionalFieldsHparam, "two": ChoiceTwoOptionalFieldsHparam}}
+
+    choice: ChoiceOptionalFieldsHparamParent = hparams.required(doc="choice Hparam field")
 
 
 @pytest.fixture
 def optional_field_empty_object_yaml_input(hparams_tempdir) -> YamlInput:
-    data = {"obj": {}}
+    data = {"choice": {"one": {}}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath="optional_field_empty_object.yaml")

@@ -234,6 +234,9 @@ class Hparams:
         parser = argparse.ArgumentParser()
         cls.add_args(parser=parser, defaults=yaml_argparse_namespace)
 
+        print(data)
+        print(yaml_argparse_namespace)
+
         args, unknown_args = parser.parse_known_args()
         if len(unknown_args):
             print(unknown_args)
