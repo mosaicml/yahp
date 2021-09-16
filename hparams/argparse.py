@@ -15,7 +15,6 @@ from hparams.types import JSON
 
 def _retrieve_args(
     cls: Type[hparams.Hparams],
-    parser: argparse.ArgumentParser,
     prefix: List[str] = [],
     passed_args: dict = {},
 ) -> List[ParserArgument]:
@@ -67,7 +66,6 @@ def _retrieve_args(
                 assert issubclass(real_type, hparams.Hparams), f"{real_type} is not a class"
                 added_args += _retrieve_args(
                     cls=real_type,
-                    parser=parser,
                     prefix=prefix + [field.name],
                     passed_args=passed_args,
                 )
@@ -92,7 +90,6 @@ def _retrieve_args(
                                 subhparam_class: Type[hparams.Hparams] = registry_entry[subhparam_selected]
                                 added_args += _retrieve_args(
                                     cls=subhparam_class,
-                                    parser=parser,
                                     prefix=prefix + [field.name, subhparam_selected],
                                     passed_args=passed_args,
                                 )
@@ -100,7 +97,6 @@ def _retrieve_args(
                             subhparam_class: Type[hparams.Hparams] = registry_entry[selected_subhparam]
                             added_args += _retrieve_args(
                                 cls=subhparam_class,
-                                parser=parser,
                                 prefix=prefix + [field.name, selected_subhparam],
                                 passed_args=passed_args,
                             )
@@ -108,7 +104,6 @@ def _retrieve_args(
                 elif type_helpers._is_hparams_type(registry_entry):
                     added_args += _retrieve_args(  # type: ignore
                         cls=registry_entry,
-                        parser=parser,
                         prefix=prefix + [field.name],
                         passed_args=passed_args,
                     )
@@ -196,8 +191,6 @@ def _add_args(
     Optionally, add all of these arguments to an argument group called `group_name` with
         description `group_description`.
     """
-    print('S AA')
-    print(defaults)
 
     found_subparsers = 0
     found_subparser_args = dict()
@@ -209,28 +202,21 @@ def _add_args(
     while True:
         all_args: List[ParserArgument] = _retrieve_args(
             cls=cls,
-            parser=parser,
             prefix=prefix,
             passed_args=found_subparser_args,
         )
-        print(all_args)
         subparser_args = [x for x in all_args if x.is_hparams_subclass]
         subparser_args = _add_short_arg_names_to_parser_argument_list(arg_list=subparser_args)
         for subparser_arg in subparser_args:
-            print('WWW')
-            print(subparser_arg)
             subparser_arg.required = False
             # Use the subarguments in defaults to determine if a subparser has been selected
             subparser_namespace = subparser_arg.get_namespace_name()
-            print(subparser_namespace)
             # TODO: Make robust to lists of subhparams
             unfiltered_nested_defaults = [x for x in defaults.keys() if x.startswith(subparser_namespace)]
-            print(unfiltered_nested_defaults)
 
             found_nested_defaults = set(
                 [x[len(subparser_namespace) + 1:].split(".")[0] for x in unfiltered_nested_defaults])
 
-            print('foo', subparser_namespace, found_nested_defaults)
             if "" in found_nested_defaults:
                 found_nested_defaults.remove("")
             if subparser_arg.nargs == "+":
@@ -256,7 +242,6 @@ def _add_args(
 
     all_args: List[ParserArgument] = _retrieve_args(
         cls=cls,
-        parser=parser,
         prefix=prefix,
         passed_args=found_subparser_args,
     )
@@ -271,9 +256,6 @@ def _add_args(
         arg_list=all_args,
         parser_to_add=parser,
     )
-
-    print(defaults)
-    print('E AA')
 
 
 def _yaml_data_to_argparse_namespace(

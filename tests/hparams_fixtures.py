@@ -383,14 +383,19 @@ class ChoiceOptionalFieldsHparam(Hparams):
 
 @dataclass
 class OptionalFieldHparam(Hparams):
-    hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam}}
+    hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam, "two": ChoiceOptionalFieldsHparam}}
 
     choice: ChoiceOptionalFieldsHparam = hparams.required(doc="choice Hparam field")
+
+    def validate(self):
+        assert isinstance(self.choice, ChoiceOptionalFieldsHparam)
+        self.choice.validate()
+        super().validate()
 
 
 @pytest.fixture
 def optional_field_empty_object_yaml_input(hparams_tempdir) -> YamlInput:
-    data = {"choice": {"one": {}}}
+    data = {"choice": {"one": {"maybe": True}}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath="optional_field_empty_object.yaml")

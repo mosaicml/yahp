@@ -229,16 +229,10 @@ class Hparams:
             return cls.create_from_dict(data=data)
 
         from hparams.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
-        print('----')
-        print(data)
         yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data)
-        print(yaml_argparse_namespace)
-        print('----')
         original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
         parser = argparse.ArgumentParser()
-        print(yaml_argparse_namespace)
         cls.add_args(parser=parser, defaults=yaml_argparse_namespace)
-        print(yaml_argparse_namespace)
 
 
         args, unknown_args = parser.parse_known_args()
@@ -248,19 +242,13 @@ class Hparams:
 
         arg_items: List[Tuple[str, Any]] = list((vars(args)).items())
 
-        print(arg_items)
-
         argparse_data = _namespace_to_hparams_dict(
             cls=cls,
             namespace=arg_items,
         )
 
 
-        print('----')
-        print(argparse_data)
         parsed_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=argparse_data)
-        print(parsed_argparse_namespace)
-        print('----')
         parsed_argparse_keys = set(parsed_argparse_namespace.keys())
         yaml_argparse_keys = set(original_yaml_argparse_namespace.keys())
 
@@ -281,6 +269,14 @@ class Hparams:
             print("\n" + "-" * 60 + "\nAdding Keys w/ defaults or Argparse\n" + "-" * 60 + "\n")
         for key in added_keys:
             print(f"Added: {key},  value: {parsed_argparse_namespace[key]}")
+
+        full_parsed_argparse_keys = set()
+        for key in parsed_argparse_keys:
+            tokens = key.split('.')
+            for i in range(len(tokens)):
+                full_parsed_argparse_keys.add('.'.join(tokens[:-i]))
+        
+        print(full_parsed_argparse_keys)
 
         removed_keys = yaml_argparse_keys - parsed_argparse_keys
         if len(removed_keys):
