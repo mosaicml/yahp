@@ -234,7 +234,6 @@ class Hparams:
         parser = argparse.ArgumentParser()
         cls.add_args(parser=parser, defaults=yaml_argparse_namespace)
 
-
         args, unknown_args = parser.parse_known_args()
         if len(unknown_args):
             print(unknown_args)
@@ -247,11 +246,9 @@ class Hparams:
             namespace=arg_items,
         )
 
-
         parsed_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=argparse_data)
         parsed_argparse_keys = set(parsed_argparse_namespace.keys())
         yaml_argparse_keys = set(original_yaml_argparse_namespace.keys())
-
 
         intersection_keys = parsed_argparse_keys.intersection(yaml_argparse_keys)
         first_override = True
@@ -275,7 +272,7 @@ class Hparams:
             tokens = key.split('.')
             for i in range(len(tokens)):
                 full_parsed_argparse_keys.add('.'.join(tokens[:-i]))
-        
+
         print(full_parsed_argparse_keys)
 
         removed_keys = yaml_argparse_keys - parsed_argparse_keys
