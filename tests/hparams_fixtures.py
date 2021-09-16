@@ -383,7 +383,7 @@ class ChoiceOptionalFieldsHparam(Hparams):
 
 @dataclass
 class OptionalFieldHparam(Hparams):
-    hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam, "two": ChoiceOptionalFieldsHparam}}
+    hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam}}
 
     choice: ChoiceOptionalFieldsHparam = hparams.required(doc="choice Hparam field")
 
@@ -395,7 +395,7 @@ class OptionalFieldHparam(Hparams):
 
 @pytest.fixture
 def optional_field_empty_object_yaml_input(hparams_tempdir) -> YamlInput:
-    data = {"choice": {"one": {"maybe": True}}}
+    data = {"choice": {"one": {}}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath="optional_field_empty_object.yaml")
