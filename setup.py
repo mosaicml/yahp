@@ -38,7 +38,7 @@ def get_extra_requires(path, add_all=True):
 
 setup(
     name="yahp",
-    version="0.0.1",
+    version="0.0.2",
     author="MosaicML",
     author_email="team@mosaicml.com",
     description="Yet Another HyperParameter framework",
