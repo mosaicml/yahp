@@ -374,6 +374,7 @@ class ChoiceHparamRoot(hp.Hparams):
 @dataclass
 class ChoiceOptionalFieldsHparam(hp.Hparams):
     maybe: int = hp.optional(doc="some optional field", default=0)
+
     def validate(self):
         assert isinstance(self.maybe, int)
         super().validate()
