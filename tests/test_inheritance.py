@@ -3,7 +3,7 @@ import os
 import py.path
 import yaml
 
-from hparams.inheritance import preprocess_yaml_with_inheritance
+from yahp.inheritance import preprocess_yaml_with_inheritance
 
 
 def test_yaml_inheritance(tmpdir: py.path.local):
@@ -14,9 +14,9 @@ def test_yaml_inheritance(tmpdir: py.path.local):
     preprocess_yaml_with_inheritance(input_file, output_file)
     expected_output_file = os.path.join(inheritance_folder, "composed.yaml")
     with open(expected_output_file, "r") as f:
-        expected_output = yaml.load(f)
+        expected_output = yaml.full_load(f)
 
     with open(output_file, "r") as f:
-        actual_output = yaml.load(f)
+        actual_output = yaml.full_load(f)
 
     assert actual_output == expected_output

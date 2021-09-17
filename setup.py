@@ -9,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 def get_requirements(path):
     with open(path, "r") as f:
-        return f.readlines()
+        return [x.strip() for x in f.readlines()]
 
 
 # See https://hanxiao.io/2019/11/07/A-Better-Practice-for-Managing-extras-require-Dependencies-in-Python/
@@ -37,20 +37,24 @@ def get_extra_requires(path, add_all=True):
 
 
 setup(
-    name="mosaicml-hparams",
+    name="yahp",
     version="0.0.1",
     author="MosaicML",
     author_email="team@mosaicml.com",
-    description="The most amazing Hparams thing for ML",
+    description="Yet Another HyperParameter framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mosaicml/hparams",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=("tests",)),
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
+    data_files=(
+        "requirements.txt",
+        "extra-requirements.txt",
+    ),
     install_requires=get_requirements("requirements.txt"),
     extras_require=get_extra_requires("extra-requirements.txt"),
     python_requires='>=3.8',
-    ext_package="hparams",
+    ext_package="yahp",
 )

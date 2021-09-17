@@ -6,9 +6,8 @@ from typing import Any, Dict, NamedTuple
 import pytest
 import yaml
 
-from hparams import hparams
-from hparams.hparams import Hparams
-from hparams.types import JSON
+import yahp as hp
+from yahp.types import JSON
 
 
 class YamlInput(NamedTuple):
@@ -59,21 +58,21 @@ def generate_named_tuple_from_data(hparams_tempdir, input_data: Dict[str, Any], 
 
 
 @dataclass
-class EmptyHparam(Hparams):
+class EmptyHparam(hp.Hparams):
 
     def validate(self):
         super().validate()
 
 
 @dataclass
-class PrimitiveHparam(Hparams):
-    intfield: int = hparams.required(doc="int field")
-    strfield: str = hparams.required(doc="str field")
-    floatfield: float = hparams.required(doc="float field")
-    boolfield: bool = hparams.required(doc="bool field")
-    enumintfield: EnumIntField = hparams.required(doc="enum int field")
-    enumstringfield: EnumStringField = hparams.required(doc="enum int field")
-    jsonfield: Dict[str, JSON] = hparams.required(doc="Required json type")
+class PrimitiveHparam(hp.Hparams):
+    intfield: int = hp.required(doc="int field")
+    strfield: str = hp.required(doc="str field")
+    floatfield: float = hp.required(doc="float field")
+    boolfield: bool = hp.required(doc="bool field")
+    enumintfield: EnumIntField = hp.required(doc="enum int field")
+    enumstringfield: EnumStringField = hp.required(doc="enum int field")
+    jsonfield: Dict[str, JSON] = hp.required(doc="Required json type")
 
     def validate(self):
         assert isinstance(self.intfield, int)
@@ -152,9 +151,9 @@ def primitive_hparam(primitive_yaml_input: YamlInput):
 # Nested Hparams
 # -------------------------------------------------
 @dataclass
-class NestedHparam(Hparams):
-    primitive_hparam: PrimitiveHparam = hparams.required(doc="Primitive Hparams")
-    empty_hparam: EmptyHparam = hparams.required(doc="Empty Hparams")
+class NestedHparam(hp.Hparams):
+    primitive_hparam: PrimitiveHparam = hp.required(doc="Primitive Hparams")
+    empty_hparam: EmptyHparam = hp.required(doc="Empty Hparams")
 
     def validate(self):
         assert isinstance(self.primitive_hparam, PrimitiveHparam)
@@ -182,9 +181,9 @@ def nested_hparams(nested_yaml_input: YamlInput) -> NestedHparam:
 
 
 @dataclass
-class DoubleNestedHparam(Hparams):
-    nested_hparams: NestedHparam = hparams.required(doc="Primitive Hparams")
-    random_field: int = hparams.required(doc="random int")
+class DoubleNestedHparam(hp.Hparams):
+    nested_hparams: NestedHparam = hp.required(doc="Primitive Hparams")
+    random_field: int = hp.required(doc="random int")
 
     def validate(self):
         assert isinstance(self.random_field, int)
@@ -216,8 +215,8 @@ def double_nested_hparams(double_nested_yaml_input: YamlInput) -> DoubleNestedHp
 # Choice Hparams
 # -------------------------------------------------
 @dataclass
-class ChoiceHparamParent(Hparams):
-    commonfield: bool = hparams.required(doc="bool common field")
+class ChoiceHparamParent(hp.Hparams):
+    commonfield: bool = hp.required(doc="bool common field")
 
     def validate(self):
         assert isinstance(self.commonfield, bool)
@@ -226,7 +225,7 @@ class ChoiceHparamParent(Hparams):
 
 @dataclass
 class ChoiceOneHparam(ChoiceHparamParent):
-    intfield: int = hparams.required(doc="int field")
+    intfield: int = hp.required(doc="int field")
 
     def validate(self):
         assert isinstance(self.intfield, int)
@@ -257,8 +256,8 @@ def choice_one_hparams(choice_one_yaml_input: YamlInput) -> ChoiceOneHparam:
 # Directly nested subhparam
 @dataclass
 class ChoiceTwoHparam(ChoiceHparamParent):
-    primitive_hparam: PrimitiveHparam = hparams.required(doc="Primitive Hparams")
-    boolfield: int = hparams.required(doc="int field")
+    primitive_hparam: PrimitiveHparam = hp.required(doc="Primitive Hparams")
+    boolfield: int = hp.required(doc="int field")
 
     def validate(self):
         assert isinstance(self.boolfield, bool)
@@ -298,8 +297,8 @@ class ChoiceThreeHparam(ChoiceHparamParent):
         }
     }
 
-    choice: ChoiceHparamParent = hparams.required(doc="choice Hparam field")
-    strfield: str = hparams.required(doc="str field")
+    choice: ChoiceHparamParent = hp.required(doc="choice Hparam field")
+    strfield: str = hp.required(doc="str field")
 
     def validate(self):
         assert isinstance(self.strfield, str)
@@ -354,7 +353,7 @@ def choice_three_one_hparam(choice_three_one_yaml_input: YamlInput) -> ChoiceThr
 
 
 @dataclass
-class ChoiceHparamRoot(Hparams):
+class ChoiceHparamRoot(hp.Hparams):
 
     hparams_registry = {
         "choice": {
@@ -364,7 +363,7 @@ class ChoiceHparamRoot(Hparams):
         }
     }
 
-    choice: ChoiceHparamParent = hparams.required(doc="choice Hparam field")
+    choice: ChoiceHparamParent = hp.required(doc="choice Hparam field")
 
     def validate(self):
         assert isinstance(self.choice, ChoiceHparamParent)
@@ -373,8 +372,8 @@ class ChoiceHparamRoot(Hparams):
 
 
 @dataclass
-class ChoiceOptionalFieldsHparam(Hparams):
-    maybe: int = hparams.optional(doc="some optional field", default=0)
+class ChoiceOptionalFieldsHparam(hp.Hparams):
+    maybe: int = hp.optional(doc="some optional field", default=0)
 
     def validate(self):
         assert isinstance(self.maybe, int)
@@ -382,10 +381,10 @@ class ChoiceOptionalFieldsHparam(Hparams):
 
 
 @dataclass
-class OptionalFieldHparam(Hparams):
+class OptionalFieldHparam(hp.Hparams):
     hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam}}
 
-    choice: ChoiceOptionalFieldsHparam = hparams.required(doc="choice Hparam field")
+    choice: ChoiceOptionalFieldsHparam = hp.required(doc="choice Hparam field")
 
     def validate(self):
         assert isinstance(self.choice, ChoiceOptionalFieldsHparam)

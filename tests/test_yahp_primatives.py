@@ -1,6 +1,6 @@
 import pytest
 
-from tests.hparams_fixtures import PrimitiveHparam, YamlInput
+from tests.yahp_fixtures import PrimitiveHparam, YamlInput
 
 
 def test_primitive_hparams_create_from_dict(primitive_yaml_input: YamlInput):

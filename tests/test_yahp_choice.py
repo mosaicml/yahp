@@ -1,6 +1,6 @@
 import pytest
 
-from tests.hparams_fixtures import ChoiceOneHparam, ChoiceThreeHparam, ChoiceTwoHparam, YamlInput
+from tests.yahp_fixtures import ChoiceOneHparam, ChoiceThreeHparam, ChoiceTwoHparam, YamlInput
 
 
 def test_create_choice_one_hparams_data(choice_one_yaml_input: YamlInput):

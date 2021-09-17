@@ -1,4 +1,4 @@
-from tests.hparams_fixtures import DoubleNestedHparam, NestedHparam, YamlInput
+from tests.yahp_fixtures import DoubleNestedHparam, NestedHparam, YamlInput
 
 
 def test_direct_nested_create_from_dict(nested_yaml_input: YamlInput):

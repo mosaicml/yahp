@@ -14,13 +14,13 @@ from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union, get_ty
 
 import yaml
 
-from hparams import type_helpers
-from hparams.argparse import _add_args
-from hparams.commented_map import _to_commented_map as commented_map
-from hparams.create import _create_from_dict
-from hparams.interactive import list_options, query_yes_no
-from hparams.objects_helpers import HparamsException, StringDumpYAML
-from hparams.types import JSON, THparams
+from yahp import type_helpers
+from yahp.argparse import _add_args
+from yahp.commented_map import _to_commented_map as commented_map
+from yahp.create import _create_from_dict
+from yahp.interactive import list_options, query_yes_no
+from yahp.objects_helpers import HparamsException, StringDumpYAML
+from yahp.types import JSON, THparams
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -228,7 +228,7 @@ class Hparams:
         if not argparse_overrides:
             return cls.create_from_dict(data=data)
 
-        from hparams.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
+        from yahp.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
         yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data)
         original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
         parser = argparse.ArgumentParser()
@@ -386,7 +386,7 @@ class Hparams:
         choice_option_column=35,
         interactive=False,
     ) -> str:
-        from hparams.commented_map import _to_commented_map as commented_map
+        from yahp.commented_map import _to_commented_map as commented_map
         cm = commented_map(
             cls=cls,
             comment_helptext=comment_helptext,
