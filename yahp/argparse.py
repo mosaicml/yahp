@@ -15,8 +15,7 @@ from yahp.types import JSON
 
 
 def _retrieve_args(
-    cls: Type[hp.Hparams],
-    parser: argparse.ArgumentParser,
+    cls: Type[hparams.Hparams],
     prefix: List[str] = [],
     passed_args: dict = {},
 ) -> List[ParserArgument]:
@@ -68,7 +67,6 @@ def _retrieve_args(
                 assert issubclass(real_type, hp.Hparams), f"{real_type} is not a class"
                 added_args += _retrieve_args(
                     cls=real_type,
-                    parser=parser,
                     prefix=prefix + [field.name],
                     passed_args=passed_args,
                 )
@@ -93,7 +91,6 @@ def _retrieve_args(
                                 subhparam_class: Type[hp.Hparams] = registry_entry[subhparam_selected]
                                 added_args += _retrieve_args(
                                     cls=subhparam_class,
-                                    parser=parser,
                                     prefix=prefix + [field.name, subhparam_selected],
                                     passed_args=passed_args,
                                 )
@@ -101,7 +98,6 @@ def _retrieve_args(
                             subhparam_class: Type[hp.Hparams] = registry_entry[selected_subhparam]
                             added_args += _retrieve_args(
                                 cls=subhparam_class,
-                                parser=parser,
                                 prefix=prefix + [field.name, selected_subhparam],
                                 passed_args=passed_args,
                             )
@@ -109,7 +105,6 @@ def _retrieve_args(
                 elif type_helpers._is_hparams_type(registry_entry):
                     added_args += _retrieve_args(  # type: ignore
                         cls=registry_entry,
-                        parser=parser,
                         prefix=prefix + [field.name],
                         passed_args=passed_args,
                     )
@@ -208,7 +203,6 @@ def _add_args(
     while True:
         all_args: List[ParserArgument] = _retrieve_args(
             cls=cls,
-            parser=parser,
             prefix=prefix,
             passed_args=found_subparser_args,
         )
@@ -249,7 +243,6 @@ def _add_args(
 
     all_args: List[ParserArgument] = _retrieve_args(
         cls=cls,
-        parser=parser,
         prefix=prefix,
         passed_args=found_subparser_args,
     )
