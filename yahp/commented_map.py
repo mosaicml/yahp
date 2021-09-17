@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import fields
 from typing import Type, get_type_hints
 
-from hparams import hparams, type_helpers
-from hparams.interactive import list_options
+import yahp as hp
+from yahp import type_helpers
+from yahp.interactive import list_options
 
 try:
     from ruamel_yaml import YAML  # type: ignore
@@ -15,7 +16,7 @@ except ImportError as _:
 
 
 def _to_commented_map(
-    cls: Type[hparams.Hparams],
+    cls: Type[hp.Hparams],
     comment_helptext=False,
     typing_column=45,
     choice_option_column=35,
@@ -79,13 +80,13 @@ def _to_commented_map(
                             else:
                                 output[field.name].extend(default)
                         if type_helpers._is_hparams_type(real_ftype):
-                            assert issubclass(real_ftype, hparams.Hparams)
+                            assert issubclass(real_ftype, hp.Hparams)
                             output[field.name].append(_to_commented_map(
                                 cls=real_ftype,
                                 **persisted_args,
                             ))
                     elif type_helpers._is_hparams_type(real_ftype):
-                        assert issubclass(real_ftype, hparams.Hparams)
+                        assert issubclass(real_ftype, hp.Hparams)
                         output[field.name] = _to_commented_map(
                             cls=real_ftype,
                             **persisted_args,

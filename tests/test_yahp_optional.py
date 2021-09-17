@@ -1,6 +1,6 @@
 import pytest
 
-from tests.hparams_fixtures import OptionalFieldHparam, YamlInput
+from tests.yahp_fixtures import OptionalFieldHparam, YamlInput
 
 
 def test_empty_object_optional_field_hparams_data(optional_field_empty_object_yaml_input: YamlInput):

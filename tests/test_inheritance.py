@@ -3,7 +3,7 @@ import os
 import py.path
 import yaml
 
-from hparams.inheritance import preprocess_yaml_with_inheritance
+from yahp.inheritance import preprocess_yaml_with_inheritance
 
 
 def test_yaml_inheritance(tmpdir: py.path.local):
