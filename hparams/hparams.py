@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union, get_ty
 
 import yaml
 
-import hparams.type_helpers as type_helpers
+from hparams import type_helpers
 from hparams.argparse import _add_args
 from hparams.commented_map import _to_commented_map as commented_map
 from hparams.create import _create_from_dict
