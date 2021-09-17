@@ -272,7 +272,7 @@ class Hparams:
             full_parsed_argparse_keys.add(key)
             tokens = key.split('.')
             for i in range(len(tokens)):
-                full_parsed_argparse_keys.add('.'.join(tokens[:-i-1]))
+                full_parsed_argparse_keys.add('.'.join(tokens[:-i - 1]))
 
         removed_keys = yaml_argparse_keys - full_parsed_argparse_keys
         if len(removed_keys):

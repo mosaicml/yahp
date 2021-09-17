@@ -399,3 +399,11 @@ def optional_field_empty_object_yaml_input(hparams_tempdir) -> YamlInput:
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath="optional_field_empty_object.yaml")
+
+
+@pytest.fixture
+def optional_field_null_object_yaml_input(hparams_tempdir) -> YamlInput:
+    data = {"choice": {"one": None}}
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_field_null_object.yaml")
