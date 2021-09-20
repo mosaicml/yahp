@@ -34,10 +34,6 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
-    data_files=(
-        "requirements.txt",
-        "extra-requirements.txt",
-    ),
     install_requires=install_requires,
     extras_require=extra_deps,
     python_requires='>=3.8',
