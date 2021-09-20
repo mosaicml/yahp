@@ -1,44 +1,29 @@
-import re
-
 import setuptools
 from setuptools import setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+install_requires = [
+    "PyYAML==5.4.1",
+    "ruamel.yaml==0.17.10",
+]
 
-def get_requirements(path):
-    with open(path, "r") as f:
-        return [x.strip() for x in f.readlines()]
+extra_deps = {}
 
+extra_deps["dev"] = {
+    "junitparser>=2.1.1",
+    "coverage>=5.5",
+    "pytest>=6.2.4",
+    "yapf>=0.31.0",
+    "isort>=5.9.3",
+}
 
-# See https://hanxiao.io/2019/11/07/A-Better-Practice-for-Managing-extras-require-Dependencies-in-Python/
-def get_extra_requires(path, add_all=True):
-
-    with open(path) as fp:
-        extra_deps = {}
-        for k in fp:
-            if k.strip() and not k.startswith('#'):
-                tags = set()
-                if ':' in k:
-                    k, v = k.split(':')
-                    tags.update(vv.strip() for vv in v.split(','))
-                tags.add(re.split('[<=>]', k)[0])
-                for t in tags:
-                    if t not in extra_deps:
-                        extra_deps[t] = set()
-                    extra_deps[t].add(k)
-
-        # add tag `all` at the end
-        if add_all:
-            extra_deps['all'] = set(vv for v in extra_deps.values() for vv in v)
-
-    return extra_deps
-
+extra_deps['all'] = set(dep for deps in extra_deps.values() for dep in deps)
 
 setup(
     name="yahp",
-    version="0.0.2",
+    version="0.0.3",
     author="MosaicML",
     author_email="team@mosaicml.com",
     description="Yet Another HyperParameter framework",
@@ -53,8 +38,8 @@ setup(
         "requirements.txt",
         "extra-requirements.txt",
     ),
-    install_requires=get_requirements("requirements.txt"),
-    extras_require=get_extra_requires("extra-requirements.txt"),
+    install_requires=install_requires,
+    extras_require=extra_deps,
     python_requires='>=3.8',
     ext_package="yahp",
 )

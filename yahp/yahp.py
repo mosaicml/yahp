@@ -31,7 +31,7 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 
-def required(doc: str, *args, template_default: Any = None, **kwargs):
+def required(doc: str, *args: Any, template_default: Any = None, **kwargs: Any):
     """A required field for a dataclass, including documentation."""
 
     if not isinstance(doc, str) or not doc:
@@ -303,7 +303,7 @@ class Hparams:
             attr = getattr(self, f.name)
             if type_helpers._is_hparams_type(type_helpers._get_real_ftype(ftype)):
                 if isinstance(attr, list):
-                    res[f.name] = [{x.key_name: x.to_dict()} for x in attr]
+                    res[f.name] = {x.key_name: x.to_dict() for x in attr}
                 else:
                     # Directly nested vs choice
                     if f.name in self.hparams_registry and attr.key_name in self.hparams_registry[f.name]:
@@ -311,7 +311,11 @@ class Hparams:
                         res[f.name] = {attr.key_name: attr.to_dict()}
                     else:
                         # Directly nested
-                        res[f.name] = attr.to_dict()
+                        if attr is None:
+                            res[f.name] = None
+                        else:
+                            assert isinstance(attr, Hparams)
+                            res[f.name] = attr.to_dict()
             else:
                 if isinstance(attr, list):
                     if len(attr) and isinstance(attr[0], Enum):
@@ -326,13 +330,9 @@ class Hparams:
         return res
 
     @abstractmethod
-    def initialize_object(
-        self,
-        *args,
-        **kwargs,
-    ) -> object:
+    def initialize_object(self) -> object:
         """
-        Optional method to intialize an associated object (e.g. for AdamHparams, torch.util.Adam)
+        Optional method to initialize an associated object (e.g. for AdamHparams, torch.util.Adam)
         """
         raise NotImplementedError("Initializing object not supported for this Hparams. "
                                   "To enable, add initialize_object method.")
@@ -386,7 +386,6 @@ class Hparams:
         choice_option_column=35,
         interactive=False,
     ) -> str:
-        from yahp.commented_map import _to_commented_map as commented_map
         cm = commented_map(
             cls=cls,
             comment_helptext=comment_helptext,
@@ -409,8 +408,8 @@ class Hparams:
 
     def validate(self):
         field_types = get_type_hints(self.__class__)
-        for field in fields(self):
-            ftype = field_types[field.name]
+        for f in fields(self):
+            ftype = field_types[f.name]
             real_ftype = type_helpers._get_real_ftype(ftype)
             if type_helpers._is_json_dict(ftype):
                 # TODO
@@ -422,7 +421,7 @@ class Hparams:
                 # TODO
                 continue
             if type_helpers._is_hparams_type(real_ftype):
-                field_value = getattr(self, field.name)
+                field_value = getattr(self, f.name)
                 if isinstance(field_value, list):
                     for item in field_value:
                         item.validate()
@@ -431,7 +430,7 @@ class Hparams:
                     if field_value:
                         field_value.validate()
                 continue
-            raise ValueError(f"{self.__class__.__name__}.{field.name} has invalid type: {ftype}")
+            raise ValueError(f"{self.__class__.__name__}.{f.name} has invalid type: {ftype}")
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml()

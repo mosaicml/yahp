@@ -1,13 +1,14 @@
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, NamedTuple
+from typing import Any, Dict, NamedTuple, Optional
 
 import pytest
 import yaml
 
 import yahp as hp
 from yahp.types import JSON
+from yahp.yahp import Hparams
 
 
 class YamlInput(NamedTuple):
@@ -378,6 +379,11 @@ class ChoiceOptionalFieldsHparam(hp.Hparams):
     def validate(self):
         assert isinstance(self.maybe, int)
         super().validate()
+
+
+@dataclass
+class OptionalHparamsField(hp.Hparams):
+    optional_hparams: Optional[Hparams] = hp.optional("optional hparams field", default=None)
 
 
 @dataclass
