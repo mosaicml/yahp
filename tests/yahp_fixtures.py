@@ -8,7 +8,6 @@ import yaml
 
 import yahp as hp
 from yahp.types import JSON
-from yahp.yahp import Hparams
 
 
 class YamlInput(NamedTuple):
@@ -383,7 +382,7 @@ class ChoiceOptionalFieldsHparam(hp.Hparams):
 
 @dataclass
 class OptionalHparamsField(hp.Hparams):
-    optional_hparams: Optional[Hparams] = hp.optional("optional hparams field", default=None)
+    optional_hparams: Optional[hp.Hparams] = hp.optional("optional hparams field", default=None)
 
 
 @dataclass
