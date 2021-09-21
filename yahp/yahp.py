@@ -111,8 +111,8 @@ class Hparams:
     # With the same hparams_registry as before, the following yaml:
     #
     # animal:
-    #   cat: {}
-    #   dog: {}
+    #   - cat: {}
+    #   - dog: {}
     #
     # would result in the hparams being parsed as:
     # type(petstore.animals) == list
