@@ -89,19 +89,44 @@ class Hparams:
     Capable of converting back and forth between argparse flags and yaml.
     """
 
-    # Can be a map from:
-    #   field -> Hparam                           # for a single nested Hparam
-    #   field -> Dict[str, Type[Hparam]]          # for multiple exclusive Hparam Options,
-    # works for: choose one, list
-    # note: hparams_registry cannot be typed otherwise subclasses cant instantiate
-    hparams_registry = {}  # type: Dict[str, Union[Type["Hparams"], Dict[str, Type["Hparams"]]]]
-
-    key_name = ""  # Used for helping determine what keyed name was used in creating the Hparams object
+    # hparams_registry is used to store generic arguments and the types that they could be.
+    # For example, suppose Animal is an abstract type, and there is the field.
+    # class Petstore(hp.Hparams):
+    #     animal: Animal = hp.optional(...)
+    #
+    # Suppose there are two types of animals -- `Cat` and `Dog`. Then, the hparams registry should be:
+    # hparams_registry = { "animal": {"cat": Cat, "dog": Dog } }
+    # Then, the following yaml:
+    #
+    # animal:
+    #   cat: {}
+    #
+    # Would result in the hparams being parsed as type(petstore.animal) == Cat
+    #
+    # Now consider when multiple values are allowed -- e.g.
+    #
+    # class Petstore(hp.Hparams):
+    #     animals: List[Animal] = hp.optional(...)
+    #
+    # With the same hparams_registry as before, the following yaml:
+    #
+    # animal:
+    #   cat: {}
+    #   dog: {}
+    #
+    # would result in the hparams being parsed as:
+    # type(petstore.animals) == list
+    # type(petstore.animals[0]) == Cat
+    # type(petstore.animals[1]) == Dog
+    #
+    # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
+    # and would treat it like an instance variable. Instead, using the python2-style annotations
+    hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
 
     helptext = ""
 
     @classmethod
-    def _get_possible_items_for_registry_key(cls, registry_key) -> List[Tuple[str, Type["Hparams"]]]:
+    def _get_possible_items_for_registry_key(cls, registry_key: str) -> List[Tuple[str, Type["Hparams"]]]:
         if registry_key in cls.hparams_registry:
             vals = cls.hparams_registry[registry_key]
             if isinstance(vals, collections.abc.Mapping):
@@ -301,22 +326,37 @@ class Hparams:
         for f in fields(self):
             ftype = field_types[f.name]
             attr = getattr(self, f.name)
+            if attr is None:  # first, take care of the optionals
+                res[f.name] = None
+                continue
             if type_helpers._is_hparams_type(type_helpers._get_real_ftype(ftype)):
-                if isinstance(attr, list):
-                    res[f.name] = {x.key_name: x.to_dict() for x in attr}
-                else:
-                    # Directly nested vs choice
-                    if f.name in self.hparams_registry and attr.key_name in self.hparams_registry[f.name]:
-                        # Choice found
-                        res[f.name] = {attr.key_name: attr.to_dict()}
+                # Could be: List[Generic Hparams], Generic Hparams,
+                # List[Specific Hparams], or Specific Hparams
+                # If it's in the registry, it's generic. Otherwise, it's specific
+                if f.name in self.hparams_registry:
+                    inverted_registry = {v: k for (k, v) in self.hparams_registry[f.name].items()}
+                    if isinstance(attr, list):
+                        field_list: List[JSON] = []
+                        for x in attr:
+                            assert isinstance(x, Hparams)
+                            field_name = inverted_registry[type(x)]
+                            field_list.append({field_name: x.to_dict()})
+                        res[f.name] = field_list
                     else:
-                        # Directly nested
-                        if attr is None:
-                            res[f.name] = None
-                        else:
-                            assert isinstance(attr, Hparams)
-                            res[f.name] = attr.to_dict()
+                        field_dict: Dict[str, JSON] = {}
+                        field_name = inverted_registry[type(attr)]
+                        # Generic hparams. Make sure to index by the key in the hparams registry
+                        field_dict[field_name] = attr.to_dict()
+                        res[f.name] = field_dict
+                else:
+                    # Specific -- either a list or not
+                    if isinstance(attr, list):
+                        res[f.name] = [x.to_dict() for x in attr]
+                    else:
+                        assert isinstance(attr, Hparams)
+                        res[f.name] = attr.to_dict()
             else:
+                # Not a hparams type
                 if isinstance(attr, list):
                     if len(attr) and isinstance(attr[0], Enum):
                         res[f.name] = [x.value for x in attr]

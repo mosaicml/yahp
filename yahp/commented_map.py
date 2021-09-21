@@ -95,7 +95,7 @@ def _to_commented_map(
                         raise TypeError(f"Invalid type: {real_ftype}")
             else:
                 # It's a Chose One or a List
-                possible_sub_hparams = cls._get_possible_items_for_registry_key(field.name)
+                possible_sub_hparams = cls.hparams_registry[field.name]
                 possible_keys = [x for (x, y) in possible_sub_hparams]
                 if len(possible_keys) == 1:
                     sub_hparams = CommentedMap()
