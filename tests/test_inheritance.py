@@ -1,7 +1,7 @@
 import os
+import pathlib
 
 import yaml
-import pathlib
 
 from yahp.inheritance import preprocess_yaml_with_inheritance
 

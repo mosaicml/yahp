@@ -126,19 +126,6 @@ class Hparams:
     helptext = ""
 
     @classmethod
-    def _get_possible_items_for_registry_key(cls, registry_key: str) -> List[Tuple[str, Type["Hparams"]]]:
-        if registry_key in cls.hparams_registry:
-            vals = cls.hparams_registry[registry_key]
-            if isinstance(vals, collections.abc.Mapping):
-                return list(vals.items())
-            elif type_helpers._is_hparams_type(vals):
-                return [(registry_key, vals)]
-            raise HparamsException("Hparams registry should only have singly nested Hparams or a dict of Hparams")
-
-        else:
-            return []
-
-    @classmethod
     def _validate_keys(cls, data: Dict[str, Any], throw_error: bool = True, print_error: bool = True):
         keys_in_yaml = set(data.keys())
         keys_in_class = set([(f.name) for f in fields(cls)])
@@ -379,10 +366,10 @@ class Hparams:
 
     @classmethod
     def add_args(
-            cls,
-            parser: argparse.ArgumentParser,
-            prefix: List[str],
-            defaults: Dict[str, Any],
+        cls,
+        parser: argparse.ArgumentParser,
+        prefix: List[str],
+        defaults: Dict[str, Any],
     ) -> None:
         """
         Add the fields of the class as arguments to `parser`.

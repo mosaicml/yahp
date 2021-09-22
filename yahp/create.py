@@ -115,6 +115,6 @@ def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List
                             cls=registry_items[yaml_key],
                             data=key_data,
                             prefix=sub_prefix,
-                        )                   
+                        )
 
     return cls(**kwargs)
