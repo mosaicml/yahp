@@ -90,11 +90,10 @@ class Hparams:
     """
 
     # Can be a map from:
-    #   field -> Hparam                           # for a single nested Hparam
     #   field -> Dict[str, Type[Hparam]]          # for multiple exclusive Hparam Options,
     # works for: choose one, list
     # note: hparams_registry cannot be typed otherwise subclasses cant instantiate
-    hparams_registry = {}  # type: Dict[str, Union[Type["Hparams"], Dict[str, Type["Hparams"]]]]
+    hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
 
     key_name = ""  # Used for helping determine what keyed name was used in creating the Hparams object
 
@@ -405,6 +404,29 @@ class Hparams:
         if val is None or isinstance(val, (str, float, int)):
             return val
         raise TypeError(f"Cannot convert value of type {type(val)} into a JSON primitive")
+
+    @classmethod
+    def register_class(cls, field: str, register_class: Type[Hparams], class_key: str) -> bool:
+        class_fields = [x for x in fields(cls) if x.name == field]
+        if len(class_fields) == 0:
+            logger.warning(f"Unable to find field: {field} in: {cls.__name__}")
+            return False
+        if field not in cls.hparams_registry:
+            logger.warning(f"Unable to find field: {field} in: {cls.__name__} registry. \n" +
+                           "Is it a choose one or list Hparam?")
+            return False
+
+        sub_registry = cls.hparams_registry[field]
+        existing_keys = sub_registry.keys()
+        if class_key in existing_keys:
+            logger.warning(
+                f"Field: {field} already registered in: {cls.__name__} registry for class: {sub_registry[field]}. \n" +
+                "Make sure you register new classes with a unique name")
+            return False
+
+        logger.warning(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
+        sub_registry[class_key] = register_class
+        return True
 
     def validate(self):
         field_types = get_type_hints(self.__class__)
