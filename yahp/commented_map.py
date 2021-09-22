@@ -17,10 +17,10 @@ except ImportError as _:
 
 def _to_commented_map(
     cls: Type[hp.Hparams],
-    comment_helptext=False,
-    typing_column=45,
-    choice_option_column=35,
-    interactive=False,
+    comment_helptext: bool = False,
+    typing_column: int = 45,
+    choice_option_column: int = 35,
+    interactive: bool = False,
 ) -> YAML:
     output = CommentedMap()
     persisted_args = {
@@ -99,7 +99,7 @@ def _to_commented_map(
                 possible_keys = [x for (x, y) in possible_sub_hparams]
                 if len(possible_keys) == 1:
                     sub_hparams = CommentedMap()
-                    sub_hparams_key, sub_hparams_type = possible_sub_hparams[0]
+                    sub_hparams_key, sub_hparams_type = list(possible_sub_hparams.items())[0]
                     if sub_hparams_key == field.name:
                         output[field.name] = _to_commented_map(
                             cls=sub_hparams_type,
@@ -135,7 +135,7 @@ def _to_commented_map(
                                 possible_keys = interactive_response
                             else:
                                 possible_keys = [interactive_response]
-                    possible_sub_hparams = list(filter(lambda x: x[0] in possible_keys, possible_sub_hparams))
+                    possible_sub_hparams = list(filter(lambda x: x[0] in possible_keys, possible_sub_hparams.items()))
                     sub_hparams = CommentedSeq() if is_list else CommentedMap()
                     for sub_key, sub_type in possible_sub_hparams:
                         eol_comment_args = {

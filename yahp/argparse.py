@@ -184,10 +184,10 @@ def _add_parser_argument_list_to_parser(arg_list: List[ParserArgument], parser_t
 
 
 def _add_args(
-        cls: Type[hp.Hparams],
-        parser: argparse.ArgumentParser,
-        prefix: List[str],
-        defaults: Dict[str, Any],
+    cls: Type[hp.Hparams],
+    parser: argparse.ArgumentParser,
+    prefix: List[str],
+    defaults: Dict[str, Any],
 ) -> None:
     """
     Add the fields of the class as arguments to `parser`.

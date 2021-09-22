@@ -1,12 +1,12 @@
 import os
 
-import py.path
 import yaml
+import pathlib
 
 from yahp.inheritance import preprocess_yaml_with_inheritance
 
 
-def test_yaml_inheritance(tmpdir: py.path.local):
+def test_yaml_inheritance(tmpdir: pathlib.Path):
     inheritance_folder = os.path.join(os.path.dirname(__file__), "inheritance")
     input_file = os.path.join(inheritance_folder, "main.yaml")
     output_file = os.path.join(str(tmpdir), "output_yaml.yaml")
