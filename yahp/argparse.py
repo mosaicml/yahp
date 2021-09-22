@@ -15,9 +15,9 @@ from yahp.types import JSON
 
 
 def _retrieve_args(
-    cls: Type[hparams.Hparams],
-    prefix: List[str] = [],
-    passed_args: dict = {},
+    cls: Type[hp.Hparams],
+    prefix: List[str],
+    passed_args: Dict[str, Any],
 ) -> List[ParserArgument]:
     added_args = []
     type_hints = get_type_hints(cls)
@@ -48,6 +48,11 @@ def _retrieve_args(
             "action": "store_true" if type(real_type) == bool else None,
         }
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
+        if type_helpers._is_hparams_type(type(default)):
+            if field.name in cls.hparams_registry:
+                inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[field.name].items()}
+                default = inverted_field_registry[type(default)]
+
         parser_argument_default_kwargs["default"] = default if default is not None else MISSING
 
         if type_helpers._is_enum_type(real_type):
@@ -181,8 +186,8 @@ def _add_parser_argument_list_to_parser(arg_list: List[ParserArgument], parser_t
 def _add_args(
         cls: Type[hp.Hparams],
         parser: argparse.ArgumentParser,
-        prefix: List[str] = [],
-        defaults: Dict[str, Any] = dict(),
+        prefix: List[str],
+        defaults: Dict[str, Any],
 ) -> None:
     """
     Add the fields of the class as arguments to `parser`.
