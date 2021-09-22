@@ -12,7 +12,7 @@ from yahp.types import JSON
 
 def _get_inherits_paths(
     namespace: Dict[str, JSON],
-    argument_path: List[str] = [],
+    argument_path: List[str],
 ) -> List[Tuple[List[str], List[str]]]:
     paths: List[Tuple[List[str], List[str]]] = []
     for key, val in namespace.items():
@@ -117,7 +117,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
 
     assert isinstance(data, dict)
 
-    inherit_paths = sorted(_get_inherits_paths(data), key=lambda x: len(x[0]))
+    inherit_paths = sorted(_get_inherits_paths(data, []), key=lambda x: len(x[0]))
     for arg_path_parts, yaml_file_s in inherit_paths:
         for new_yaml_path in yaml_file_s:
             sub_yaml_path = os.path.abspath(os.path.join(file_directory, new_yaml_path))
