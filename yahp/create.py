@@ -11,7 +11,7 @@ from yahp.types import JSON, THparams
 logger = logging.getLogger(__name__)
 
 
-def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List[str] = []) -> hp.Hparams:
+def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List[str]) -> hp.Hparams:
     kwargs: Dict[str, THparams] = {}
 
     # Cast everything to the appropriate types.

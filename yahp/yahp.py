@@ -236,7 +236,7 @@ class Hparams:
         # Check against the schema.
         cls._validate_keys(data=data)
 
-        return _create_from_dict(cls=cls, data=data)
+        return _create_from_dict(cls=cls, data=data, prefix=[])
 
     @classmethod
     def create(
@@ -254,10 +254,10 @@ class Hparams:
             return cls.create_from_dict(data=data)
 
         from yahp.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
-        yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data)
+        yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data, _prefix=[])
         original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
         parser = argparse.ArgumentParser()
-        cls.add_args(parser=parser, defaults=yaml_argparse_namespace)
+        cls.add_args(parser=parser, defaults=yaml_argparse_namespace, prefix=[])
 
         args, unknown_args = parser.parse_known_args()
         if len(unknown_args):
@@ -271,7 +271,7 @@ class Hparams:
             namespace=arg_items,
         )
 
-        parsed_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=argparse_data)
+        parsed_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=argparse_data, _prefix=[])
         parsed_argparse_keys = set(parsed_argparse_namespace.keys())
         yaml_argparse_keys = set(original_yaml_argparse_namespace.keys())
 
@@ -381,8 +381,8 @@ class Hparams:
     def add_args(
             cls,
             parser: argparse.ArgumentParser,
-            prefix: List[str] = [],
-            defaults: Dict[str, Any] = dict(),
+            prefix: List[str],
+            defaults: Dict[str, Any],
     ) -> None:
         """
         Add the fields of the class as arguments to `parser`.
@@ -403,10 +403,10 @@ class Hparams:
     def dump(
         cls,
         output: TextIO,
-        comment_helptext=False,
-        typing_column=45,
-        choice_option_column=35,
-        interactive=False,
+        comment_helptext: bool = False,
+        typing_column: int = 45,
+        choice_option_column: int = 35,
+        interactive: bool = False,
     ) -> None:
         cm = commented_map(
             cls=cls,
@@ -421,10 +421,10 @@ class Hparams:
     @classmethod
     def dumps(
         cls,
-        comment_helptext=False,
-        typing_column=45,
-        choice_option_column=35,
-        interactive=False,
+        comment_helptext: bool = False,
+        typing_column: int = 45,
+        choice_option_column: int = 35,
+        interactive: bool = False,
     ) -> str:
         cm = commented_map(
             cls=cls,

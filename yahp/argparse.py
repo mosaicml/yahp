@@ -266,7 +266,7 @@ def _add_args(
 
 def _yaml_data_to_argparse_namespace(
     yaml_data: Dict[str, Any],
-    _prefix: List[str] = [],
+    _prefix: List[str],
 ) -> Dict[str, Any]:
     items: Dict[str, Any] = dict()
     if len(yaml_data) == 0:
