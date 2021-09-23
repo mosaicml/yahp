@@ -43,7 +43,8 @@ def _is_enum_type(item: Any) -> bool:
 
 def _is_list(item: Any) -> bool:
     origin = get_origin(item)
-    return origin is list
+    item = item if origin is None else origin
+    return _safe_subclass_checker(item, list)
 
 
 def _is_none_like(item: object) -> bool:

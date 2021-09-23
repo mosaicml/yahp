@@ -43,7 +43,7 @@ class ParserArgument:
     short_arg_name: Optional[str] = None
     is_hparams_subclass: bool = False
 
-    def get_possible_short_name(self, index=0):
+    def get_possible_short_name(self, index: int = 0):
         items = self.get_namespace_name().split(".")[-(index + 1):]
         return ".".join(items)
 
