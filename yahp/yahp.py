@@ -19,7 +19,7 @@ from yahp.argparse import _add_args
 from yahp.commented_map import _to_commented_map as commented_map
 from yahp.create import _create_from_dict
 from yahp.interactive import list_options, query_yes_no
-from yahp.objects_helpers import HparamsException, StringDumpYAML
+from yahp.objects_helpers import StringDumpYAML, YAHPException
 from yahp.types import JSON, THparams
 
 # This is for ruamel.yaml not importing properly in conda
@@ -35,11 +35,11 @@ def required(doc: str, *args: Any, template_default: Any = None, **kwargs: Any):
     """A required field for a dataclass, including documentation."""
 
     if not isinstance(doc, str) or not doc:
-        raise HparamsException(f'Invalid documentation: {doc}')
+        raise YAHPException(f'Invalid documentation: {doc}')
 
     default = None
     if 'default' in kwargs and 'default_factory' in kwargs:
-        raise HparamsException('cannot specify both default and default_factory')
+        raise YAHPException('cannot specify both default and default_factory')
     elif 'default' in kwargs:
         default = kwargs['default']
     elif "default_factory" in kwargs:
@@ -59,12 +59,12 @@ def optional(doc: str, *args: Any, **kwargs: Any):
     """An optional field for a dataclass, including a default value and documentation."""
 
     if not isinstance(doc, str) or not doc:
-        raise HparamsException(f'Invalid documentation: {doc}')
+        raise YAHPException(f'Invalid documentation: {doc}')
 
     if 'default' not in kwargs and 'default_factory' not in kwargs:
-        raise HparamsException('Optional field must have default or default_factory defined')
+        raise YAHPException('Optional field must have default or default_factory defined')
     elif 'default' in kwargs and 'default_factory' in kwargs:
-        raise HparamsException('cannot specify both default and default_factory')
+        raise YAHPException('cannot specify both default and default_factory')
     elif 'default' in kwargs:
         default = kwargs['default']
     else:
@@ -107,7 +107,7 @@ class Hparams:
                 return list(vals.items())
             elif type_helpers._is_hparams_type(vals):
                 return [(registry_key, vals)]
-            raise HparamsException("Hparams registry should only have singly nested Hparams or a dict of Hparams")
+            raise YAHPException("Hparams registry should only have singly nested Hparams or a dict of Hparams")
 
         else:
             return []
@@ -126,7 +126,7 @@ class Hparams:
             if print_error:
                 logger.error(error_msg)
             if throw_error:
-                raise HparamsException(error_msg)
+                raise YAHPException(error_msg)
 
         # Missing keys.
         if required_keys_in_class - keys_in_yaml:
@@ -135,7 +135,7 @@ class Hparams:
             if print_error:
                 logger.error(err_msg)
             if throw_error:
-                raise HparamsException(err_msg)
+                raise YAHPException(err_msg)
 
     @classmethod
     def _add_filename_argument(cls, parser: argparse.ArgumentParser) -> None:
@@ -406,27 +406,28 @@ class Hparams:
         raise TypeError(f"Cannot convert value of type {type(val)} into a JSON primitive")
 
     @classmethod
-    def register_class(cls, field: str, register_class: Type[Hparams], class_key: str) -> bool:
+    def register_class(cls, field: str, register_class: Type[Hparams], class_key: str) -> None:
         class_fields = [x for x in fields(cls) if x.name == field]
         if len(class_fields) == 0:
-            logger.warning(f"Unable to find field: {field} in: {cls.__name__}")
-            return False
+            message = f"Unable to find field: {field} in: {cls.__name__}"
+            logger.warning(message)
+            raise YAHPException(message)
         if field not in cls.hparams_registry:
-            logger.warning(f"Unable to find field: {field} in: {cls.__name__} registry. \n" +
-                           "Is it a choose one or list Hparam?")
-            return False
+            message = f"Unable to find field: {field} in: {cls.__name__} registry. \n"
+            message += "Is it a choose one or list Hparam?"
+            logger.warning(message)
+            raise YAHPException(message)
 
         sub_registry = cls.hparams_registry[field]
         existing_keys = sub_registry.keys()
         if class_key in existing_keys:
-            logger.warning(
-                f"Field: {field} already registered in: {cls.__name__} registry for class: {sub_registry[field]}. \n" +
-                "Make sure you register new classes with a unique name")
-            return False
+            message = f"Field: {field} already registered in: {cls.__name__} registry for class: {sub_registry[field]}. \n"
+            message += "Make sure you register new classes with a unique name"
+            logger.warning(message)
+            raise YAHPException(message)
 
-        logger.warning(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
+        logger.info(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
         sub_registry[class_key] = register_class
-        return True
 
     def validate(self):
         field_types = get_type_hints(self.__class__)

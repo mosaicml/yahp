@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Type, cast, get_type_hints
 
 import yahp as hp
 from yahp import type_helpers
-from yahp.objects_helpers import HparamsException
+from yahp.objects_helpers import YAHPException
 from yahp.types import JSON, THparams
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List
                             textwrap.dedent(f"""\n
                         Found unexpected nested Hparams object under: {f.name}
                         """))
-                        raise HparamsException("Unexpected nested Hparams format")
+                        raise YAHPException("Unexpected nested Hparams format")
     return cls(**kwargs)
 
 
@@ -134,4 +134,4 @@ def _dict_to_hparams(
     Looked for: {', '.join(list(input_dict.keys()))}
     Found in registry: {', '.join(list(flat_registry.keys()))}
     """))
-    raise HparamsException("Missing hparams_registry key")
+    raise YAHPException("Missing hparams_registry key")

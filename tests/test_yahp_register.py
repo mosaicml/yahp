@@ -1,19 +1,21 @@
 from dataclasses import dataclass
 from typing import Dict, cast
 
+import pytest
+
 import yahp as hp
 from tests.yahp_fixtures import ChoiceHparamRoot, ChoiceOneHparam, EmptyHparam, NestedHparam, PrimitiveHparam, YamlInput
+from yahp.objects_helpers import YAHPException
 from yahp.types import JSON
 
 
 def test_register_new_hparam_choice(choice_one_yaml_input: YamlInput):
     # Should fail because directly nested hparams can't be over-registered
-    success = ChoiceHparamRoot.register_class(
+    ChoiceHparamRoot.register_class(
         field="choice",
         register_class=EmptyHparam,
         class_key="empty",
     )
-    assert success
 
     root_hparams_data: Dict[str, JSON] = {"choice": {"one": choice_one_yaml_input.dict_data}}
 
@@ -33,29 +35,29 @@ def test_register_new_hparam_choice(choice_one_yaml_input: YamlInput):
 
 def test_register_new_hparam_direct(nested_hparams: NestedHparam):
     # Should fail because directly nested hparams can't be over-registered
-    success = nested_hparams.register_class(
-        field="primitive_hparam",
-        register_class=EmptyHparam,
-        class_key="empty",
-    )
-    assert success == False
+    with pytest.raises(YAHPException):
+        nested_hparams.register_class(
+            field="primitive_hparam",
+            register_class=EmptyHparam,
+            class_key="empty",
+        )
 
 
 def test_register_non_existing(nested_hparams: NestedHparam):
     # Tries to register for a nonexisting field
-    success = nested_hparams.register_class(
-        field="nonexisting_hparam",
-        register_class=EmptyHparam,
-        class_key="empty",
-    )
-    assert success == False
+    with pytest.raises(YAHPException):
+        nested_hparams.register_class(
+            field="nonexisting_hparam",
+            register_class=EmptyHparam,
+            class_key="empty",
+        )
 
 
 def test_register_existing_primative():
     # Tries to register for a nonexisting field
-    success = PrimitiveHparam.register_class(
-        field="intfield",
-        register_class=EmptyHparam,
-        class_key="empty",
-    )
-    assert success == False
+    with pytest.raises(YAHPException):
+        PrimitiveHparam.register_class(
+            field="intfield",
+            register_class=EmptyHparam,
+            class_key="empty",
+        )
