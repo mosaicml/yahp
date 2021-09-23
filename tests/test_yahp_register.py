@@ -38,7 +38,7 @@ def test_register_new_hparam_direct(nested_hparams: NestedHparam):
         register_class=EmptyHparam,
         class_key="empty",
     )
-    assert success == False
+    assert not success
 
 
 def test_register_non_existing(nested_hparams: NestedHparam):
