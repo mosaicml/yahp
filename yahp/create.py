@@ -6,6 +6,7 @@ from typing import Dict, List, Type, cast, get_type_hints
 
 import yahp as hp
 from yahp import type_helpers
+from yahp.objects_helpers import YAHPException
 from yahp.types import JSON, THparams
 
 logger = logging.getLogger(__name__)

@@ -12,7 +12,7 @@ except ImportError as e:
     from ruamel.yaml.compat import StringIO  # type: ignore
 
 
-class HparamsException(Exception):
+class YAHPException(Exception):
     pass
 
 

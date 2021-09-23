@@ -1,6 +1,14 @@
 import pytest
 
-from tests.yahp_fixtures import ChoiceOneHparam, ChoiceThreeHparam, ChoiceTwoHparam, YamlInput
+from tests.yahp_fixtures import ChoiceHparamRoot, ChoiceOneHparam, ChoiceThreeHparam, ChoiceTwoHparam, YamlInput
+
+
+def test_create_choice_one_hparams_data_root(choice_one_yaml_input: YamlInput):
+    ChoiceHparamRoot.create_from_dict(data={
+        "choice": {
+            "one": choice_one_yaml_input.dict_data
+        },
+    })
 
 
 def test_create_choice_one_hparams_data(choice_one_yaml_input: YamlInput):
@@ -11,12 +19,28 @@ def test_create_choice_one_hparams_file(choice_one_yaml_input: YamlInput):
     ChoiceOneHparam.create(filepath=choice_one_yaml_input.filename)
 
 
+def test_create_choice_two_hparams_data_root(choice_two_yaml_input: YamlInput):
+    ChoiceHparamRoot.create_from_dict(data={
+        "choice": {
+            "two": choice_two_yaml_input.dict_data
+        },
+    })
+
+
 def test_create_choice_two_hparams_data(choice_two_yaml_input: YamlInput):
     ChoiceTwoHparam.create_from_dict(data=choice_two_yaml_input.dict_data)
 
 
 def test_create_choice_two_hparams_file(choice_two_yaml_input: YamlInput):
     ChoiceTwoHparam.create(filepath=choice_two_yaml_input.filename)
+
+
+def test_create_choice_three_one_hparams_data_root(choice_three_one_yaml_input: YamlInput):
+    ChoiceHparamRoot.create_from_dict(data={
+        "choice": {
+            "three": choice_three_one_yaml_input.dict_data
+        },
+    })
 
 
 def test_create_choice_three_one_hparams_data(choice_three_one_yaml_input: YamlInput):
@@ -39,6 +63,14 @@ def test_create_choice_three_one_hparams_data_fail_with_missing_nested_data(choi
 
 def test_create_choice_three_one_hparams_file(choice_three_one_yaml_input: YamlInput):
     ChoiceThreeHparam.create(filepath=choice_three_one_yaml_input.filename)
+
+
+def test_create_choice_three_two_hparams_data_root(choice_three_two_yaml_input: YamlInput):
+    ChoiceHparamRoot.create_from_dict(data={
+        "choice": {
+            "three": choice_three_two_yaml_input.dict_data
+        },
+    })
 
 
 def test_create_choice_three_two_hparams_data(choice_three_two_yaml_input: YamlInput):
