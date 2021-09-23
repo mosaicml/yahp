@@ -1,5 +1,3 @@
-import pytest
-
 from tests.yahp_fixtures import OptionalFieldHparam, OptionalHparamsField, YamlInput
 
 

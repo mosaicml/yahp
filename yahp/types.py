@@ -2,7 +2,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Union
 
 if TYPE_CHECKING:
-    from hparams.hparams import Hparams
+    from yahp.yahp import Hparams
 
 JSON = Union[str, float, int, None, List['JSON'], Dict[str, 'JSON']]
 

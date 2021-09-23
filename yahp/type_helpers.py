@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any, Dict, Tuple, Type, Union, get_args, get_origin
 
 import yahp as hp
-from yahp.objects_helpers import HparamsException
+from yahp.objects_helpers import YAHPException
 from yahp.types import JSON, THparams
 
 
@@ -43,7 +43,8 @@ def _is_enum_type(item: Any) -> bool:
 
 def _is_list(item: Any) -> bool:
     origin = get_origin(item)
-    return origin is list
+    item = item if origin is None else origin
+    return _safe_subclass_checker(item, list)
 
 
 def _is_none_like(item: object) -> bool:
@@ -154,7 +155,7 @@ def parse_json_value(val: JSON, ftype: Type, name: str) -> Any:
 
     if val is None:
         if not _is_optional(ftype):
-            raise HparamsException(f"{name} is None, but a value is required.")
+            raise YAHPException(f"{name} is None, but a value is required.")
         return None
     elif _is_primitive_optional_type(ftype):
         if _safe_subclass_checker(ftype, Enum):

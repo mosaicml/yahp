@@ -1,33 +1,30 @@
 from __future__ import annotations
 
-import collections.abc
-import importlib
 import logging
-import textwrap
 from dataclasses import fields
-from typing import Any, Dict, List, Type, cast, get_type_hints
+from typing import Dict, List, Type, cast, get_type_hints
 
 import yahp as hp
 from yahp import type_helpers
-from yahp.objects_helpers import HparamsException
+from yahp.objects_helpers import YAHPException
 from yahp.types import JSON, THparams
 
 logger = logging.getLogger(__name__)
 
 
-def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List[str] = []) -> hparams.Hparams:
+def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List[str]) -> hp.Hparams:
     kwargs: Dict[str, THparams] = {}
-    cls_module = importlib.import_module(cls.__module__)
 
     # Cast everything to the appropriate types.
     field_types = get_type_hints(cls)
     for f in fields(cls):
         ftype = field_types[f.name]
+        field_prefix = prefix + [f.name]
         if f.name not in data:
             # Missing field inside data
             required, default_value = type_helpers._get_required_default_from_field(field=f)
             missing_object_str = f"{ cls.__name__ }.{ f.name }"
-            missing_path_string = '.'.join(prefix + [f.name])
+            missing_path_string = '.'.join(field_prefix)
             if required:
                 raise ValueError(f"Missing required field: {missing_object_str: <30}: {missing_path_string}")
             else:
@@ -38,6 +35,7 @@ def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List
         else:
             # Unwrap typing
             ftype_origin = ftype if type_helpers.get_origin(ftype) is None else type_helpers.get_origin(ftype)
+
             if not (type_helpers._is_hparams_type(type_helpers._get_real_ftype(ftype)) or
                     f.name in cls.hparams_registry):
                 # It's a primitive type
@@ -49,6 +47,7 @@ def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List
                 kwargs[f.name] = type_helpers.parse_json_value(data[f.name], ftype, f"{cls.__name__}.{f.name}")
             else:
                 if f.name not in cls.hparams_registry:
+                    assert type_helpers._is_hparams_type(type_helpers._get_real_ftype(ftype))
                     # Must be a directly nested Hparams or Optional[Hparams]
                     if data[f.name] is None:
                         if type_helpers._is_optional(ftype):
@@ -62,76 +61,61 @@ def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List
                     sub_hparams = _create_from_dict(
                         cls=hparams_cls,
                         data=cast(Dict[str, JSON], data[f.name]),
-                        prefix=prefix + [f.name],
+                        prefix=field_prefix,
                     )
-                    sub_hparams.key_name = f.name
                     kwargs[f.name] = sub_hparams
                 else:
                     # Found in registry to unwrap custom Hparams subclasses
-                    registry_items: Dict[str, Type[hp.Hparams]] = dict(cls._get_possible_items_for_registry_key(f.name))
+                    registry_items = cls.hparams_registry[f.name]
                     sub_data = data[f.name]
-                    # For empty Hparams with no fields
-                    if sub_data is None and len(fields(ftype_origin)) == 0:
-                        sub_data = {}
 
-                    if f.name in registry_items:
-                        # Direct Nesting
-                        assert isinstance(sub_data, dict)
-                        kwargs[f.name] = _create_from_dict(
-                            cls=registry_items[f.name],
-                            data=sub_data,
-                            prefix=prefix + [f.name],
-                        )
-                    elif isinstance(sub_data, list):
-                        sub_data = cast(List[Dict[str, JSON]], sub_data)
-                        sub_list_hparams = [
-                            _dict_to_hparams(
-                                fname_key=f.name,
-                                input_dict=item,
-                                flat_registry=registry_items,
-                                input_prefix=prefix + [f.name],
-                            ) for item in sub_data
-                        ]
-                        kwargs[f.name] = sub_list_hparams
-                    elif isinstance(sub_data, collections.abc.Mapping):
-                        kwargs[f.name] = _dict_to_hparams(
-                            fname_key=f.name,
-                            input_dict=cast(Dict[str, Any], sub_data),
-                            flat_registry=registry_items,
-                            input_prefix=prefix + [f.name],
-                        )
+                    if type_helpers._is_list(ftype_origin):
+                        # parse by key
+                        if sub_data is None:
+                            sub_data = []
+                        parsed_values: List[hp.Hparams] = []
+                        if not isinstance(sub_data, list):
+                            raise ValueError(f"{' '.join(field_prefix)} must be a list")
+                        for item in sub_data:
+                            if not isinstance(item, dict):
+                                raise ValueError(f"{' '.join(field_prefix)} must be a dict")
+                            if not len(item) == 1:
+                                raise ValueError(f"{'.'.join(field_prefix)} must have just one element")
+                            yaml_key, key_data = list(item.items())[0]
+                            sub_prefix = field_prefix + [yaml_key]
+                            if key_data is None:
+                                key_data = {}
+                            if not isinstance(key_data, dict):
+                                raise ValueError(f"{'.'.join(sub_prefix)} must be a dict")
+                            parsed_values.append(
+                                _create_from_dict(
+                                    cls=registry_items[yaml_key],
+                                    data=key_data,
+                                    prefix=sub_prefix,
+                                ))
+                        kwargs[f.name] = parsed_values
                     else:
-                        logger.error(
-                            textwrap.dedent(f"""\n
-                        Found unexpected nested Hparams object under: {f.name}
-                        """))
-                        raise HparamsException("Unexpected nested Hparams format")
+                        # Direct Nesting
+                        if sub_data is None:
+                            sub_data = {}
+                        if not isinstance(sub_data, dict):
+                            raise ValueError(f"{' '.join(field_prefix)} must be a dict")
+                        if not len(sub_data) == 1:
+                            raise ValueError(f"{'.'.join(field_prefix)} must have just one element")
+                        yaml_key, key_data = list(sub_data.items())[0]
+                        if yaml_key not in registry_items:
+                            raise ValueError(
+                                f"Unknown key {yaml_key}. Options for {field_prefix} are: {', '.join(registry_items.keys())}."
+                            )
+                        sub_prefix = field_prefix + [yaml_key]
+                        if key_data is None:
+                            key_data = {}
+                        if not isinstance(key_data, dict):
+                            raise ValueError(f"{'.'.join(sub_prefix)} must be a dict")
+                        kwargs[f.name] = _create_from_dict(
+                            cls=registry_items[yaml_key],
+                            data=key_data,
+                            prefix=sub_prefix,
+                        )
+
     return cls(**kwargs)
-
-
-def _dict_to_hparams(
-    fname_key: str,
-    input_dict: Dict[str, Any],
-    flat_registry: Dict[str, Type[hp.Hparams]],
-    input_prefix: List[str],
-) -> hp.Hparams:
-    assert isinstance(input_dict, collections.abc.Mapping), "Should be only nesting dicts"
-    for k, v in input_dict.items():
-        if k in flat_registry:
-            hparams_class = flat_registry[k]
-            if v is None:  # For empty dataclasses
-                v = {}
-            new_class = _create_from_dict(
-                cls=hparams_class,
-                data=v,
-                prefix=input_prefix + [k],
-            )
-            new_class.key_name = k
-            return new_class
-    logger.error(
-        textwrap.dedent(f"""\n
-    Unable to find hparams_registry key for {fname_key} at path {'.'.join(input_prefix)}
-    Looked for: {', '.join(list(input_dict.keys()))}
-    Found in registry: {', '.join(list(flat_registry.keys()))}
-    """))
-    raise HparamsException("Missing hparams_registry key")
