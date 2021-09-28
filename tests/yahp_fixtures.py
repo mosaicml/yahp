@@ -411,3 +411,14 @@ def optional_field_null_object_yaml_input(hparams_tempdir) -> YamlInput:
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath="optional_field_null_object.yaml")
+
+
+@dataclass
+class OptionalBooleansHparam(hp.Hparams):
+    default_false: bool = hp.optional(doc="defaults to false", default=False)
+    default_true: bool = hp.optional(doc="defaults to true", default=True)
+
+
+@pytest.fixture
+def empty_object_yaml_input(hparams_tempdir) -> YamlInput:
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data={}, filepath="empty_object.yaml")
