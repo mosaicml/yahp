@@ -14,6 +14,14 @@ from yahp.objects_helpers import ParserArgument
 from yahp.types import JSON
 
 
+def _str_to_bool(s: str, **kwargs) -> bool:
+    if s.lower() in ['true', 't', 'yes', 'y', '1']:
+        return True
+    if s.lower() in ['false', 'f', 'no', 'n', '0']:
+        return False
+    raise Exception(f"Could not parse {s} as bool.")
+
+
 def _retrieve_args(
     cls: Type[hp.Hparams],
     prefix: List[str],
@@ -45,7 +53,6 @@ def _retrieve_args(
             "full_arg_name": arg_name,
             "helptext": helptext,
             "required": required,
-            "action": "store_true" if type(real_type) == bool else None,
         }
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
         if type_helpers._is_hparams_type(type(default)):
@@ -59,6 +66,12 @@ def _retrieve_args(
             assert issubclass(real_type, Enum)
             parser_argument_default_kwargs["choices"] = [x.name.lower() for x in real_type]
             parser_argument_default_kwargs["arg_type"] = str
+            new_arg = ParserArgument(**parser_argument_default_kwargs)
+            added_args.append(new_arg)
+        elif type_helpers._is_boolean_optional_type(ftype):
+            parser_argument_default_kwargs["arg_type"] = _str_to_bool
+            parser_argument_default_kwargs["nargs"] = "?"
+            parser_argument_default_kwargs["const"] = True
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
         elif type_helpers._is_primitive_optional_type(ftype):
@@ -160,8 +173,8 @@ def _add_parser_argument_list_to_parser(arg_list: List[ParserArgument], parser_t
             "required": arg_item.required,
             "dest": arg_item.get_namespace_name(),
         }
-        if arg_item.action:
-            add_argument_kwargs["action"] = arg_item.action
+        if arg_item.const:
+            add_argument_kwargs["const"] = arg_item.const
         if arg_item.default != MISSING:
             add_argument_kwargs["default"] = arg_item.default
         if arg_item.choices:

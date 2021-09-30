@@ -37,7 +37,7 @@ class ParserArgument:
     required: bool
     helptext: str
     default: Optional[Any]
-    action: Optional[str]
+    const: Optional[Any] = None
     nargs: Optional[str] = None
     choices: Sequence[str] = ()
     short_arg_name: Optional[str] = None
