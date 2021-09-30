@@ -10,7 +10,7 @@ import textwrap
 from abc import abstractmethod
 from dataclasses import dataclass, field, fields
 from enum import Enum
-from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union, get_type_hints
+from typing import Any, Callable, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, get_type_hints
 
 import yaml
 
@@ -229,6 +229,7 @@ class Hparams:
         cls,
         filepath: str,
         argparse_overrides: bool = True,
+        args: Optional[Sequence[str]] = None,
     ) -> Hparams:  # type: ignore
         """
         Create an instance of this Hparams object from a yaml file with argparse overrides
@@ -245,7 +246,7 @@ class Hparams:
         parser = argparse.ArgumentParser()
         cls.add_args(parser=parser, defaults=yaml_argparse_namespace, prefix=[])
 
-        args, unknown_args = parser.parse_known_args()
+        args, unknown_args = parser.parse_known_args(args=args)
         if len(unknown_args):
             print(unknown_args)
             logger.warning(f"Unknown args: {unknown_args}")

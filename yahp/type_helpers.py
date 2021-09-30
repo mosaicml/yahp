@@ -16,6 +16,13 @@ def _safe_subclass_checker(item: Any, check_class: Any) -> bool:
     return isinstance(item, type) and issubclass(item, check_class)
 
 
+def _is_boolean_optional_type(item: Any) -> bool:
+    # Returns true if item is bool or Optional[bool]
+    if _is_optional(item):
+        item = _get_real_ftype(item)
+    return _safe_subclass_checker(item, bool)
+
+
 def _is_primitive_optional_type(item: Any) -> bool:
     # Returns true if item is:
     # 1. None
