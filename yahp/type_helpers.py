@@ -7,13 +7,39 @@ import yahp as hp
 from yahp.objects_helpers import YAHPException
 from yahp.types import JSON, THparams
 
+def _safe_subclass_checker(item: Any, check_class: Any) -> bool:
+    return isinstance(item, type) and issubclass(item, check_class)
+
+_JSONDict = object()  # sentential for representing JSON dictionary types
+
+class HparamsType:
+    def __init__(self, item: Type[Any]) -> None:
+        self._types = []
+        self.optional = self._is_optional(item)
+
+        # allowed types are:
+        # 
+
+    def is_subclass(self, other: Type[Any]) -> bool:
+        ...
+
+    def is_hparams_dataclass(self, other: Type[Any]) -> bool:
+        ...
+
+    def _is_optional(self, item: Type[Any]) -> bool:
+        origin, args = get_origin(item), get_args(item)
+        if origin is None:
+            return False
+        if origin is not Union:
+            return False
+        return type(None) in args
+    
+    def convert(self, val: Any) -> Any:
+        # converts a value to the type specified by hparams 
+        pass
 
 def _is_hparams_type(item: Any) -> bool:
     return _safe_subclass_checker(item, hp.Hparams)
-
-
-def _safe_subclass_checker(item: Any, check_class: Any) -> bool:
-    return isinstance(item, type) and issubclass(item, check_class)
 
 
 def _is_boolean_optional_type(item: Any) -> bool:
@@ -57,14 +83,6 @@ def _is_list(item: Any) -> bool:
 def _is_none_like(item: object) -> bool:
     return item is None or item is type(None)
 
-
-def _is_optional(item: Any) -> bool:
-    origin, args = get_origin(item), get_args(item)
-    if origin is None:
-        return False
-    if origin is not Union:
-        return False
-    return type(None) in args
 
 
 def _is_json_dict(item: Any) -> bool:

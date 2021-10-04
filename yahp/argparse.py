@@ -342,7 +342,6 @@ def _namespace_to_hparams_dict(
         res = dict()
         namespace_list = [(x.split("."), y) for (x, y) in namespace_list]  # type: ignore
         namespace_list = sorted(namespace_list, key=lambda x: len(x[0]))
-        original_namespace_list = copy.deepcopy(namespace_list)
         filtered_namespace_list = [(x, y) for (x, y) in namespace_list if len(x) == 1]
         nested_namespace_list = [(x, y) for (x, y) in namespace_list if len(x) > 1]
 
