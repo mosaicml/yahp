@@ -1,155 +1,216 @@
-import collections.abc
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import Any, Dict, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
 
-import yahp as hp
+import yahp
 from yahp.objects_helpers import YAHPException
-from yahp.types import JSON, THparams
+from yahp.utils import ensure_tuple
 
 
-def _is_hparams_type(item: Any) -> bool:
-    return _safe_subclass_checker(item, hp.Hparams)
+class _JSONDict:  # sentential for representing JSON dictionary types
+    pass
 
 
-def _safe_subclass_checker(item: Any, check_class: Any) -> bool:
-    return isinstance(item, type) and issubclass(item, check_class)
+_PRIMITIVE_TYPES = (bool, int, float, str)
 
 
-def _is_boolean_optional_type(item: Any) -> bool:
-    # Returns true if item is bool or Optional[bool]
-    if _is_optional(item):
-        item = _get_real_ftype(item)
-    return _safe_subclass_checker(item, bool)
+def safe_issubclass(item, class_or_tuple) -> bool:
+    return isinstance(item, type) and issubclass(item, class_or_tuple)
 
 
-def _is_primitive_optional_type(item: Any) -> bool:
-    # Returns true if item is:
-    # 1. None
-    # 2. str/float/int (bool is a type of int)
-    # 3. Enum
-    # 4. Optional[any of the above]
-    if _is_optional(item):
-        item = _get_real_ftype(item)
-    return _is_primitive_type(item)
-
-
-def _is_primitive_type(item: Any) -> bool:
-    # Returns true if item is:
-    # 1. None
-    # 2. str/float/int (bool is a type of int)
-    # 3. Enum
-    if _is_none_like(item):
-        return True
-    return _safe_subclass_checker(item, (str, float, int, Enum))
-
-
-def _is_enum_type(item: Any) -> bool:
-    return _safe_subclass_checker(item, (Enum))
-
-
-def _is_list(item: Any) -> bool:
-    origin = get_origin(item)
-    item = item if origin is None else origin
-    return _safe_subclass_checker(item, list)
-
-
-def _is_none_like(item: object) -> bool:
-    return item is None or item is type(None)
-
-
-def _is_optional(item: Any) -> bool:
-    origin, args = get_origin(item), get_args(item)
-    if origin is None:
+def _is_valid_primitive(*types: Type[Any]) -> bool:
+    # only one of (bool, int, float), and optionally string, is allowed
+    if not all(x in _PRIMITIVE_TYPES for x in types):
         return False
-    if origin is not Union:
+    has_bool = bool in types
+    has_int = int in types
+    has_float = float in types
+    if has_bool + has_int + has_float > 1:
+        # Unions of bools, ints, and/or floats are not supported. Pick only one.
         return False
-    return type(None) in args
-
-
-def _is_json_dict(item: Any) -> bool:
-    origin = get_origin(item)
-    if origin is None:
-        return False
-    if not _safe_subclass_checker(origin, collections.abc.Mapping):
-        return False
-    key_type, val_type = get_args(item)
-    if key_type is not str:
-        return False
-    # TODO(ravi) because of the recursive definition of JSON,
-    # val_type != JSON even if it is indeed JSON
-    # Instead, we assume that any Dict[str, ...] is Dict[str, JSON]
-    # if val_type != JSON:
-    #     return False
     return True
 
 
-def _get_real_ftype(item: Any) -> Type[THparams]:
-    # Returns the underlying type, ignoring optionals
-    # If the underlying type is a collection or non-optional union, raises
-    # a TypeError
-    # Example: int -> int
-    #          Optional[Hparams] -> Hparams
-    #          Union[Hparams, None] -> Hparams  # same as above
-    #          None -> None
-    #          NoneType -> NoneType
-    if _is_none_like(item) or _is_primitive_type(item) or _is_hparams_type(item):
-        return item
-    origin, args = get_origin(item), get_args(item)
-    if origin is None:
-        raise TypeError(f"Invalid type {item}")
-    if origin is Union:
-        if len(args) != 2 or type(None) not in args:
-            raise TypeError(f"Invalid type {item}")
-        return _get_real_ftype(args[1]) if _is_none_like(args[0]) else _get_real_ftype(args[0])
-    if origin is list:
-        assert len(args) == 1
-        return _get_real_ftype(args[0])
-    if origin is dict:
-        return origin
-    raise TypeError(f"Invalid type {item}")
+class HparamsType:
 
+    def __init__(self, item: Type[Any]) -> None:
+        self.types, self.is_optional, self.is_list = self._extract_type(item)
+        if len(self.types) == 0:
+            assert self.is_optional, "invariant error"
 
-def _get_type_name(item: Type[THparams]) -> str:
-    if item is None:
-        return "None"
-    origin, args = get_origin(item), get_args(item)
-    if origin is None:
-        assert _is_primitive_optional_type(item) or _is_hparams_type(item)
-        if _is_enum_type(item):
-            assert issubclass(item, Enum)
-            enum_values_string = ", ".join([str(x.name.lower()) for x in item])
+    def _extract_type(self, item: Type[Any]) -> Tuple[Sequence[Type[Any]], bool, bool]:
+        """Extracts the underlying types from a python typing object.
+
+        Documentration is best given through examples:
+        >>> _extract_type(bool) == ([bool], False, False)
+        >>> _extract_type(Optional[bool])== ([bool], True, False)
+        >>> _extract_type(List[bool])== ([bool], False, True)
+        >>> _extract_type(List[Optional[bool]]) raises a TypeError, since Lists of optionals are not allowed by hparams
+        >>> _extract_type(Optional[List[bool]]) == ([bool], True, True)
+        >>> _extract_type(Optional[List[Union[str, int]]]) == ([str, int], True, True)
+        >>> _extract_type(List[Union[str, int]]) == ([str, int], False, True)
+        >>> _extract_type(Union[str, int]) == ([str, int], False, False)
+        >>> _extract_type(Union[str, Enum]) raises a TypeError, since Enums cannot appear in non-optional Unions
+        >>> _extract_type(Union[str, NoneType]) == ([str], True, False)
+        >>> _extract_type(Union[str, Dataclass]) raises a TypeError, since Hparam dataclasses cannot appear in non-optional unions
+        """
+        origin = get_origin(item)
+        if origin is None:
+            # item must be simple, like None, int, float, str, Enum, or Hparams
+            if item is None or item is type(None):
+                return [], True, False
+            if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (yahp.Hparams, Enum)):
+                raise TypeError(f"item of type ({item}) is not supported.")
+            is_optional = False
+            is_list = False
+            return [item], is_optional, is_list
+        if origin is Union:
+            args = get_args(item)
+            is_optional = type(None) in args
+            args_without_none = tuple(arg for arg in args if arg not in (None, type(None)))
+            # all args in the union must be subclasses of one of the following subsets
+            is_primitive = _is_valid_primitive(*args_without_none)
+            is_enum = all(safe_issubclass(arg, Enum) for arg in args_without_none)
+            is_hparams = all(safe_issubclass(arg, yahp.Hparams) for arg in args_without_none)
+            is_list = all(get_origin(arg) is list for arg in args_without_none)
+            is_json_dict = all(get_origin(arg) is dict for arg in args_without_none)
+            if is_primitive or is_hparams or is_enum:
+                assert is_list is False
+                return args_without_none, is_optional, is_list
+            if is_list:
+                # Need to validate that the underlying type of list is either 1) Primitive, 2) Union of primitives
+                #                 assert len(args_without_none) == 1, "should only have one one"
+                assert len(args_without_none) == 1, "if here, should only have 1 non-none argument"
+                list_arg = args_without_none[0]
+                return self._get_list_type(list_arg), is_optional, is_list
+            if is_json_dict:
+                assert is_optional, "if here, then must have been is_optional"
+                assert not is_list, "if here, then must not have been is_list"
+                return [_JSONDict], is_optional, is_list
+            raise TypeError(f"Invalid union type: {item}. Unions must be of primitive types")
+        if origin is list:
+            is_optional = False
+            is_list = True
+            return self._get_list_type(item), is_optional, is_list
+        if origin is dict:
+            is_optional = False
+            is_list = False
+            return [_JSONDict], is_optional, is_list
+        raise TypeError(f"Unsupported type: {item}")
+
+    def _get_list_type(self, list_arg: Type[Any]) -> Sequence[Type[Any]]:
+        if get_origin(list_arg) is not list:
+            raise TypeError("list_arg is not a List")
+        list_args = get_args(list_arg)
+        assert len(list_args) == 1, "lists should have exactly one argument"
+        list_item = list_args[0]
+        error = TypeError(f"List of type {list_item} is unsupported. Lists must be of Hparams, Enum, or a valid union.")
+        list_origin = get_origin(list_item)
+        if list_origin is None:
+            # Must be either primitive or hparams
+            if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (yahp.Hparams, Enum)):
+                raise error
+            return [list_item]
+        if list_origin is Union:
+            list_args = get_args(list_item)
+            is_primitive = _is_valid_primitive(*list_args)
+            if not is_primitive:
+                raise error
+            return list_args
+        raise error
+
+    @property
+    def is_hparams_dataclass(self) -> bool:
+        return len(self.types) > 0 and all(safe_issubclass(t, yahp.Hparams) for t in self.types)
+
+    @property
+    def is_json_dict(self) -> bool:
+        return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
+
+    def convert(self, val: Any) -> Any:
+        # converts a value to the type specified by hparams
+        # val can ether be a JSON or python representation for the value
+        # Can be either a singleton or a list
+        if val is None:
+            if not self.is_optional:
+                raise YAHPException(f"{val} is None, but a value is required.")
+            return None
+        if isinstance(val, (tuple, list)):
+            if not self.is_list:
+                raise TypeError(f"{val} is a list, but {self} is not a list")
+            # If given a list, then return a list of converted values
+            return type(val)(self.convert(x) for x in val)
+        if self.is_enum:
+            # could be a list of enums too
+            enum_map = {k.name.lower(): k for k in self.type}
+            enum_map.update({k.value: k for k in self.type})
+            enum_map.update({k: k for k in self.type})
+            if isinstance(val, str):  # if the val is a string, then check for a key match
+                val = val.lower()
+            return enum_map[val]
+        if self.is_hparams_dataclass:
+            raise NotImplementedError("convert() cannot be used with hparam dataclasses")
+        if self.is_json_dict:
+            if not isinstance(val, dict):
+                raise TypeError(f"{val} is not a dictionary")
+            return val
+        if self.is_primitive:
+            # could be a list of primitives
+            for t in (bool, float, int, str):
+                # bool, float, and int are mutually exclusive
+                if t in self.types:
+                    try:
+                        return to_bool(val) if t is bool else t(val)
+                    except (TypeError, ValueError):
+                        pass
+            raise TypeError(f"Unable to convert value {val} to type {self}")
+        raise RuntimeError("Unknown type")
+
+    @property
+    def is_enum(self) -> bool:
+        return len(self.types) > 0 and all(safe_issubclass(t, Enum) for t in self.types)
+
+    @property
+    def is_primitive(self) -> bool:
+        return len(self.types) > 0 and all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
+
+    @property
+    def is_boolean(self) -> bool:
+        return len(self.types) > 0 and all(safe_issubclass(t, bool) for t in self.types)
+
+    @property
+    def type(self) -> Type[Any]:
+        if len(self.types) != 1:
+            # self.types it not 1 in the case of unions
+            raise RuntimeError(".type is not defined for unions")
+        return self.types[0]
+
+    def __str__(self) -> str:
+        if self.is_primitive:  # str, float, int, bool
+            if len(self.types) > 1:
+                return f"One of: {', '.join(self.types)}"
+            return self.type.__name__
+
+        if self.is_enum:
+            enum_values_string = ", ".join([str(x.name.lower()) for x in self.type])
             return f"Enum: {enum_values_string}"
-        return item.__name__
-    if _is_list(item):
-        assert len(args) == 1
-        arg, = args
-        # We don't allow lists of unions
-        assert _is_primitive_optional_type(arg) or _is_hparams_type(arg)
-        assert arg is not None  # List of Nones doesn't make sense
-        if _is_enum_type(arg):
-            return f"List of: {_get_type_name(arg)}"
-        return f"List of: {arg.__name__}"
 
-    if _is_json_dict(item):
-        return "JSON Dictionary"
+        if self.is_list:
+            return f"List of {self.type}"
 
-    if origin is Union:
-        ans = []
-        for arg in args:
-            if _is_none_like(arg):
-                ans.append("None")
-                continue
-            if _is_primitive_optional_type(arg) or _is_hparams_type(arg):
-                ans.append(arg.__name__)
-                continue
-            raise TypeError("Only unions of primitive types are supported.")
-        return "Union of: " + ", ".join(ans)
+        if self.is_json_dict:
+            return "JSON Dictionary"
 
-    raise TypeError(f"Unknown type for item: {type(item)}")
+        if self.is_hparams_dataclass:
+            return self.type.__name__
+
+        if self.is_optional:
+            return "None"
+
+        raise RuntimeError("Unknown type")
 
 
-def _get_required_default_from_field(field: Field) -> Tuple[bool, Any]:
+def get_required_default_from_field(field: Field) -> Tuple[bool, Any]:
     default = None
     required = True
     if field.default != MISSING or field.default_factory != MISSING:
@@ -158,52 +219,11 @@ def _get_required_default_from_field(field: Field) -> Tuple[bool, Any]:
     return required, default
 
 
-def parse_json_value(val: JSON, ftype: Type, name: str) -> Any:
-
-    if val is None:
-        if not _is_optional(ftype):
-            raise YAHPException(f"{name} is None, but a value is required.")
-        return None
-    elif _is_primitive_optional_type(ftype):
-        if _safe_subclass_checker(ftype, Enum):
-            assert isinstance(ftype, type) and issubclass(ftype, Enum)
-            entries: Dict[str, str] = {k.name.lower(): k.name for k in ftype}
-            passed_key = str(val).lower()
-            if passed_key in entries:
-                return ftype[entries[passed_key]]  # type: ignore
-            # Try to find a value match
-            val_entries: Dict[Any, str] = {k.value: k.name for k in ftype}
-            if val in val_entries:
-                return ftype[val_entries[val]]
-            if len(val_entries.values()) and type(list(val_entries.values())[0]) != type(val):
-                try:
-                    # Try autocasting to value if lost on argparse
-                    new_val = type(list(val_entries.values())[0])(val)
-                    if new_val in val_entries:
-                        return ftype[val_entries[new_val]]
-                except:
-                    # Probably failed casting
-                    pass
-
-            raise TypeError(f"Failed to instantiate an enum of type: {ftype} with value: {val}")
-        else:
-            real_ftype = _get_real_ftype(ftype)
-            if real_ftype is float and isinstance(val, int):
-                val = float(val)
-            if real_ftype is bool and val in (0, 1):
-                val = bool(val)
-            if not isinstance(val, real_ftype):
-                raise TypeError(
-                    f"{name} must be a {_get_type_name(ftype)}; instead received {val} of type {type(val).__name__}")
-            return val
-    elif _is_list(ftype):
-        inner_list_type = _get_real_ftype(ftype)
-        ans = []
-        if not isinstance(val, list):
-            raise TypeError(f"{name} must be a list; instead received {val} of type {type(val).__name__}")
-        for i, arg in enumerate(val):
-            ans.append(parse_json_value(arg, inner_list_type, f"{name}[{i}]."))
-        return ans
-    elif _is_json_dict(ftype):
-        return val
-    raise TypeError(f"Invalid type for {name}: {ftype}")
+def to_bool(x: Any):
+    if isinstance(x, str):
+        x = x.lower()
+    if x in ("t", "true", "y", "yes", 1, True):
+        return True
+    if x in ("f", "false", "n", "no", 0, False):
+        return False
+    raise ValueError(f"Could not parse {x} as bool")

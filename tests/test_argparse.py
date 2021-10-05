@@ -30,7 +30,6 @@ def test_list_hparam(empty_object_yaml_input: YamlInput):
     print(o)
     assert isinstance(o, ListHparam)
     assert isinstance(o.list_of_str, list)
-    assert isinstance(o.list_of_int, list)
     assert isinstance(o.list_of_str[0], str)
     assert len(o.list_of_str) == 2
     assert len(o.list_of_int) == 0
@@ -39,7 +38,6 @@ def test_list_hparam(empty_object_yaml_input: YamlInput):
     assert o.list_of_str[1] == "two"
 
 
-@pytest.mark.xfail
 def test_list_hparam_int(empty_object_yaml_input: YamlInput):
     o = ListHparam.create(
         filepath=empty_object_yaml_input.filename,
@@ -47,9 +45,22 @@ def test_list_hparam_int(empty_object_yaml_input: YamlInput):
     )
 
     assert isinstance(o, ListHparam)
-    assert isinstance(o.list_of_str, list)
     assert isinstance(o.list_of_int, list)
-    assert isinstance(o.list_of_int[0], str)
-    assert o.list_of_str[0] == 0
-    assert isinstance(o.list_of_str[1], str)
-    assert o.list_of_str[1] == 2
+    assert isinstance(o.list_of_int[0], int)
+    assert o.list_of_int[0] == 1
+    assert isinstance(o.list_of_int[1], int)
+    assert o.list_of_int[1] == 2
+
+
+def test_list_hparam_bool(empty_object_yaml_input: YamlInput):
+    o = ListHparam.create(
+        filepath=empty_object_yaml_input.filename,
+        args=['--list_of_bool', 'true', 'false'],
+    )
+
+    assert isinstance(o, ListHparam)
+    assert isinstance(o.list_of_bool, list)
+    assert isinstance(o.list_of_bool[0], bool)
+    assert o.list_of_bool[0] == True
+    assert isinstance(o.list_of_bool[1], bool)
+    assert o.list_of_bool[1] == False
