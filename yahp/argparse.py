@@ -74,6 +74,10 @@ def _retrieve_args(
             parser_argument_default_kwargs["const"] = True
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
+        elif type_helpers._is_list(ftype):
+            parser_argument_default_kwargs["nargs"] = "+"
+            new_arg = ParserArgument(**parser_argument_default_kwargs)
+            added_args.append(new_arg)
         elif type_helpers._is_primitive_optional_type(ftype):
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)

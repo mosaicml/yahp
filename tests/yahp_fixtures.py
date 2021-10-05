@@ -1,7 +1,7 @@
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional
 
 import pytest
 import yaml
@@ -417,6 +417,13 @@ def optional_field_null_object_yaml_input(hparams_tempdir) -> YamlInput:
 class OptionalBooleansHparam(hp.Hparams):
     default_false: bool = hp.optional(doc="defaults to false", default=False)
     default_true: bool = hp.optional(doc="defaults to true", default=True)
+
+
+@dataclass
+class ListHparam(hp.Hparams):
+    list_of_str: List[str] = hp.optional(doc="defaults to empty list", default_factory=list)
+    list_of_int: List[int] = hp.optional(doc="defaults to empty list", default_factory=list)
+    list_of_bool: List[bool] = hp.optional(doc="defaults to empty list", default_factory=list)
 
 
 @pytest.fixture
