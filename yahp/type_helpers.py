@@ -78,7 +78,7 @@ class HparamsType:
                 assert is_list is False
                 return args_without_none, is_optional, is_list
             if is_list:
-                # Need to validate that the undelrying type of list is either 1) Primitive, 2) Union of primitives
+                # Need to validate that the underlying type of list is either 1) Primitive, 2) Union of primitives
                 #                 assert len(args_without_none) == 1, "should only have one one"
                 assert len(args_without_none) == 1, "if here, should only have 1 non-none argument"
                 list_arg = args_without_none[0]
