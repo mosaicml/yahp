@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import collections.abc
 import copy
 import logging
 import os
@@ -129,7 +128,7 @@ class Hparams:
         keys_in_yaml = set(data.keys())
         keys_in_class = set([(f.name) for f in fields(cls)])
         required_keys_in_class = set([
-            (f.name) for f in fields(cls) if type_helpers._get_required_default_from_field(f)[0]
+            (f.name) for f in fields(cls) if type_helpers.get_required_default_from_field(f)[0]
         ])
 
         # Extra keys.
@@ -245,8 +244,7 @@ class Hparams:
         original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
         parser = argparse.ArgumentParser()
         cls.add_args(parser=parser, defaults=yaml_argparse_namespace, prefix=[])
-
-        args, unknown_args = parser.parse_known_args(args=args)
+        args, unknown_args = parser.parse_known_args(args=args)  # type: ignore
         if len(unknown_args):
             print(unknown_args)
             logger.warning(f"Unknown args: {unknown_args}")
@@ -311,12 +309,12 @@ class Hparams:
         res: Dict[str, JSON] = dict()
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
-            ftype = field_types[f.name]
+            ftype = type_helpers.HparamsType(field_types[f.name])
             attr = getattr(self, f.name)
             if attr is None:  # first, take care of the optionals
                 res[f.name] = None
                 continue
-            if type_helpers._is_hparams_type(type_helpers._get_real_ftype(ftype)):
+            if ftype.is_hparams_dataclass:
                 # Could be: List[Generic Hparams], Generic Hparams,
                 # List[Specific Hparams], or Specific Hparams
                 # If it's in the registry, it's generic. Otherwise, it's specific
@@ -460,18 +458,20 @@ class Hparams:
     def validate(self):
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
-            ftype = field_types[f.name]
-            real_ftype = type_helpers._get_real_ftype(ftype)
-            if type_helpers._is_json_dict(ftype):
+            ftype = type_helpers.HparamsType(field_types[f.name])
+            if ftype.is_json_dict:
                 # TODO
                 continue
-            if type_helpers._is_primitive_optional_type(ftype):
+            if ftype.is_primitive:
                 # TODO
                 continue
-            if type_helpers._is_list(ftype):
+            if ftype.is_enum:
                 # TODO
                 continue
-            if type_helpers._is_hparams_type(real_ftype):
+            if ftype.is_list:
+                # TODO
+                continue
+            if ftype.is_hparams_dataclass:
                 field_value = getattr(self, f.name)
                 if isinstance(field_value, list):
                     for item in field_value:

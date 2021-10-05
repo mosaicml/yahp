@@ -4,8 +4,8 @@ from dataclasses import fields
 from typing import Type, get_type_hints
 
 import yahp as hp
-from yahp import type_helpers
 from yahp.interactive import list_options
+from yahp.type_helpers import HparamsType, get_required_default_from_field
 
 try:
     from ruamel_yaml import YAML  # type: ignore
@@ -44,12 +44,12 @@ def _to_commented_map(
 
     field_types = get_type_hints(cls)
     for field in fields(cls):
-        ftype = field_types[field.name]
-        required, default = type_helpers._get_required_default_from_field(field=field)
+        ftype = HparamsType(field_types[field.name])
+        required, default = get_required_default_from_field(field=field)
         if required and field.metadata.get("template_default") is not None:
             default = field.metadata.get("template_default")
         required_string = "required" if required else "optional"
-        type_name = type_helpers._get_type_name(ftype)
+        type_name = str(ftype)
         helptext = field.metadata.get("doc", "")
         default_commenting_args = {
             "cm": output,
@@ -59,40 +59,37 @@ def _to_commented_map(
             "helptext": helptext,
         }
 
-        if type_helpers._is_primitive_optional_type(ftype):
+        if ftype.is_optional:
             output[field.name] = cls._to_json_primitive(default)
             add_commenting(**default_commenting_args)
         else:
             # a List, Hparams type, or Union involving these
             if field.name not in cls.hparams_registry:
-                if type_helpers._is_json_dict(ftype):
+                if ftype.is_json_dict:
                     output[field.name] = {}
                     add_commenting(**default_commenting_args)
                 else:
-                    real_ftype = type_helpers._get_real_ftype(ftype)
-                    if type_helpers._is_list(ftype):
+                    if ftype.is_list:
                         output[field.name] = CommentedSeq()
                         add_commenting(**default_commenting_args)
                         if default:
-                            if type_helpers._is_enum_type(real_ftype):
+                            if ftype.is_enum:
                                 # Take only enum values for default for reinstantiation
                                 output[field.name].extend([x.value for x in default])
                             else:
                                 output[field.name].extend(default)
-                        if type_helpers._is_hparams_type(real_ftype):
-                            assert issubclass(real_ftype, hp.Hparams)
+                        if ftype.is_hparams_dataclass:
                             output[field.name].append(_to_commented_map(
-                                cls=real_ftype,
+                                cls=ftype.type,
                                 **persisted_args,
                             ))
-                    elif type_helpers._is_hparams_type(real_ftype):
-                        assert issubclass(real_ftype, hp.Hparams)
+                    elif ftype.is_hparams_dataclass:
                         output[field.name] = _to_commented_map(
-                            cls=real_ftype,
+                            cls=ftype.type,
                             **persisted_args,
                         )
                     else:
-                        raise TypeError(f"Invalid type: {real_ftype}")
+                        raise TypeError(f"Invalid type: {ftype}")
             else:
                 # It's a Chose One or a List
                 possible_sub_hparams = cls.hparams_registry[field.name]
@@ -112,7 +109,7 @@ def _to_commented_map(
                         )
                         output[field.name] = sub_hparams
                 elif len(possible_keys) > 1:
-                    is_list = type_helpers._is_list(ftype)
+                    is_list = ftype.is_list
                     choice_type = "List" if is_list else "Choose one"
                     possible_string = ', '.join(possible_keys)
                     if interactive:

@@ -2,24 +2,15 @@ from __future__ import annotations
 
 import argparse
 import collections.abc
-import copy
 from collections import defaultdict
 from dataclasses import MISSING, fields
 from enum import Enum
 from typing import Any, Dict, List, Tuple, Type, get_type_hints
 
 import yahp as hp
-from yahp import type_helpers
 from yahp.objects_helpers import ParserArgument
+from yahp.type_helpers import HparamsType, get_required_default_from_field, to_bool
 from yahp.types import JSON
-
-
-def _str_to_bool(s: str, **kwargs) -> bool:
-    if s.lower() in ['true', 't', 'yes', 'y', '1']:
-        return True
-    if s.lower() in ['false', 'f', 'no', 'n', '0']:
-        return False
-    raise Exception(f"Could not parse {s} as bool.")
 
 
 def _retrieve_args(
@@ -30,8 +21,7 @@ def _retrieve_args(
     added_args = []
     type_hints = get_type_hints(cls)
     for field in fields(cls):
-        ftype = type_hints[field.name]
-        real_type = type_helpers._get_real_ftype(ftype)
+        ftype = HparamsType(type_hints[field.name])
         full_prefix = ".".join(prefix)
         if len(prefix):
             arg_name = f'--{full_prefix}.{field.name}'
@@ -41,50 +31,48 @@ def _retrieve_args(
             raise Exception(f"Please fill out documentation for the field: \n{field}")
         helptext = field.metadata['doc']
 
-        required, default = type_helpers._get_required_default_from_field(field=field)
-        type_name = type_helpers._get_type_name(ftype)
+        required, default = get_required_default_from_field(field=field)
+        type_name = str(ftype)
         if required:
             helptext = f'(required): <{type_name}> {helptext}'
         else:
             helptext = f'(default: {default}): <{type_name}>  {helptext}'
 
         parser_argument_default_kwargs = {
-            "arg_type": real_type,
+            "arg_type": ftype.convert,
             "full_arg_name": arg_name,
             "helptext": helptext,
             "required": required,
         }
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
-        if type_helpers._is_hparams_type(type(default)):
+        if HparamsType(type(default)).is_hparams_dataclass:
             if field.name in cls.hparams_registry:
                 inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[field.name].items()}
                 default = inverted_field_registry[type(default)]
 
         parser_argument_default_kwargs["default"] = default if default is not None else MISSING
 
-        if type_helpers._is_enum_type(real_type):
-            assert issubclass(real_type, Enum)
-            parser_argument_default_kwargs["choices"] = [x.name.lower() for x in real_type]
+        if ftype.is_enum:
+            assert issubclass(ftype.type, Enum)
+            parser_argument_default_kwargs["choices"] = [x.name.lower() for x in ftype.type]
             parser_argument_default_kwargs["arg_type"] = str
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
-        elif type_helpers._is_boolean_optional_type(ftype):
-            parser_argument_default_kwargs["arg_type"] = _str_to_bool
+        elif ftype.is_boolean:
+            parser_argument_default_kwargs["arg_type"] = to_bool
             parser_argument_default_kwargs["nargs"] = "?"
             parser_argument_default_kwargs["const"] = True
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
-        elif type_helpers._is_primitive_optional_type(ftype):
+        elif ftype.is_primitive:
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
-        elif type_helpers._is_hparams_type(real_type):
+        elif ftype.is_hparams_dataclass:
             # Split into choose one
             if field.name not in cls.hparams_registry:
                 # Defaults to direct nesting if missing from hparams_registry
-                assert isinstance(real_type, type), f"{real_type} is not a class"
-                assert issubclass(real_type, hp.Hparams), f"{real_type} is not a class"
                 added_args += _retrieve_args(
-                    cls=real_type,
+                    cls=ftype.type,
                     prefix=prefix + [field.name],
                     passed_args=passed_args,
                 )
@@ -95,7 +83,7 @@ def _retrieve_args(
                     hparam_options = sorted(list(registry_entry.keys()))
 
                     parser_argument_default_kwargs["arg_type"] = str
-                    if type_helpers._is_list(ftype):
+                    if ftype.is_list:
                         # List Support
                         parser_argument_default_kwargs["nargs"] = "+"
                     parser_argument_default_kwargs["choices"] = hparam_options
@@ -120,7 +108,7 @@ def _retrieve_args(
                                 passed_args=passed_args,
                             )
                 # Direct listing
-                elif type_helpers._is_hparams_type(registry_entry):
+                elif ftype.is_hparams_dataclass:
                     added_args += _retrieve_args(  # type: ignore
                         cls=registry_entry,
                         prefix=prefix + [field.name],
@@ -334,6 +322,7 @@ def _namespace_to_hparams_dict(
 
     This function is safe and does not do any validation as validation is done later
     """
+    from yahp.type_helpers import HparamsType
 
     def sub_namespace(namespace_to_filter: List[Tuple[str, Any]], path: str):
         return [(x[len(path) + 1:], y) for (x, y) in namespace_to_filter if x.startswith(path)]
@@ -366,10 +355,10 @@ def _namespace_to_hparams_dict(
     namespace_dict: Dict[str, Any] = dict(namespace)  # for keying into results
     field_types = get_type_hints(cls)
     for f in fields(cls):
-        ftype = field_types[f.name]
-        if not (type_helpers._is_hparams_type(type_helpers._get_real_ftype(ftype))):
+        ftype = HparamsType(field_types[f.name])
+        if not ftype.is_hparams_dataclass:
             # Not an hparam
-            if not type_helpers._is_json_dict(ftype):
+            if not ftype.is_json_dict:
                 if f.name in namespace_dict:
                     res[f.name] = namespace_dict[f.name]
             else:
@@ -380,7 +369,7 @@ def _namespace_to_hparams_dict(
                 dict_data = namespace_list_to_json_dict(namespace_list=json_sub_namespace)
                 res[f.name] = dict_data
         else:
-            if type_helpers._is_list(ftype):
+            if ftype.is_list:
                 selected_subhparams = namespace_dict[f.name]
                 subhparams_list = []
                 for selected_subhparam in selected_subhparams:
@@ -409,7 +398,7 @@ def _namespace_to_hparams_dict(
                         namespace_to_filter=namespace,
                         path=f.name,
                     )
-                    subhparam_class = type_helpers._get_real_ftype(ftype)
+                    subhparam_class = ftype.type
                     assert issubclass(subhparam_class, hp.Hparams)
                     res[f.name] = _namespace_to_hparams_dict(
                         cls=subhparam_class,
