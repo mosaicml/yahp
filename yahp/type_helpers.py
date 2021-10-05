@@ -146,7 +146,7 @@ class HparamsType:
             enum_map.update({k.value: k for k in self.type})
             enum_map.update({k: k for k in self.type})
             if isinstance(val, str):  # if the val is a string, then check for a key match
-                x = val.lower()
+                val = val.lower()
             return enum_map[val]
         if self.is_hparams_dataclass:
             raise NotImplementedError("convert() cannot be used with hparam dataclasses")
