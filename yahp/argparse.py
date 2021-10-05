@@ -54,7 +54,15 @@ def _retrieve_args(
 
         parser_argument_default_kwargs["default"] = default if default is not None else MISSING
 
-        if ftype.is_enum:
+        if ftype.is_list and not ftype.is_hparams_dataclass:
+            parser_argument_default_kwargs["nargs"] = "+"
+            if ftype.is_enum:
+                parser_argument_default_kwargs["arg_type"] = str
+            if ftype.is_boolean:
+                parser_argument_default_kwargs["arg_type"] = to_bool
+            new_arg = ParserArgument(**parser_argument_default_kwargs)
+            added_args.append(new_arg)
+        elif ftype.is_enum:
             assert issubclass(ftype.type, Enum)
             parser_argument_default_kwargs["choices"] = [x.name.lower() for x in ftype.type]
             parser_argument_default_kwargs["arg_type"] = str
@@ -64,14 +72,6 @@ def _retrieve_args(
             parser_argument_default_kwargs["arg_type"] = to_bool
             parser_argument_default_kwargs["nargs"] = "?"
             parser_argument_default_kwargs["const"] = True
-            new_arg = ParserArgument(**parser_argument_default_kwargs)
-            added_args.append(new_arg)
-        elif ftype.is_list and not ftype.is_hparams_dataclass:
-            parser_argument_default_kwargs["nargs"] = "+"
-            if type_helpers._is_enum_type(real_type):
-                parser_argument_default_kwargs["arg_type"] = str
-            if real_type is bool:
-                parser_argument_default_kwargs["arg_type"] = _str_to_bool
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
         elif ftype.is_primitive:
