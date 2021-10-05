@@ -74,7 +74,7 @@ def _retrieve_args(
             parser_argument_default_kwargs["const"] = True
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
-        elif type_helpers._is_list(ftype):
+        elif type_helpers._is_list(ftype) and not type_helpers._is_hparams_type(real_type):
             parser_argument_default_kwargs["nargs"] = "+"
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
