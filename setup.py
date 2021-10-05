@@ -23,7 +23,7 @@ extra_deps['all'] = set(dep for deps in extra_deps.values() for dep in deps)
 
 setup(
     name="yahp",
-    version="0.0.8",
+    version="0.0.9",
     author="MosaicML",
     author_email="team@mosaicml.com",
     description="Yet Another HyperParameter framework",
