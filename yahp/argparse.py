@@ -64,6 +64,10 @@ def _retrieve_args(
             parser_argument_default_kwargs["const"] = True
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
+        elif ftype.is_list and not ftype.is_hparams_dataclass:
+            parser_argument_default_kwargs["nargs"] = "+"
+            new_arg = ParserArgument(**parser_argument_default_kwargs)
+            added_args.append(new_arg)
         elif ftype.is_primitive:
             new_arg = ParserArgument(**parser_argument_default_kwargs)
             added_args.append(new_arg)
