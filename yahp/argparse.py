@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple, Type, get_type_hints
 
 import yahp as hp
 from yahp.objects_helpers import ParserArgument
-from yahp.type_helpers import HparamsType, get_required_default_from_field, to_bool
+from yahp.type_helpers import HparamsType, get_required_default_from_field, safe_issubclass, to_bool
 from yahp.types import JSON
 
 
@@ -45,7 +45,9 @@ def _retrieve_args(
             "required": required,
         }
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
-        if HparamsType(type(default)).is_hparams_dataclass:
+        if safe_issubclass(type(default), hp.Hparams):
+            # if the default is hparams, set the argparse default to the hparams registry key
+            # for this hparams object
             if field.name in cls.hparams_registry:
                 inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[field.name].items()}
                 default = inverted_field_registry[type(default)]

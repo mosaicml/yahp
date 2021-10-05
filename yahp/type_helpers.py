@@ -14,7 +14,7 @@ class _JSONDict:  # sentential for representing JSON dictionary types
 _PRIMITIVE_TYPES = (bool, int, float, str)
 
 
-def _safe_issubclass(item, class_or_tuple) -> bool:
+def safe_issubclass(item, class_or_tuple) -> bool:
     return isinstance(item, type) and issubclass(item, class_or_tuple)
 
 
@@ -59,7 +59,7 @@ class HparamsType:
             # item must be simple, like None, int, float, str, Enum, or Hparams
             if item is None or item is type(None):
                 return [], True, False
-            if item not in _PRIMITIVE_TYPES and not _safe_issubclass(item, (yahp.Hparams, Enum)):
+            if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (yahp.Hparams, Enum)):
                 raise TypeError(f"item of type ({item}) is not supported.")
             is_optional = False
             is_list = False
@@ -70,8 +70,8 @@ class HparamsType:
             args_without_none = tuple(arg for arg in args if arg not in (None, type(None)))
             # all args in the union must be subclasses of one of the following subsets
             is_primitive = _is_valid_primitive(*args_without_none)
-            is_enum = all(_safe_issubclass(arg, Enum) for arg in args_without_none)
-            is_hparams = all(_safe_issubclass(arg, yahp.Hparams) for arg in args_without_none)
+            is_enum = all(safe_issubclass(arg, Enum) for arg in args_without_none)
+            is_hparams = all(safe_issubclass(arg, yahp.Hparams) for arg in args_without_none)
             is_list = all(get_origin(arg) is list for arg in args_without_none)
             is_json_dict = all(get_origin(arg) is dict for arg in args_without_none)
             if is_primitive or is_hparams or is_enum:
@@ -108,7 +108,7 @@ class HparamsType:
         list_origin = get_origin(list_item)
         if list_origin is None:
             # Must be either primitive or hparams
-            if list_item not in _PRIMITIVE_TYPES and not _safe_issubclass(list_item, (yahp.Hparams, Enum)):
+            if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (yahp.Hparams, Enum)):
                 raise error
             return [list_item]
         if list_origin is Union:
@@ -121,33 +121,33 @@ class HparamsType:
 
     @property
     def is_hparams_dataclass(self) -> bool:
-        return len(self.types) > 0 and all(_safe_issubclass(t, yahp.Hparams) for t in self.types)
+        return len(self.types) > 0 and all(safe_issubclass(t, yahp.Hparams) for t in self.types)
 
     @property
     def is_json_dict(self) -> bool:
-        return len(self.types) > 0 and all(_safe_issubclass(t, _JSONDict) for t in self.types)
+        return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
 
     def convert(self, val: Any) -> Any:
         # converts a value to the type specified by hparams
         # val can ether be a JSON or python representation for the value
+        # Can be either a singleton or a list
         if val is None:
             if not self.is_optional:
                 raise YAHPException(f"{val} is None, but a value is required.")
             return None
-        if self.is_list:
-            if not isinstance(val, (tuple, list)):
-                raise TypeError(f"val {val} must be a tuple or list")
+        if isinstance(val, (tuple, list)):
+            if not self.is_list:
+                raise TypeError(f"{val} is a list, but {self} is not a list")
+            # If given a list, then return a list of converted values
+            return type(val)(self.convert(x) for x in val)
         if self.is_enum:
             # could be a list of enums too
             enum_map = {k.name.lower(): k for k in self.type}
             enum_map.update({k.value: k for k in self.type})
             enum_map.update({k: k for k in self.type})
-            ans = []
-            for x in ensure_tuple(val):
-                if isinstance(x, str):  # if the val is a string, then check for a key match
-                    x = x.lower()
-                ans.append(enum_map[x])
-            return ans if self.is_list else ans[0]
+            if isinstance(val, str):  # if the val is a string, then check for a key match
+                x = val.lower()
+            return enum_map[val]
         if self.is_hparams_dataclass:
             raise NotImplementedError("convert() cannot be used with hparam dataclasses")
         if self.is_json_dict:
@@ -156,33 +156,27 @@ class HparamsType:
             return val
         if self.is_primitive:
             # could be a list of primitives
-            ans = []
-            for x in ensure_tuple(val):
-                added = False
-                for t in (bool, float, int, str):
-                    # bool, float, and int are mutually exclusive
-                    if t in self.types:
-                        try:
-                            ans.append(to_bool(x) if t is bool else t(x))
-                            added = True
-                            break
-                        except (TypeError, ValueError):
-                            pass
-                if not added:
-                    raise TypeError(f"Unable to convert value {x} to type {self}")
-            return ans if self.is_list else ans[0]
+            for t in (bool, float, int, str):
+                # bool, float, and int are mutually exclusive
+                if t in self.types:
+                    try:
+                        return to_bool(val) if t is bool else t(val)
+                    except (TypeError, ValueError):
+                        pass
+            raise TypeError(f"Unable to convert value {val} to type {self}")
+        raise RuntimeError("Unknown type")
 
     @property
     def is_enum(self) -> bool:
-        return len(self.types) > 0 and all(_safe_issubclass(t, Enum) for t in self.types)
+        return len(self.types) > 0 and all(safe_issubclass(t, Enum) for t in self.types)
 
     @property
     def is_primitive(self) -> bool:
-        return len(self.types) > 0 and all(_safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
+        return len(self.types) > 0 and all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
 
     @property
     def is_boolean(self) -> bool:
-        return len(self.types) > 0 and all(_safe_issubclass(t, bool) for t in self.types)
+        return len(self.types) > 0 and all(safe_issubclass(t, bool) for t in self.types)
 
     @property
     def type(self) -> Type[Any]:
