@@ -33,10 +33,11 @@ def _retrieve_args(
 
         type_name = str(ftype)
         required = is_field_required(field)
+        default = get_default_value(field)
         if required:
             helptext = f'(required): <{type_name}> {helptext}'
         else:
-            helptext = f'(default: {get_default_value(field)}): <{type_name}>  {helptext}'
+            helptext = f'(default: {default}): <{type_name}>  {helptext}'
 
         parser_argument_default_kwargs = {
             "arg_type": ftype.convert,
@@ -52,7 +53,7 @@ def _retrieve_args(
                 inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[field.name].items()}
                 default = inverted_field_registry[type(default)]
 
-        parser_argument_default_kwargs["default"] = default if default is not None else MISSING
+        parser_argument_default_kwargs["default"] = default
 
         if ftype.is_list and not ftype.is_hparams_dataclass:
             parser_argument_default_kwargs["nargs"] = "+"
