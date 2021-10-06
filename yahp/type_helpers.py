@@ -189,12 +189,12 @@ class HparamsType:
         ans = None
         if self.is_primitive:  # str, float, int, bool
             if len(self.types) > 1:
-                ans = f"Union[{', '.join(t.__name__ for t in self.types)}]"
+                ans = f"{' | '.join(t.__name__ for t in self.types)}"
             else:
                 ans = self.type.__name__
 
         if self.is_enum:
-            enum_values_string = ", ".join([str(x.name.lower()) for x in self.type])
+            enum_values_string = ", ".join([x.name for x in self.type])
             ans = f"{self.type.__name__}{{{enum_values_string}}}"
 
         if self.is_hparams_dataclass:

@@ -2,20 +2,20 @@ required_int_field:                          # required: int
 nullable_required_int_field:                 # required: Optional[int]
 required_bool_field:                         # required: bool
 nullable_required_bool_field:                # required: Optional[bool]
-required_enum_field_list:                    # required: List[DummyEnum{red, green, blue}]
+required_enum_field_list:                    # required: List[DummyEnum{RED, GREEN, blue}]
 - RED
 - GREEN
-- BLUE
-required_enum_field_with_default: GREEN      # required: DummyEnum{red, green, blue}
-nullable_required_enum_field:                # required: Optional[DummyEnum{red, green, blue}]
-required_union_bool_str_field: hi            # required: Union[bool, str]
-nullable_required_union_bool_str_field:      # required: Optional[Union[bool, str]]
+- blue
+required_enum_field_with_default: GREEN      # required: DummyEnum{RED, GREEN, blue}
+nullable_required_enum_field:                # required: Optional[DummyEnum{RED, GREEN, blue}]
+required_union_bool_str_field: hi            # required: bool | str
+nullable_required_union_bool_str_field:      # required: Optional[bool | str]
 required_int_list_field:                     # required: List[int]
 - 2
 nullable_required_list_int_field:            # required: Optional[List[int]]
 - 3
-nullable_required_list_union_bool_str_field: [] # required: Optional[List[Union[bool, str]]]
-required_list_union_bool_str_field:          # required: List[Union[bool, str]]
+nullable_required_list_union_bool_str_field: [] # required: Optional[List[bool | str]]
+required_list_union_bool_str_field:          # required: List[bool | str]
 - true
 - hello
 required_subhparams_field:                   # required: OptionalBooleansHparam
@@ -42,8 +42,8 @@ required_choice:
       strfield:                              # required: str
       floatfield:                            # required: float
       boolfield:                             # required: bool
-      enumintfield:                          # required: EnumIntField{one, two, three}
-      enumstringfield:                       # required: EnumStringField{mosaic, pytorch_lightning}
+      enumintfield:                          # required: EnumIntField{ONE, TWO, THREE}
+      enumstringfield:                       # required: EnumStringField{MOSAIC, PYTORCH_LIGHTNING}
       jsonfield:                             # required: JSON
     boolfield:                               # required: int
   three:                           # ChoiceThreeHparam
@@ -59,8 +59,8 @@ required_choice:
           strfield:                          # required: str
           floatfield:                        # required: float
           boolfield:                         # required: bool
-          enumintfield:                      # required: EnumIntField{one, two, three}
-          enumstringfield:                   # required: EnumStringField{mosaic, pytorch_lightning}
+          enumintfield:                      # required: EnumIntField{ONE, TWO, THREE}
+          enumstringfield:                   # required: EnumStringField{MOSAIC, PYTORCH_LIGHTNING}
           jsonfield:                         # required: JSON
         boolfield:                           # required: int
     strfield:                                # required: str
@@ -81,8 +81,8 @@ required_choice_list:
       strfield:                              # required: str
       floatfield:                            # required: float
       boolfield:                             # required: bool
-      enumintfield:                          # required: EnumIntField{one, two, three}
-      enumstringfield:                       # required: EnumStringField{mosaic, pytorch_lightning}
+      enumintfield:                          # required: EnumIntField{ONE, TWO, THREE}
+      enumstringfield:                       # required: EnumStringField{MOSAIC, PYTORCH_LIGHTNING}
       jsonfield:                             # required: JSON
     boolfield:                               # required: int
 - three:                           # ChoiceThreeHparam
@@ -98,8 +98,8 @@ required_choice_list:
           strfield:                          # required: str
           floatfield:                        # required: float
           boolfield:                         # required: bool
-          enumintfield:                      # required: EnumIntField{one, two, three}
-          enumstringfield:                   # required: EnumStringField{mosaic, pytorch_lightning}
+          enumintfield:                      # required: EnumIntField{ONE, TWO, THREE}
+          enumstringfield:                   # required: EnumStringField{MOSAIC, PYTORCH_LIGHTNING}
           jsonfield:                         # required: JSON
         boolfield:                           # required: int
     strfield:                                # required: str
@@ -112,18 +112,18 @@ optional_int_field_default_1: 1              # optional: Optional[int]
 optional_int_field_default_none:             # optional: Optional[int]
 optional_bool_field_default_true: true       # optional: Optional[bool]
 optional_bool_field_default_none:            # optional: Optional[bool]
-optional_enum_field_default_red: RED         # optional: Optional[DummyEnum{red, green, blue}]
-optional_enum_field_default_none:            # optional: Optional[DummyEnum{red, green, blue}]
-optional_union_bool_str_field_default_true: true # optional: Optional[Union[bool, str]]
-optional_union_bool_str_field_default_hello: hello # optional: Optional[Union[bool, str]]
-optional_union_bool_str_field_default_none:  # optional: Optional[Union[bool, str]]
+optional_enum_field_default_red: RED         # optional: Optional[DummyEnum{RED, GREEN, blue}]
+optional_enum_field_default_none:            # optional: Optional[DummyEnum{RED, GREEN, blue}]
+optional_union_bool_str_field_default_true: true # optional: Optional[bool | str]
+optional_union_bool_str_field_default_hello: hello # optional: Optional[bool | str]
+optional_union_bool_str_field_default_none:  # optional: Optional[bool | str]
 optional_list_int_field_default_1:           # optional: Optional[List[int]]
 - 1
 optional_list_int_field_default_none:        # optional: Optional[List[int]]
-optional_list_union_bool_str_field_default_hello: # optional: List[Union[bool, str]]
+optional_list_union_bool_str_field_default_hello: # optional: List[bool | str]
 - hello
-optional_list_union_bool_str_field_default_none: # optional: Optional[List[Union[bool, str]]]
-optional_list_union_bool_str_field_default_true: # optional: Optional[List[Union[bool, str]]]
+optional_list_union_bool_str_field_default_none: # optional: Optional[List[bool | str]]
+optional_list_union_bool_str_field_default_true: # optional: Optional[List[bool | str]]
 - true
 optional_subhparams_field_default_not_none:  # optional: OptionalBooleansHparam
   default_false: false
@@ -134,7 +134,8 @@ optional_choice_default_not_none:
   one:
     commonfield: false
     intfield: 0
-optional_choice_default_none:                # optional: Optional[ChoiceHparamParent]
+# optional: Optional[ChoiceHparamParent]. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+optional_choice_default_none:
 optional_subhparams_field_default_not_none_list: # optional: List[OptionalBooleansHparam]
 - default_false: false
   default_true: true
@@ -144,4 +145,5 @@ optional_choice_default_not_none_list:
 - one:
     commonfield: false
     intfield: 0
-optional_choice_default_none_list:           # optional: Optional[List[ChoiceHparamParent]]
+# optional: Optional[List[ChoiceHparamParent]]. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+optional_choice_default_none_list:

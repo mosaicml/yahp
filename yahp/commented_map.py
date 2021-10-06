@@ -156,12 +156,6 @@ def to_commented_map(
             add_commenting()
             continue
         # it's a dataclass, or list of dataclasses
-        if default is None:
-            # note that None means actually None, not MISSING!
-            output[f.name] = None
-            add_commenting()
-            continue
-
         if ftype.is_list:
             # list of dataclasses
             if f.name not in cls.hparams_registry:

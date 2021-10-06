@@ -434,7 +434,7 @@ def empty_object_yaml_input(hparams_tempdir) -> YamlInput:
 class DummyEnum(IntEnum):
     RED = 1
     GREEN = 2
-    BLUE = 3
+    blue = 3
 
 
 @dataclass
