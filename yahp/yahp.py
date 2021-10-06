@@ -17,7 +17,7 @@ from yahp import type_helpers
 from yahp.argparse import _add_args
 from yahp.commented_map import CMOptions, to_commented_map
 from yahp.create import _create_from_dict
-from yahp.interactive import query_singular_option, query_yes_no
+from yahp.interactive import query_with_default, query_with_options, query_yes_no
 from yahp.objects_helpers import StringDumpYAML, YAHPException
 from yahp.types import JSON, THparams
 from yahp.utils import camel_to_snake
@@ -141,24 +141,20 @@ class Hparams:
         Choose an option below to generate a yaml
         """)
 
-        interactive_response = query_singular_option(
-            input_text=f"Please select an option",
+        interactive_response = query_with_options(
+            name=f"Generation method:",
             options=options,
+            multiple_ok=False,
             default_response=option_exit,
-            pre_helptext=pre_helptext,
-            helptext=option_exit,
         )
         if interactive_response == option_exit:
             exit(1)
         elif interactive_response == option_interactively_generate or interactive_response == option_dump_generate:
             default_filename = f"{camel_to_snake(cls.__name__)}.yaml"
             interactive = interactive_response == option_interactively_generate
-            interactive_response = query_singular_option(
-                input_text=f"Choose a file to dump to",
-                options=[default_filename],
+            interactive_response = query_with_default(
+                name=f"Output file:",
                 default_response=default_filename,
-                pre_helptext="",
-                helptext=default_filename,
             )
             filename = interactive_response
             assert isinstance(filename, str)

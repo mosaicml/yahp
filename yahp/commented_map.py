@@ -6,8 +6,8 @@ from enum import Enum
 from typing import NamedTuple, Sequence, Type, get_type_hints
 
 import yahp as hp
-from yahp.interactive import query_multiple_options, query_singular_option
-from yahp.type_helpers import HparamsType, get_default_value, is_field_required
+from yahp.interactive import query_with_default, query_with_options
+from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 from yahp.types import JSON, THparams
 from yahp.utils import ensure_tuple
 
@@ -32,19 +32,14 @@ def _to_json_primitive(val: THparams) -> JSON:
 
 def _add_commenting(
         cm: CommentedMap,
-        comment_helptext: bool,
         comment_key: str,
         eol_comment: str,
         typing_column: int,
         choices: Sequence[str] = tuple(),
-        helptext: str = "",
 ) -> None:
-    if comment_helptext:
-        eol_comment = f"{helptext}: {eol_comment}"
-        cm.yaml_set_comment_before_after_key(key=comment_key, before=eol_comment)
     if typing_column > 0:
         if choices:
-            eol_comment = f"{eol_comment}. Choices: {', '.join(choices)}"
+            eol_comment = f"{eol_comment} Options: {', '.join(choices)}."
         if typing_column + len(eol_comment) <= 120:
             cm.yaml_add_eol_comment(eol_comment, key=comment_key, column=typing_column)
         else:
@@ -62,31 +57,27 @@ def _process_registry_entry(hparams: Type[hp.Hparams], field_name: str, is_list:
     possible_sub_hparams = hparams.hparams_registry[field_name]
     possible_keys = list(possible_sub_hparams.keys())
     if options.interactive:
-        default_option = "Dump all"
-        input_text = f"Please select a(n) {field_name}"
+        leave_blank_option = "(Leave Blank)"
+        dump_all_option = "(Dump all)"
         if is_list:
-            selection_helptext = "Put a number or comma separated numbers to choose"
-            pre_helptext = input_text + ". Chose one or multiple..."
-            interactive_response = query_multiple_options(
-                input_text=input_text,
-                options=possible_keys + [default_option],
-                default_response=default_option,
-                pre_helptext=pre_helptext,
-                helptext=selection_helptext,
+            interactive_response = query_with_options(
+                name=f"{field_name}:",
+                options=[leave_blank_option] + possible_keys + [dump_all_option],
+                default_response=dump_all_option,
+                multiple_ok=True,
             )
-            if default_option not in interactive_response:
+            if leave_blank_option in interactive_response:
+                possible_keys = []
+            elif dump_all_option not in interactive_response:
                 possible_keys = interactive_response
         else:
-            selection_helptext = "Put a number to choose"
-            pre_helptext = input_text + ". Choose one only..."
-            interactive_response = query_singular_option(
-                input_text=input_text,
-                options=possible_keys + [default_option],
-                default_response=default_option,
-                pre_helptext=pre_helptext,
-                helptext=selection_helptext,
+            interactive_response = query_with_options(
+                name=f"{field_name}:",
+                options=possible_keys + [dump_all_option],
+                default_response=dump_all_option,
+                multiple_ok=False,
             )
-            if default_option != interactive_response:
+            if dump_all_option != interactive_response:
                 possible_keys = [interactive_response]
 
     # filter possible_sub_hparams to those in possible_keys
@@ -103,14 +94,12 @@ def _process_registry_entry(hparams: Type[hp.Hparams], field_name: str, is_list:
             sub_item[sub_key] = sub_map
             sub_hparams.append(sub_item)
             _add_commenting(sub_item,
-                            comment_helptext=False,
                             comment_key=sub_key,
                             eol_comment=sub_type.__name__,
                             typing_column=options.choice_option_column)
             continue
         sub_hparams[sub_key] = sub_map
         _add_commenting(sub_hparams,
-                        comment_helptext=False,
                         comment_key=sub_key,
                         eol_comment=sub_type.__name__,
                         typing_column=options.choice_option_column)
@@ -125,19 +114,27 @@ def to_commented_map(
     field_types = get_type_hints(cls)
     for f in fields(cls):
         ftype = HparamsType(field_types[f.name])
-        helptext = f.metadata.get("doc", "")
+        helptext = f.metadata.get("doc")
+        helptext_suffix = f" Description: {helptext}." if helptext is not None else ""
         required = is_field_required(f)
         default = get_default_value(f)
+        default_suffix = ""
+        optional_prefix = " (Required)"
+        if not required:
+            optional_prefix = " (Optional)"
+            if default is None or safe_issubclass(default, (int, float, str, Enum)):
+                default_suffix = f" Defaults to {default}."
+            elif safe_issubclass(default, hp.Hparams):
+                default_suffix = f" Defaults to {type(default).__name__}."
+            # Don't print the default, it's too big
         if default == MISSING and "template_default" in f.metadata:
             default = f.metadata["template_default"]
         add_commenting = functools.partial(
             _add_commenting,
             cm=output,
-            comment_helptext=False,
             comment_key=f.name,
-            eol_comment=f"{'required' if required else 'optional'}: {str(ftype)}",
+            eol_comment=f"{str(ftype)}{optional_prefix}.{helptext_suffix}{default_suffix}",
             typing_column=options.typing_column,
-            helptext=helptext,
         )
         if not ftype.is_hparams_dataclass:
             if default != MISSING:
@@ -156,52 +153,32 @@ def to_commented_map(
             add_commenting()
             continue
         # it's a dataclass, or list of dataclasses
-        if ftype.is_list:
-            # list of dataclasses
-            if f.name not in cls.hparams_registry:
-                # list of concrete dataclasses
-                if default is None:
-                    output[f.name] = None
-                elif default == MISSING:
+        if f.name not in cls.hparams_registry:
+            # non-abstract hparams
+            if default is None:
+                output[f.name] = None
+            else:
+                if default == MISSING:
                     output[f.name] = [(to_commented_map(
                         cls=ftype.type,
                         options=options,
                     ))]
                 else:
                     output[f.name] = [x.to_dict() for x in ensure_tuple(default)]
-                add_commenting()
-                continue
-            else:
-                # list of abstract hparams
-                concrete_class_names = [x.__name__ for x in cls.hparams_registry[f.name].values()]
-                if default is None:
-                    output[f.name] = None
-                elif default == MISSING:
-                    output[f.name] = _process_registry_entry(cls, f.name, ftype.is_list, options)
-                else:
-                    inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
-                    output[f.name] = [{inverted_hparams[type(x)]: x.to_dict()} for x in ensure_tuple(default)]
-                add_commenting(choices=concrete_class_names)
-                continue
-        if f.name not in cls.hparams_registry:
-            # non-abstract, singleton hparams
+                if not ftype.is_list:
+                    output[f.name] = output[f.name][0]
+            add_commenting()
+        else:
+            inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
+            concrete_class_names = [x.__name__ for x in cls.hparams_registry[f.name].values()]
             if default is None:
                 output[f.name] = None
             elif default == MISSING:
-                output[f.name] = to_commented_map(cls=ftype.type, options=options)
+                output[f.name] = _process_registry_entry(cls, f.name, ftype.is_list, options)
             else:
-                output[f.name] = default.to_dict()
-                add_commenting()
-            add_commenting()
-            continue
-        # abstract, singleton hparams
-        concrete_class_names = [x.__name__ for x in cls.hparams_registry[f.name].values()]
-        if default is None:
-            output[f.name] = None
-        elif default == MISSING:
-            output[f.name] = _process_registry_entry(cls, f.name, ftype.is_list, options)
-        else:
-            inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
-            output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
-        add_commenting(choices=concrete_class_names)
+                if ftype.is_list:
+                    output[f.name] = [{inverted_hparams[type(x)]: x.to_dict()} for x in ensure_tuple(default)]
+                else:
+                    output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
+            add_commenting(choices=concrete_class_names)
     return output
