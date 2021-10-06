@@ -1,0 +1,147 @@
+required_int_field:                          # required: int
+nullable_required_int_field:                 # required: Optional[int]
+required_bool_field:                         # required: bool
+nullable_required_bool_field:                # required: Optional[bool]
+required_enum_field_list:                    # required: List[DummyEnum{red, green, blue}]
+- RED
+- GREEN
+- BLUE
+required_enum_field_with_default: GREEN      # required: DummyEnum{red, green, blue}
+nullable_required_enum_field:                # required: Optional[DummyEnum{red, green, blue}]
+required_union_bool_str_field: hi            # required: Union[bool, str]
+nullable_required_union_bool_str_field:      # required: Optional[Union[bool, str]]
+required_int_list_field:                     # required: List[int]
+- 2
+nullable_required_list_int_field:            # required: Optional[List[int]]
+- 3
+nullable_required_list_union_bool_str_field: [] # required: Optional[List[Union[bool, str]]]
+required_list_union_bool_str_field:          # required: List[Union[bool, str]]
+- true
+- hello
+required_subhparams_field:                   # required: OptionalBooleansHparam
+  default_false: true
+  default_true: true
+nullable_required_subhparams_field:          # required: Optional[OptionalBooleansHparam]
+  default_false: false                       # optional: bool
+  default_true: true                         # optional: bool
+required_subhparams_field_list:              # required: List[OptionalBooleansHparam]
+- default_false: true
+  default_true: true
+nullable_required_subhparams_field_list:     # required: Optional[List[OptionalBooleansHparam]]
+- default_false: false                       # optional: bool
+  default_true: true                         # optional: bool
+# required: ChoiceHparamParent. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+required_choice:
+  one:                             # ChoiceOneHparam
+    commonfield:                             # required: bool
+    intfield:                                # required: int
+  two:                             # ChoiceTwoHparam
+    commonfield:                             # required: bool
+    primitive_hparam:                        # required: PrimitiveHparam
+      intfield:                              # required: int
+      strfield:                              # required: str
+      floatfield:                            # required: float
+      boolfield:                             # required: bool
+      enumintfield:                          # required: EnumIntField{one, two, three}
+      enumstringfield:                       # required: EnumStringField{mosaic, pytorch_lightning}
+      jsonfield:                             # required: JSON
+    boolfield:                               # required: int
+  three:                           # ChoiceThreeHparam
+    commonfield:                             # required: bool
+    choice:                                  # required: ChoiceHparamParent. Choices: ChoiceOneHparam, ChoiceTwoHparam
+      one:                         # ChoiceOneHparam
+        commonfield:                         # required: bool
+        intfield:                            # required: int
+      two:                         # ChoiceTwoHparam
+        commonfield:                         # required: bool
+        primitive_hparam:                    # required: PrimitiveHparam
+          intfield:                          # required: int
+          strfield:                          # required: str
+          floatfield:                        # required: float
+          boolfield:                         # required: bool
+          enumintfield:                      # required: EnumIntField{one, two, three}
+          enumstringfield:                   # required: EnumStringField{mosaic, pytorch_lightning}
+          jsonfield:                         # required: JSON
+        boolfield:                           # required: int
+    strfield:                                # required: str
+# required: Optional[ChoiceHparamParent]. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+nullable_required_choice:
+  one:
+    commonfield: true
+    intfield: 0
+# required: List[ChoiceHparamParent]. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+required_choice_list:
+- one:                             # ChoiceOneHparam
+    commonfield:                             # required: bool
+    intfield:                                # required: int
+- two:                             # ChoiceTwoHparam
+    commonfield:                             # required: bool
+    primitive_hparam:                        # required: PrimitiveHparam
+      intfield:                              # required: int
+      strfield:                              # required: str
+      floatfield:                            # required: float
+      boolfield:                             # required: bool
+      enumintfield:                          # required: EnumIntField{one, two, three}
+      enumstringfield:                       # required: EnumStringField{mosaic, pytorch_lightning}
+      jsonfield:                             # required: JSON
+    boolfield:                               # required: int
+- three:                           # ChoiceThreeHparam
+    commonfield:                             # required: bool
+    choice:                                  # required: ChoiceHparamParent. Choices: ChoiceOneHparam, ChoiceTwoHparam
+      one:                         # ChoiceOneHparam
+        commonfield:                         # required: bool
+        intfield:                            # required: int
+      two:                         # ChoiceTwoHparam
+        commonfield:                         # required: bool
+        primitive_hparam:                    # required: PrimitiveHparam
+          intfield:                          # required: int
+          strfield:                          # required: str
+          floatfield:                        # required: float
+          boolfield:                         # required: bool
+          enumintfield:                      # required: EnumIntField{one, two, three}
+          enumstringfield:                   # required: EnumStringField{mosaic, pytorch_lightning}
+          jsonfield:                         # required: JSON
+        boolfield:                           # required: int
+    strfield:                                # required: str
+# required: Optional[List[ChoiceHparamParent]]. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+nullable_required_choice_list:
+- one:
+    commonfield: true
+    intfield: 0
+optional_int_field_default_1: 1              # optional: Optional[int]
+optional_int_field_default_none:             # optional: Optional[int]
+optional_bool_field_default_true: true       # optional: Optional[bool]
+optional_bool_field_default_none:            # optional: Optional[bool]
+optional_enum_field_default_red: RED         # optional: Optional[DummyEnum{red, green, blue}]
+optional_enum_field_default_none:            # optional: Optional[DummyEnum{red, green, blue}]
+optional_union_bool_str_field_default_true: true # optional: Optional[Union[bool, str]]
+optional_union_bool_str_field_default_hello: hello # optional: Optional[Union[bool, str]]
+optional_union_bool_str_field_default_none:  # optional: Optional[Union[bool, str]]
+optional_list_int_field_default_1:           # optional: Optional[List[int]]
+- 1
+optional_list_int_field_default_none:        # optional: Optional[List[int]]
+optional_list_union_bool_str_field_default_hello: # optional: List[Union[bool, str]]
+- hello
+optional_list_union_bool_str_field_default_none: # optional: Optional[List[Union[bool, str]]]
+optional_list_union_bool_str_field_default_true: # optional: Optional[List[Union[bool, str]]]
+- true
+optional_subhparams_field_default_not_none:  # optional: OptionalBooleansHparam
+  default_false: false
+  default_true: true
+optional_subhparams_field_default_none:      # optional: Optional[OptionalBooleansHparam]
+# optional: ChoiceHparamParent. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+optional_choice_default_not_none:
+  one:
+    commonfield: false
+    intfield: 0
+optional_choice_default_none:                # optional: Optional[ChoiceHparamParent]
+optional_subhparams_field_default_not_none_list: # optional: List[OptionalBooleansHparam]
+- default_false: false
+  default_true: true
+optional_subhparams_field_default_none_list: # optional: Optional[List[OptionalBooleansHparam]]
+# optional: List[ChoiceHparamParent]. Choices: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam
+optional_choice_default_not_none_list:
+- one:
+    commonfield: false
+    intfield: 0
+optional_choice_default_none_list:           # optional: Optional[List[ChoiceHparamParent]]

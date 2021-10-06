@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 
 def query_yes_no(
@@ -22,14 +22,56 @@ def query_yes_no(
         print("Please respond with 'yes' or 'no' " "(or 'y' or 'n').")
 
 
-def list_options(
+def query_singular_option(
+    input_text: str,
+    options: List[str],
+    default_response: Optional[str] = None,
+    allow_custom_response: bool = False,
+    pre_helptext: str = "Interactive selection...",
+    helptext: str = "put a number or enter your own option",
+) -> str:
+    option = _list_options(
+        input_text=input_text,
+        options=options,
+        default_response=default_response,
+        allow_custom_response=allow_custom_response,
+        pre_helptext=pre_helptext,
+        multiple_ok=False,
+        helptext=helptext,
+    )
+    assert isinstance(option, str)
+    return option
+
+
+def query_multiple_options(
     input_text: str,
     options: List[str],
     default_response: str = None,
     allow_custom_response: bool = False,
-    multiple_ok: bool = False,
     pre_helptext: str = "Interactive selection...",
     helptext: str = "put a number or enter your own option",
+) -> List[str]:
+    option = _list_options(
+        input_text=input_text,
+        options=options,
+        default_response=default_response,
+        allow_custom_response=allow_custom_response,
+        pre_helptext=pre_helptext,
+        multiple_ok=True,
+        helptext=helptext,
+    )
+    assert isinstance(option, list)
+    return option
+
+
+def _list_options(
+    input_text: str,
+    options: List[str],
+    default_response: Optional[str],
+    allow_custom_response: bool,
+    multiple_ok: bool,
+    pre_helptext: str,
+    helptext: str,
 ):
     options = [x for x in options if x is not None]
     default_response_pren = "({})".format(default_response) if default_response is not None else ""
@@ -53,7 +95,7 @@ def list_options(
         try:
             num_response = int(response)
             response = options[num_response - 1]
-        except Exception as _:
+        except Exception as _:  # TODO what is being caught here????
             if response is None and not multiple_ok:
                 print(response, "received. Please input a response: ")
             if response == "" and default_response:
@@ -63,7 +105,7 @@ def list_options(
             try:
                 response_nums = [int(x.strip()) for x in response.split(",")]
                 response = [options[x - 1] for x in response_nums]
-            except Exception as _:
+            except Exception as _:  # TODO what is being caught here????
                 if response is None:
                     print(response, "received. Please input a response: ")
         if not allow_custom_response:

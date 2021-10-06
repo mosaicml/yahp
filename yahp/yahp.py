@@ -7,7 +7,7 @@ import os
 import pathlib
 import textwrap
 from abc import abstractmethod
-from dataclasses import dataclass, field, fields
+from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, get_type_hints
 
@@ -15,11 +15,12 @@ import yaml
 
 from yahp import type_helpers
 from yahp.argparse import _add_args
-from yahp.commented_map import _to_commented_map as commented_map
+from yahp.commented_map import CMOptions, to_commented_map
 from yahp.create import _create_from_dict
-from yahp.interactive import list_options, query_yes_no
+from yahp.interactive import query_singular_option, query_yes_no
 from yahp.objects_helpers import StringDumpYAML, YAHPException
 from yahp.types import JSON, THparams
+from yahp.utils import camel_to_snake
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -30,53 +31,22 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 
-def required(doc: str, *args: Any, template_default: Any = None, **kwargs: Any):
+def required(doc: str, template_default: Any = MISSING):
     """A required field for a dataclass, including documentation."""
-
-    if not isinstance(doc, str) or not doc:
-        raise YAHPException(f'Invalid documentation: {doc}')
-
-    default = None
-    if 'default' in kwargs and 'default_factory' in kwargs:
-        raise YAHPException('cannot specify both default and default_factory')
-    elif 'default' in kwargs:
-        default = kwargs['default']
-    elif "default_factory" in kwargs:
-        default = kwargs['default_factory']()
-    return field(
-        *args,
-        metadata={
-            'doc': doc,
-            'default': default,
-            'template_default': template_default,
-        },
-        **kwargs,
-    )
+    return field(metadata={
+        'doc': doc,
+        'template_default': template_default,
+    },)
 
 
-def optional(doc: str, *args: Any, **kwargs: Any):
+def optional(doc: str, default: Any = MISSING, default_factory: Union[_MISSING_TYPE, Callable[[], Any]] = MISSING):
     """An optional field for a dataclass, including a default value and documentation."""
-
-    if not isinstance(doc, str) or not doc:
-        raise YAHPException(f'Invalid documentation: {doc}')
-
-    if 'default' not in kwargs and 'default_factory' not in kwargs:
-        raise YAHPException('Optional field must have default or default_factory defined')
-    elif 'default' in kwargs and 'default_factory' in kwargs:
-        raise YAHPException('cannot specify both default and default_factory')
-    elif 'default' in kwargs:
-        default = kwargs['default']
-    else:
-        default = kwargs['default_factory']()
-
-    return field(
-        *args,
+    return field(  # type: ignore
         metadata={
             'doc': doc,
-            'default': default,
-            'template_default': default,
         },
-        **kwargs,
+        default=default,
+        default_factory=default_factory,
     )
 
 
@@ -121,15 +91,12 @@ class Hparams:
     # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
     # and would treat it like an instance variable. Instead, using the python2-style annotations
     hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
-    helptext = ""
 
     @classmethod
     def _validate_keys(cls, data: Dict[str, Any], throw_error: bool = True, print_error: bool = True):
         keys_in_yaml = set(data.keys())
         keys_in_class = set([(f.name) for f in fields(cls)])
-        required_keys_in_class = set([
-            (f.name) for f in fields(cls) if type_helpers.get_required_default_from_field(f)[0]
-        ])
+        required_keys_in_class = set(f.name for f in fields(cls) if type_helpers.is_field_required(f))
 
         # Extra keys.
         if keys_in_yaml - keys_in_class:
@@ -174,44 +141,41 @@ class Hparams:
         Choose an option below to generate a yaml
         """)
 
-        interactive_response = list_options(
+        interactive_response = query_singular_option(
             input_text=f"Please select an option",
             options=options,
             default_response=option_exit,
             pre_helptext=pre_helptext,
-            multiple_ok=False,
             helptext=option_exit,
         )
         if interactive_response == option_exit:
-            exit(0)
+            exit(1)
         elif interactive_response == option_interactively_generate or interactive_response == option_dump_generate:
+            default_filename = f"{camel_to_snake(cls.__name__)}.yaml"
+            interactive = interactive_response == option_interactively_generate
+            interactive_response = query_singular_option(
+                input_text=f"Choose a file to dump to",
+                options=[default_filename],
+                default_response=default_filename,
+                pre_helptext="",
+                helptext=default_filename,
+            )
+            filename = interactive_response
+            assert isinstance(filename, str)
+            if os.path.exists(filename):
+                print(f"{filename} exists.")
+                should_overwrite = query_yes_no(question=f"Overwrite {filename}?", default=True)
+                if not should_overwrite:
+                    print("Exiting")
+                    exit(1)
 
-            filename = None
-            while not filename:
-                default_filename = cls.__name__.lower().replace("hparams", "_hparams") + ".yaml"
-                interactive = interactive_response == option_interactively_generate
-                interactive_response = list_options(
-                    input_text=f"Choose a file to dump to",
-                    options=[default_filename],
-                    default_response=default_filename,
-                    pre_helptext="",
-                    multiple_ok=False,
-                    helptext=default_filename,
+            with open(filename, "w") as f:
+
+                cls.dump(
+                    output=f,
+                    interactive=interactive,
                 )
-                filename = interactive_response
-                assert isinstance(filename, str)
-                if os.path.exists(filename):
-                    print(f"{filename} exists.")
-                    if not query_yes_no(question=f"Overwrite {filename}?", default=True):
-                        filename = None
-                        continue
-
-                with open(filename, "w") as f:
-                    cls.dump(
-                        output=f,
-                        interactive=interactive,
-                    )
-                exit(0)
+            exit(0)
 
     @classmethod
     def create_from_dict(
@@ -393,12 +357,14 @@ class Hparams:
         choice_option_column: int = 35,
         interactive: bool = False,
     ) -> None:
-        cm = commented_map(
+        cm = to_commented_map(
             cls=cls,
-            comment_helptext=comment_helptext,
-            typing_column=typing_column,
-            choice_option_column=choice_option_column,
-            interactive=interactive,
+            options=CMOptions(
+                comment_helptext=comment_helptext,
+                typing_column=typing_column,
+                choice_option_column=choice_option_column,
+                interactive=interactive,
+            ),
         )
         y = YAML()
         y.dump(cm, output)
@@ -411,25 +377,17 @@ class Hparams:
         choice_option_column: int = 35,
         interactive: bool = False,
     ) -> str:
-        cm = commented_map(
+        cm = to_commented_map(
             cls=cls,
-            comment_helptext=comment_helptext,
-            typing_column=typing_column,
-            choice_option_column=choice_option_column,
-            interactive=interactive,
+            options=CMOptions(
+                comment_helptext=comment_helptext,
+                typing_column=typing_column,
+                choice_option_column=choice_option_column,
+                interactive=interactive,
+            ),
         )
         s = StringDumpYAML()
         return s.dump(cm)  # type: ignore
-
-    @classmethod
-    def _to_json_primitive(cls, val: Union[Callable[[], THparams], THparams]) -> JSON:
-        if callable(val):
-            val = val()
-        if isinstance(val, Enum):
-            return val.value
-        if val is None or isinstance(val, (str, float, int)):
-            return val
-        raise TypeError(f"Cannot convert value of type {type(val)} into a JSON primitive")
 
     @classmethod
     def register_class(cls, field: str, register_class: Type[Hparams], class_key: str) -> None:

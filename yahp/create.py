@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import fields
-from typing import Dict, List, Type, cast, get_type_hints
+from typing import Any, Dict, List, Type, cast, get_type_hints
 
 import yahp as hp
 from yahp import type_helpers
 from yahp.types import JSON, THparams
 
 logger = logging.getLogger(__name__)
+
+
+class UsingDefaultValueWarning(UserWarning):
+    pass
 
 
 def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List[str]) -> hp.Hparams:
@@ -21,16 +26,17 @@ def _create_from_dict(cls: Type[hp.Hparams], data: Dict[str, JSON], prefix: List
         field_prefix = prefix + [f.name]
         if f.name not in data:
             # Missing field inside data
-            required, default_value = type_helpers.get_required_default_from_field(field=f)
+            required = type_helpers.is_field_required(f)
             missing_object_str = f"{ cls.__name__ }.{ f.name }"
             missing_path_string = '.'.join(field_prefix)
             if required:
                 raise ValueError(f"Missing required field: {missing_object_str: <30}: {missing_path_string}")
             else:
-                print(
-                    f"\nMissing optional field: \t{missing_object_str: <40}: {missing_path_string}\nUsing default: {default_value}"
-                )
-                kwargs[f.name] = default_value
+                default = type_helpers.get_default_value(f)
+                warnings.warn(
+                    f"Value for {missing_path_string} not specified. Using default value for {missing_object_str}: {default}. "
+                    "Using default values is not recommended as they may change between versions.")
+                kwargs[f.name] = default
         else:
             # Unwrap typing
             if not (ftype.is_hparams_dataclass or f.name in cls.hparams_registry):
