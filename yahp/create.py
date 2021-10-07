@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, TextIO, T
 import yaml
 
 import yahp as hp
+from yahp.inheritance import load_yaml_with_inheritance
 from yahp.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like, safe_issubclass, to_bool
 from yahp.utils import extract_only_item_from_dict
 
@@ -576,8 +577,7 @@ def create(cls: Type[THparamsSubclass],
         if isinstance(f, pathlib.PurePath):
             f = str(f)
         if isinstance(f, str):
-            with open(f, 'r') as fp:
-                data = yaml.full_load(fp)
+            data = load_yaml_with_inheritance(f)
         else:
             data = yaml.full_load(f)
     if data is None:
