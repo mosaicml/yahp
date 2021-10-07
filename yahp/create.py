@@ -594,15 +594,8 @@ def create(cls: Type[THparamsSubclass],
                         argparsers=argparsers)
     except _MissingRequiredFieldException as e:
         _add_help(argparsers)
-        if cli_args is None:
-            # running from script, so print the error
-            print("The following required fields were not included in the yaml nor the CLI arguments:")
-            for arg in e.args:
-                print(f" - {arg}")
-            sys.exit(1)
-        else:
-            raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
-                             f"{','.join(e.args)}") from e
+        raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
+            f"{','.join(e.args)}")
     else:
         _add_help(argparsers)
 
