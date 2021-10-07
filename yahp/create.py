@@ -9,16 +9,15 @@ import argparse
 import logging
 import pathlib
 import sys
-import textwrap
 import warnings
 from dataclasses import _MISSING_TYPE, MISSING, InitVar, asdict, dataclass, field, fields
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, TextIO, Tuple, Type, Union, cast, get_type_hints
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, TextIO, Tuple, Type, Union, get_type_hints
 
 import yaml
 
 import yahp as hp
-from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass, to_bool
+from yahp.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like, safe_issubclass, to_bool
 from yahp.utils import extract_only_item_from_dict
 
 if TYPE_CHECKING:
@@ -148,7 +147,7 @@ class ParserArgument:
     def __str__(self) -> str:
         return yaml.dump(asdict(self))  # type: ignore
 
-    def add_to_argparse(self, parser: argparse.ArgumentParser) -> None:
+    def add_to_argparse(self, container: argparse._ActionsContainer) -> None:
         names = [f"--{self.full_name}"]
         if self.short_name is not None and self.short_name != self.full_name:
             names.insert(0, f"--{self.short_name}")
@@ -156,7 +155,7 @@ class ParserArgument:
         metavar = self.full_name.split(".")[-1].upper()
         if self.choices is not None:
             metavar = f"{{{','.join(self.choices)}}}"
-        parser.add_argument(
+        container.add_argument(
             *names,
             nargs=self.nargs,  # type: ignore
             # using a sentinel to distinguish between a missing value and a default value that could have been overridden in yaml
@@ -168,18 +167,12 @@ class ParserArgument:
         )
 
 
-def cli_to_json(val: Union[str, List[str], _MISSING_TYPE]) -> Union[str, bool, float, List[str], None, _MISSING_TYPE]:
+def cli_to_json(val: Union[str, _MISSING_TYPE]) -> Union[str, bool, float, None, _MISSING_TYPE]:
     if val == MISSING:
         return val
     assert not isinstance(val, _MISSING_TYPE)
     if isinstance(val, str) and val.strip().lower() in ("", "none"):
         return None
-    if isinstance(val, list):
-        if len(val) == 1 and val[0].strip() == "":
-            return []
-        if len(val) == 1 and val[0].strip().lower() == "none":
-            return None
-        return cast(List[str], [cli_to_json(x) for x in val])
     for t in (bool, float, int):
         # bool, float, and int are mutually exclusive
         try:
@@ -301,12 +294,12 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
         parsed_arg_dict = {}
     else:
         args = _retrieve_args(cls, prefix, argparse_name_registry)
-        description = f"{cls.__name__}:"
-        if cls.__doc__ is not None:
-            description += f"\n{textwrap.dedent(cls.__doc__)}"
-        parser = argparse.ArgumentParser(description=description, add_help=False)
+        parser = argparse.ArgumentParser(add_help=False)
+        group = parser
+        if len(prefix):
+            group = parser.add_argument_group(title=".".join(prefix), description=cls.__name__)
         for arg in args:
-            arg.add_to_argparse(parser)
+            arg.add_to_argparse(group)
         parsed_arg_namespace, cli_args[:] = parser.parse_known_args(cli_args)
         parsed_arg_dict = vars(parsed_arg_namespace)
         argparsers.append(parser)
@@ -339,7 +332,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                     if not ftype.is_list:
                         # concrete, singleton hparams
                         # potentially none
-                        if ftype.is_optional and argparse_or_yaml_value is None:
+                        if ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list):
                             # none
                             kwargs[f.name] = None
                         else:
@@ -359,7 +352,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                         # list of concrete hparams
                         # potentially none
                         # concrete lists not added to argparse, so just load the yaml
-                        if ftype.is_optional and argparse_or_yaml_value is None:
+                        if ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list):
                             # none
                             kwargs[f.name] = None
                         else:
@@ -396,7 +389,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                     if not ftype.is_list:
                         # abstract, singleton hparams
                         # potentially none
-                        if ftype.is_optional and argparse_or_yaml_value is None:
+                        if ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list):
                             # none
                             kwargs[f.name] = None
                         else:
@@ -441,7 +434,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                     else:
                         # list of abstract hparams
                         # potentially none
-                        if ftype.is_optional and argparse_or_yaml_value is None:
+                        if ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list):
                             # none
                             kwargs[f.name] = None
                         else:
@@ -450,7 +443,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                             if argparse_or_yaml_value == MISSING:
                                 # use the hparams default
                                 continue
-                            
+
                             # First get the keys
                             # Argparse has precidence. If there are keys defined in argparse, use only those
                             # These keys will determine what is loaded
@@ -471,7 +464,6 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                                     key, _ = extract_only_item_from_dict(item)
                                     keys.append(key)
                                 key = argparse_or_yaml_value
-                            
 
                             # Now, load the values for these keys
                             yaml_val = data.get(f.name)
@@ -490,11 +482,13 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                             for i, yaml_val_entry in enumerate(yaml_val):
                                 if not isinstance(yaml_val_entry, dict):
                                     raise ValueError(
-                                        f"Field {'.'.join(list(prefix_with_fname) + [str(i)])} must be a dict if specified in the yaml")
+                                        f"Field {'.'.join(list(prefix_with_fname) + [str(i)])} must be a dict if specified in the yaml"
+                                    )
                                 k, v = extract_only_item_from_dict(yaml_val_entry)
                                 if not isinstance(v, dict):
                                     raise ValueError(
-                                        f"Field {'.'.join(list(prefix_with_fname) + [k])} must be a dict if specified in the yaml")
+                                        f"Field {'.'.join(list(prefix_with_fname) + [k])} must be a dict if specified in the yaml"
+                                    )
                                 yaml_dict[k] = v
 
                             for key in keys:
@@ -525,9 +519,9 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
         if f.name not in kwargs:
             if f.default == MISSING and f.default_factory == MISSING:
                 missing_required_fields.append(prefix_with_fname)
-            else:
-                warnings.warn(f"DefaultValueWarning: Using default value for {prefix_with_fname}. "
-                              "Using default values is not recommended as they may change between versions.")
+            # else:
+            #     warnings.warn(f"DefaultValueWarning: Using default value for {prefix_with_fname}. "
+            #                   "Using default values is not recommended as they may change between versions.")
     if len(missing_required_fields) > 0:
         # if there are any missing fields from this class, or optional but partially-filled-in subclasses,
         # then propegate back the missing fields

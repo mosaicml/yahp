@@ -133,7 +133,7 @@ class HparamsType:
         # val can ether be a JSON or python representation for the value
         # Can be either a singleton or a list
         if self.is_optional:
-            if val is None or (isinstance(val, str) and val.strip().lower() in ("", "none")):
+            if is_none_like(val, allow_list=self.is_list):
                 return None
         if not self.is_optional and val is None:
             raise YAHPException(f"{field_name} is None, but a value is required.")
@@ -240,3 +240,13 @@ def to_bool(x: Any):
     if x in ("f", "false", "n", "no", 0, False):
         return False
     raise ValueError(f"Could not parse {x} as bool")
+
+
+def is_none_like(x: Any, *, allow_list: bool):
+    if x is None:
+        return True
+    if isinstance(x, str) and x.lower() in ["", "none"]:
+        return True
+    if allow_list and isinstance(x, (tuple, list)) and len(x) == 1:
+        return is_none_like(x[0], allow_list=allow_list)
+    return False
