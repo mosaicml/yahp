@@ -1,7 +1,4 @@
-from dataclasses import asdict, dataclass
-from typing import Any, Optional, Sequence, TextIO, Type
-
-import yaml
+from typing import Any, Optional, TextIO
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -27,28 +24,3 @@ class StringDumpYAML(YAML):  # type: ignore
         YAML.dump(self, data, stream, **kw)
         if not stream_found:
             return stream.getvalue()  # type: ignore
-
-
-@dataclass
-class ParserArgument:
-
-    arg_type: Type[Any]
-    full_arg_name: str
-    required: bool
-    helptext: str
-    default: Optional[Any]
-    const: Optional[Any] = None
-    nargs: Optional[str] = None
-    choices: Sequence[str] = ()
-    short_arg_name: Optional[str] = None
-    is_hparams_subclass: bool = False
-
-    def get_possible_short_name(self, index: int = 0):
-        items = self.get_namespace_name().split(".")[-(index + 1):]
-        return ".".join(items)
-
-    def get_namespace_name(self):
-        return self.full_arg_name.replace("--", "")
-
-    def __str__(self) -> str:
-        return yaml.dump(asdict(self))

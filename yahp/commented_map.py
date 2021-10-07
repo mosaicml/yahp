@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import functools
 from dataclasses import MISSING, fields
 from enum import Enum
-from typing import NamedTuple, Sequence, Type, get_type_hints
+from typing import NamedTuple, Type, get_type_hints, TYPE_CHECKING
 
 import yahp as hp
-from yahp.interactive import query_with_default, query_with_options
+from yahp.interactive import query_with_options
 from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
-from yahp.types import JSON, THparams
 from yahp.utils import ensure_tuple
+
+if TYPE_CHECKING:
+    from yahp.types import JSON, THparams, SequenceStr
 
 try:
     from ruamel_yaml import YAML  # type: ignore
@@ -35,33 +36,35 @@ def _add_commenting(
         comment_key: str,
         eol_comment: str,
         typing_column: int,
-        choices: Sequence[str] = tuple(),
+        choices: SequenceStr = tuple(),
 ) -> None:
-    if typing_column > 0:
-        if choices:
-            eol_comment = f"{eol_comment} Options: {', '.join(choices)}."
-        if typing_column + len(eol_comment) <= 120:
-            cm.yaml_add_eol_comment(eol_comment, key=comment_key, column=typing_column)
-        else:
-            cm.yaml_set_comment_before_after_key(key=comment_key, before=eol_comment)
+    if choices:
+        eol_comment = f"{eol_comment} Options: {', '.join(choices)}."
+    if typing_column + len(eol_comment) <= 120:
+        cm.yaml_add_eol_comment(eol_comment, key=comment_key, column=typing_column)
+    else:
+        cm.yaml_set_comment_before_after_key(key=comment_key, before=eol_comment)
+    cm.fa.set_block_style()
 
 
 class CMOptions(NamedTuple):
-    comment_helptext: bool = False
-    typing_column: int = 45
-    choice_option_column: int = 35
-    interactive: bool = False
+    add_docs: bool
+    typing_column: int
+    choice_option_column: int
+    interactive: bool
 
 
-def _process_registry_entry(hparams: Type[hp.Hparams], field_name: str, is_list: bool, options: CMOptions):
+def _process_registry_entry(hparams: Type[hp.Hparams], path_with_fname: SequenceStr, is_list: bool, options: CMOptions):
+    field_name = path_with_fname[-1]
     possible_sub_hparams = hparams.hparams_registry[field_name]
     possible_keys = list(possible_sub_hparams.keys())
     if options.interactive:
         leave_blank_option = "(Leave Blank)"
         dump_all_option = "(Dump all)"
+        name = f"Field {'.'.join(path_with_fname)}:"
         if is_list:
             interactive_response = query_with_options(
-                name=f"{field_name}:",
+                name=name,
                 options=[leave_blank_option] + possible_keys + [dump_all_option],
                 default_response=dump_all_option,
                 multiple_ok=True,
@@ -72,7 +75,7 @@ def _process_registry_entry(hparams: Type[hp.Hparams], field_name: str, is_list:
                 possible_keys = interactive_response
         else:
             interactive_response = query_with_options(
-                name=f"{field_name}:",
+                name=name,
                 options=possible_keys + [dump_all_option],
                 default_response=dump_all_option,
                 multiple_ok=False,
@@ -87,32 +90,40 @@ def _process_registry_entry(hparams: Type[hp.Hparams], field_name: str, is_list:
     for sub_key, sub_type in possible_sub_hparams.items():
         sub_map = to_commented_map(
             cls=sub_type,
+            path=list(path_with_fname) + [sub_key],
             options=options,
         )
         if is_list:
             sub_item = CommentedMap()
             sub_item[sub_key] = sub_map
             sub_hparams.append(sub_item)
-            _add_commenting(sub_item,
+            if options.add_docs:
+                _add_commenting(sub_item,
+                                comment_key=sub_key,
+                                eol_comment=sub_type.__name__,
+                                typing_column=options.choice_option_column)
+            continue
+        sub_hparams[sub_key] = sub_map
+        if options.add_docs:
+            _add_commenting(sub_hparams,
                             comment_key=sub_key,
                             eol_comment=sub_type.__name__,
                             typing_column=options.choice_option_column)
-            continue
-        sub_hparams[sub_key] = sub_map
-        _add_commenting(sub_hparams,
-                        comment_key=sub_key,
-                        eol_comment=sub_type.__name__,
-                        typing_column=options.choice_option_column)
     return sub_hparams
 
 
 def to_commented_map(
     cls: Type[hp.Hparams],
     options: CMOptions,
+    path: SequenceStr = tuple(),
 ) -> YAML:
+    # TODO accept existing fields to create a new template from an existing one
     output = CommentedMap()
     field_types = get_type_hints(cls)
     for f in fields(cls):
+        if not f.init:
+            continue
+        path_with_fname = list(path) + [f.name]
         ftype = HparamsType(field_types[f.name])
         helptext = f.metadata.get("doc")
         helptext_suffix = f" Description: {helptext}." if helptext is not None else ""
@@ -129,31 +140,19 @@ def to_commented_map(
             # Don't print the default, it's too big
         if default == MISSING and "template_default" in f.metadata:
             default = f.metadata["template_default"]
-        add_commenting = functools.partial(
-            _add_commenting,
-            cm=output,
-            comment_key=f.name,
-            eol_comment=f"{str(ftype)}{optional_prefix}.{helptext_suffix}{default_suffix}",
-            typing_column=options.typing_column,
-        )
+        choices = []
         if not ftype.is_hparams_dataclass:
             if default != MISSING:
                 output[f.name] = _to_json_primitive(default)
-                add_commenting()
-                continue
-
-            if ftype.is_list:
+            elif ftype.is_list:
                 output[f.name] = CommentedSeq()
-                add_commenting()
                 if ftype.is_enum:
                     # If an enum list, then put all enum options in the list
                     output[f.name].extend([x.name for x in ftype.type])
-                continue
-            output[f.name] = None
-            add_commenting()
-            continue
+            else:
+                output[f.name] = None
         # it's a dataclass, or list of dataclasses
-        if f.name not in cls.hparams_registry:
+        elif f.name not in cls.hparams_registry:
             # non-abstract hparams
             if default is None:
                 output[f.name] = None
@@ -161,24 +160,31 @@ def to_commented_map(
                 if default == MISSING:
                     output[f.name] = [(to_commented_map(
                         cls=ftype.type,
+                        path=path_with_fname,
                         options=options,
                     ))]
                 else:
                     output[f.name] = [x.to_dict() for x in ensure_tuple(default)]
                 if not ftype.is_list:
                     output[f.name] = output[f.name][0]
-            add_commenting()
         else:
             inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
-            concrete_class_names = [x.__name__ for x in cls.hparams_registry[f.name].values()]
+            choices = [x.__name__ for x in cls.hparams_registry[f.name].values()]
             if default is None:
                 output[f.name] = None
             elif default == MISSING:
-                output[f.name] = _process_registry_entry(cls, f.name, ftype.is_list, options)
+                output[f.name] = _process_registry_entry(cls, path_with_fname, ftype.is_list, options)
             else:
                 if ftype.is_list:
                     output[f.name] = [{inverted_hparams[type(x)]: x.to_dict()} for x in ensure_tuple(default)]
                 else:
                     output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
-            add_commenting(choices=concrete_class_names)
+        if options.add_docs:
+            _add_commenting(
+                cm=output,
+                comment_key=f.name,
+                eol_comment=f"{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}",
+                typing_column=options.typing_column,
+                choices=choices
+            )
     return output

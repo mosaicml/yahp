@@ -1,26 +1,22 @@
 from __future__ import annotations
 
-import argparse
-import copy
 import logging
-import os
-import pathlib
 import textwrap
-from abc import abstractmethod
+import pathlib
+from abc import ABC
 from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, get_type_hints
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, Union, get_type_hints
 
 import yaml
 
 from yahp import type_helpers
-from yahp.argparse import _add_args
 from yahp.commented_map import CMOptions, to_commented_map
-from yahp.create import _create_from_dict
-from yahp.interactive import query_with_default, query_with_options, query_yes_no
+from yahp.create import create
 from yahp.objects_helpers import StringDumpYAML, YAHPException
-from yahp.types import JSON, THparams
-from yahp.utils import camel_to_snake
+
+if TYPE_CHECKING:
+    from yahp.types import JSON, THparamsSubclass, SequenceStr
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -51,7 +47,7 @@ def optional(doc: str, default: Any = MISSING, default_factory: Union[_MISSING_T
 
 
 @dataclass
-class Hparams:
+class Hparams(ABC):
     """
     A collection of hyperparameters with names, types, values, and documentation.
 
@@ -93,167 +89,28 @@ class Hparams:
     hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
 
     @classmethod
-    def _validate_keys(cls, data: Dict[str, Any], throw_error: bool = True, print_error: bool = True):
-        keys_in_yaml = set(data.keys())
+    def validate_keys(cls, keys: SequenceStr, *, allow_missing_keys: bool = False, allow_extra_keys: bool = False) -> None:
+        keys_in_yaml = set(keys)
         keys_in_class = set([(f.name) for f in fields(cls)])
         required_keys_in_class = set(f.name for f in fields(cls) if type_helpers.is_field_required(f))
 
-        # Extra keys.
-        if keys_in_yaml - keys_in_class:
-            error_msg = f'Unexpected keys in {cls.__name__}: ' + ', '.join(list(keys_in_yaml - keys_in_class))
-            if print_error:
-                logger.error(error_msg)
-            if throw_error:
-                raise YAHPException(error_msg)
+        extra_keys = list(keys_in_yaml - keys_in_class)
+        missing_keys = list(required_keys_in_class - keys_in_yaml)
 
-        # Missing keys.
-        if required_keys_in_class - keys_in_yaml:
-            err_msg = f'Required keys missing in {cls.__name__}: ' + ', '.join(
-                list(required_keys_in_class - keys_in_yaml))
-            if print_error:
-                logger.error(err_msg)
-            if throw_error:
-                raise YAHPException(err_msg)
-
-    @classmethod
-    def _add_filename_argument(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "-f",
-            "--params_file",
-            type=pathlib.Path,
-            dest="filepath",
-            help="Please set the path to the yaml that you would like to load as your Hparams",
-        )
-
-    @classmethod
-    def interactive_template(cls):
-        option_exit = "Exit"
-        option_interactively_generate = "Generate Yaml Interactively"
-        option_dump_generate = "Generate Full Yaml Dump"
-        options = [
-            option_interactively_generate,
-            option_dump_generate,
-            option_exit,
-        ]
-
-        pre_helptext = textwrap.dedent("""
-        No Yaml found passed with -f to create Hparams
-        Choose an option below to generate a yaml
-        """)
-
-        interactive_response = query_with_options(
-            name=f"Generation method:",
-            options=options,
-            multiple_ok=False,
-            default_response=option_exit,
-        )
-        if interactive_response == option_exit:
-            exit(1)
-        elif interactive_response == option_interactively_generate or interactive_response == option_dump_generate:
-            default_filename = f"{camel_to_snake(cls.__name__)}.yaml"
-            interactive = interactive_response == option_interactively_generate
-            interactive_response = query_with_default(
-                name=f"Output file:",
-                default_response=default_filename,
-            )
-            filename = interactive_response
-            assert isinstance(filename, str)
-            if os.path.exists(filename):
-                print(f"{filename} exists.")
-                should_overwrite = query_yes_no(question=f"Overwrite {filename}?", default=True)
-                if not should_overwrite:
-                    print("Exiting")
-                    exit(1)
-
-            with open(filename, "w") as f:
-
-                cls.dump(
-                    output=f,
-                    interactive=interactive,
-                )
-            exit(0)
-
-    @classmethod
-    def create_from_dict(
-        cls,
-        data: Dict[str, JSON],
-    ) -> Hparams:
-        # Check against the schema.
-        cls._validate_keys(data=data)
-
-        return _create_from_dict(cls=cls, data=data, prefix=[])
+        if not allow_missing_keys and len(missing_keys) > 0:
+            raise YAHPException(f'Required keys missing in {cls.__name__}', missing_keys)
+        
+        if not allow_extra_keys and len(extra_keys) > 0:
+            raise YAHPException(f'Unexpected keys in {cls.__name__}: ', extra_keys)
 
     @classmethod
     def create(
-        cls,
-        filepath: str,
-        argparse_overrides: bool = True,
-        args: Optional[Sequence[str]] = None,
-    ) -> Hparams:  # type: ignore
-        """
-        Create an instance of this Hparams object from a yaml file with argparse overrides
-        """
-        with open(filepath, 'r') as f:
-            data = yaml.full_load(f)
-
-        if not argparse_overrides:
-            return cls.create_from_dict(data=data)
-
-        from yahp.argparse import _namespace_to_hparams_dict, _yaml_data_to_argparse_namespace
-        yaml_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=data, _prefix=[])
-        original_yaml_argparse_namespace = copy.deepcopy(yaml_argparse_namespace)
-        parser = argparse.ArgumentParser()
-        cls.add_args(parser=parser, defaults=yaml_argparse_namespace, prefix=[])
-        args, unknown_args = parser.parse_known_args(args=args)  # type: ignore
-        if len(unknown_args):
-            print(unknown_args)
-            logger.warning(f"Unknown args: {unknown_args}")
-
-        arg_items: List[Tuple[str, Any]] = list((vars(args)).items())
-
-        argparse_data = _namespace_to_hparams_dict(
-            cls=cls,
-            namespace=arg_items,
-        )
-
-        parsed_argparse_namespace = _yaml_data_to_argparse_namespace(yaml_data=argparse_data, _prefix=[])
-        parsed_argparse_keys = set(parsed_argparse_namespace.keys())
-        yaml_argparse_keys = set(original_yaml_argparse_namespace.keys())
-
-        intersection_keys = parsed_argparse_keys.intersection(yaml_argparse_keys)
-        first_override = True
-        for key in intersection_keys:
-            if parsed_argparse_namespace[key] != original_yaml_argparse_namespace[key]:
-                if first_override:
-                    print("\n" + "-" * 60 + "\nOverriding Yaml Keys\n" + "-" * 60 + "\n")
-                    first_override = False
-                print(
-                    f"Overriding field: {key} from old value: {original_yaml_argparse_namespace[key]} with: {parsed_argparse_namespace[key]}"
-                )
-        added_keys = parsed_argparse_keys - yaml_argparse_keys
-
-        if len(added_keys):
-            print("\n" + "-" * 60 + "\nAdding Keys w/ defaults or Argparse\n" + "-" * 60 + "\n")
-        for key in added_keys:
-            print(f"Added: {key},  value: {parsed_argparse_namespace[key]}")
-
-        full_parsed_argparse_keys = set()
-        for key in parsed_argparse_keys:
-            full_parsed_argparse_keys.add(key)
-            tokens = key.split('.')
-            for i in range(len(tokens)):
-                full_parsed_argparse_keys.add('.'.join(tokens[:-i - 1]))
-
-        removed_keys = yaml_argparse_keys - full_parsed_argparse_keys
-        if len(removed_keys):
-            print("\n" + "-" * 60 + "\nExtra Keys\n" + "-" * 60 + "\n")
-        for key in removed_keys:
-            print(f"Extra key: {key}, value: {original_yaml_argparse_namespace[key]}")
-        if len(removed_keys):
-            print("")
-            raise Exception(f"Found extra keys in the yaml: {', '.join(removed_keys) }")
-
-        return cls.create_from_dict(data=argparse_data)
+        cls: Type[THparamsSubclass],
+        f: Union[str, None, TextIO, pathlib.PurePath] = None,
+        data: Optional[Dict[str, JSON]] = None,
+        cli_args: Optional[List[str]] = None,
+    ) -> THparamsSubclass:
+        return create(cls, data=data, f=f, cli_args=cli_args)
 
     def to_yaml(self, **yaml_args: Any) -> str:
         """
@@ -314,8 +171,7 @@ class Hparams:
                         res[f.name] = attr
         return res
 
-    @abstractmethod
-    def initialize_object(self) -> object:
+    def initialize_object(self, *args: Any, **kwargs: Any) -> Any:
         """
         Optional method to initialize an associated object (e.g. for AdamHparams, torch.util.Adam)
         """
@@ -323,32 +179,10 @@ class Hparams:
                                   "To enable, add initialize_object method.")
 
     @classmethod
-    def add_args(
-        cls,
-        parser: argparse.ArgumentParser,
-        prefix: List[str],
-        defaults: Dict[str, Any],
-    ) -> None:
-        """
-        Add the fields of the class as arguments to `parser`.
-
-        Optionally, provide an instance of this class to serve as default arguments.
-        Optionally, provide a prefix to apply to all flags that are added.
-        Optionally, add all of these arguments to an argument group called `group_name` with
-            description `group_description`.
-        """
-        _add_args(
-            cls=cls,
-            parser=parser,
-            prefix=prefix,
-            defaults=defaults,
-        )
-
-    @classmethod
     def dump(
         cls,
         output: TextIO,
-        comment_helptext: bool = False,
+        add_docs: bool = True,
         typing_column: int = 45,
         choice_option_column: int = 35,
         interactive: bool = False,
@@ -356,7 +190,7 @@ class Hparams:
         cm = to_commented_map(
             cls=cls,
             options=CMOptions(
-                comment_helptext=comment_helptext,
+                add_docs=add_docs,
                 typing_column=typing_column,
                 choice_option_column=choice_option_column,
                 interactive=interactive,
@@ -368,7 +202,7 @@ class Hparams:
     @classmethod
     def dumps(
         cls,
-        comment_helptext: bool = False,
+        add_docs: bool = False,
         typing_column: int = 45,
         choice_option_column: int = 35,
         interactive: bool = False,
@@ -376,7 +210,7 @@ class Hparams:
         cm = to_commented_map(
             cls=cls,
             options=CMOptions(
-                comment_helptext=comment_helptext,
+                add_docs=add_docs,
                 typing_column=typing_column,
                 choice_option_column=choice_option_column,
                 interactive=interactive,

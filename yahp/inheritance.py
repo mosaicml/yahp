@@ -34,7 +34,6 @@ def _data_by_path(
     argument_path: Sequence[Union[int, str]],
 ) -> JSON:
     for key in argument_path:
-        # path_str = '.'.join(str(x) for x in argument_path)
         if isinstance(namespace, dict):
             assert isinstance(key, str)
             namespace = namespace[key]
@@ -89,7 +88,7 @@ def _recursively_update_leaf_data_items(
             new_inner = inner_namespace
 
         for key in update_argument_path[:-1]:
-            key_element: JSON = inner_namespace.get(key, None)
+            key_element: JSON = inner_namespace.get(key)
             if key_element is None or not isinstance(key_element, dict):
                 # If the nested item isn't a dict, it will need to be to store leaves
                 key_element = {}
@@ -98,7 +97,7 @@ def _recursively_update_leaf_data_items(
             inner_namespace = key_element
             new_inner = key_element
 
-        new_inner_value = new_inner.get(update_argument_path[-1], None)
+        new_inner_value = new_inner.get(update_argument_path[-1])
         if new_inner_value is None or isinstance(
                 new_inner_value,
                 _OverridenValue,

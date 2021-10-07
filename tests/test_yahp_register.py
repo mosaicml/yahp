@@ -19,7 +19,7 @@ def test_register_new_hparam_choice(choice_one_yaml_input: YamlInput):
 
     root_hparams_data: Dict[str, JSON] = {"choice": {"one": choice_one_yaml_input.dict_data}}
 
-    choice_one_hparam = cast(ChoiceHparamRoot, ChoiceHparamRoot.create_from_dict(data=root_hparams_data))
+    choice_one_hparam = cast(ChoiceHparamRoot, ChoiceHparamRoot.create(data=root_hparams_data))
     # Check that existing hparams still work
     assert isinstance(choice_one_hparam.choice, ChoiceOneHparam)
 
@@ -27,7 +27,7 @@ def test_register_new_hparam_choice(choice_one_yaml_input: YamlInput):
     root_hparams_data["choice"] = {"empty": None}
     choice_empty: ChoiceHparamRoot = cast(
         ChoiceHparamRoot,
-        ChoiceHparamRoot.create_from_dict(data=root_hparams_data),
+        ChoiceHparamRoot.create(data=root_hparams_data),
     )
 
     assert isinstance(choice_empty.choice, EmptyHparam)

@@ -8,7 +8,7 @@ SAVE_FIXTURE = False
 
 
 def test_to_commented_map(kitchen_sink_hparams: Type[Hparams]):
-    output = kitchen_sink_hparams.dumps(comment_helptext=True, interactive=False)
+    output = kitchen_sink_hparams.dumps(add_docs=True, interactive=False)
     fixture_path = os.path.join(os.path.dirname(tests.__file__), "fixtures", "commented_map.yaml")
     if SAVE_FIXTURE:
         # helper to easily update the test fixture

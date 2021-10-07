@@ -1,3 +1,4 @@
+import json
 from dataclasses import MISSING, Field
 from enum import Enum
 from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
@@ -131,15 +132,16 @@ class HparamsType:
         # converts a value to the type specified by hparams
         # val can ether be a JSON or python representation for the value
         # Can be either a singleton or a list
-        if val is None:
-            if not self.is_optional:
-                raise YAHPException(f"{val} is None, but a value is required.")
-            return None
+        if self.is_optional:
+            if val is None or (isinstance(val, str) and val.strip().lower() in ("", "none")):
+                return None
+        if not self.is_optional and val is None:
+            raise YAHPException(f"{val} is None, but a value is required.")
         if isinstance(val, (tuple, list)):
             if not self.is_list:
                 raise TypeError(f"{val} is a list, but {self} is not a list")
             # If given a list, then return a list of converted values
-            return type(val)(self.convert(x) for x in val)
+            return [self.convert(x) for x in ensure_tuple(val)]
         if self.is_enum:
             # could be a list of enums too
             enum_map = {k.name.lower(): k for k in self.type}
@@ -151,6 +153,8 @@ class HparamsType:
         if self.is_hparams_dataclass:
             raise NotImplementedError("convert() cannot be used with hparam dataclasses")
         if self.is_json_dict:
+            if isinstance(val, str):
+                val = json.loads(val)
             if not isinstance(val, dict):
                 raise TypeError(f"{val} is not a dictionary")
             return val
@@ -163,6 +167,7 @@ class HparamsType:
                         return to_bool(val) if t is bool else t(val)
                     except (TypeError, ValueError):
                         pass
+
             raise TypeError(f"Unable to convert value {val} to type {self}")
         raise RuntimeError("Unknown type")
 

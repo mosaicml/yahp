@@ -13,6 +13,6 @@ def test_union(val: Union[str, int], expected: Union[str, int]):
     class HparamsWithUnion(hp.Hparams):
         union_field: Union[str, int] = hp.required("time")
 
-    hparams = HparamsWithUnion.create_from_dict({"union_field": val})
+    hparams = HparamsWithUnion.create(data={"union_field": val})
     assert isinstance(hparams, HparamsWithUnion)
     assert hparams.union_field == expected
