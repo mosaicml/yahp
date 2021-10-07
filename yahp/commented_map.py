@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING, fields
 from enum import Enum
-from typing import NamedTuple, Type, get_type_hints, TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple, Type, get_type_hints
 
 import yahp as hp
 from yahp.interactive import query_with_options
@@ -10,7 +10,7 @@ from yahp.type_helpers import HparamsType, get_default_value, is_field_required,
 from yahp.utils import ensure_tuple
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, THparams, SequenceStr
+    from yahp.types import JSON, SequenceStr, THparams
 
 try:
     from ruamel_yaml import YAML  # type: ignore
@@ -113,9 +113,9 @@ def _process_registry_entry(hparams: Type[hp.Hparams], path_with_fname: Sequence
 
 
 def to_commented_map(
-    cls: Type[hp.Hparams],
-    options: CMOptions,
-    path: SequenceStr = tuple(),
+        cls: Type[hp.Hparams],
+        options: CMOptions,
+        path: SequenceStr = tuple(),
 ) -> YAML:
     # TODO accept existing fields to create a new template from an existing one
     output = CommentedMap()
@@ -180,11 +180,9 @@ def to_commented_map(
                 else:
                     output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
         if options.add_docs:
-            _add_commenting(
-                cm=output,
-                comment_key=f.name,
-                eol_comment=f"{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}",
-                typing_column=options.typing_column,
-                choices=choices
-            )
+            _add_commenting(cm=output,
+                            comment_key=f.name,
+                            eol_comment=f"{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}",
+                            typing_column=options.typing_column,
+                            choices=choices)
     return output

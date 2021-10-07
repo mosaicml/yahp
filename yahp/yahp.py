@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-import textwrap
 import pathlib
+import textwrap
 from abc import ABC
 from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
 from enum import Enum
@@ -16,7 +16,7 @@ from yahp.create import create
 from yahp.objects_helpers import StringDumpYAML, YAHPException
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, THparamsSubclass, SequenceStr
+    from yahp.types import JSON, SequenceStr, THparamsSubclass
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -89,7 +89,11 @@ class Hparams(ABC):
     hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
 
     @classmethod
-    def validate_keys(cls, keys: SequenceStr, *, allow_missing_keys: bool = False, allow_extra_keys: bool = False) -> None:
+    def validate_keys(cls,
+                      keys: SequenceStr,
+                      *,
+                      allow_missing_keys: bool = False,
+                      allow_extra_keys: bool = False) -> None:
         keys_in_yaml = set(keys)
         keys_in_class = set([(f.name) for f in fields(cls)])
         required_keys_in_class = set(f.name for f in fields(cls) if type_helpers.is_field_required(f))
@@ -99,7 +103,7 @@ class Hparams(ABC):
 
         if not allow_missing_keys and len(missing_keys) > 0:
             raise YAHPException(f'Required keys missing in {cls.__name__}', missing_keys)
-        
+
         if not allow_extra_keys and len(extra_keys) > 0:
             raise YAHPException(f'Unexpected keys in {cls.__name__}: ', extra_keys)
 
