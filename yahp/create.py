@@ -274,7 +274,6 @@ def _retrieve_args(
                             full_name=full_name,
                             nargs=nargs,
                             helptext=helptext,
-                            child_hparams=registry_entry,
                         ))
             else:
                 # Found in registry
@@ -330,7 +329,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
 
             if not ftype.is_hparams_dataclass:
                 if argparse_or_yaml_value != MISSING:
-                    kwargs[f.name] = ftype.convert(argparse_or_yaml_value)
+                    kwargs[f.name] = ftype.convert(argparse_or_yaml_value, full_name)
                 # defaults will be set by the hparams constructor
             else:
                 if f.name not in cls.hparams_registry:
@@ -416,7 +415,10 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                                 if not isinstance(argparse_or_yaml_value, dict):
                                     raise ValueError(
                                         f"Field {full_name} must be a dict with just one key if specified in the yaml")
-                                key, _ = extract_only_item_from_dict(argparse_or_yaml_value)
+                                try:
+                                    key, _ = extract_only_item_from_dict(argparse_or_yaml_value)
+                                except ValueError as e:
+                                    raise ValueError(f"Field {full_name} " + e.args[0])
                             yaml_val = data.get(f.name)
                             if yaml_val is None:
                                 yaml_val = {}
@@ -448,6 +450,10 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                             if argparse_or_yaml_value == MISSING:
                                 # use the hparams default
                                 continue
+                            
+                            # First get the keys
+                            # Argparse has precidence. If there are keys defined in argparse, use only those
+                            # These keys will determine what is loaded
                             if argparse_or_yaml_value is None:
                                 raise ValueError(f"Field {full_name} is required and cannot be None.")
                             if isinstance(argparse_or_yaml_value, dict):
@@ -465,21 +471,35 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
                                     key, _ = extract_only_item_from_dict(item)
                                     keys.append(key)
                                 key = argparse_or_yaml_value
+                            
+
+                            # Now, load the values for these keys
                             yaml_val = data.get(f.name)
                             if yaml_val is None:
-                                yaml_val = {}
-                            if not isinstance(yaml_val, dict):
+                                yaml_val = []
+                            if isinstance(yaml_val, dict):
+                                # already emitted the warning, no need to do it again
+                                yaml_val = [yaml_val]
+                            if not isinstance(yaml_val, list):
                                 raise ValueError(
-                                    f"Field {'.'.join(prefix_with_fname)} must be a dict if specified in the yaml")
-                            sub_yaml_val = yaml_val.get(f.name)
-                            if sub_yaml_val is None:
-                                sub_yaml_val = {}
-                            if not isinstance(sub_yaml_val, dict):
-                                raise ValueError(
-                                    f"Field {'.'.join(prefix_with_fname)} must be a dict if specified in the yaml")
+                                    f"Field {'.'.join(prefix_with_fname)} must be a list if specified in the yaml")
                             sub_hparams_list: List[hp.Hparams] = []
+
+                            # Convert the yaml list to a dict
+                            yaml_dict: Dict[str, Dict[str, JSON]] = {}
+                            for i, yaml_val_entry in enumerate(yaml_val):
+                                if not isinstance(yaml_val_entry, dict):
+                                    raise ValueError(
+                                        f"Field {'.'.join(list(prefix_with_fname) + [str(i)])} must be a dict if specified in the yaml")
+                                k, v = extract_only_item_from_dict(yaml_val_entry)
+                                if not isinstance(v, dict):
+                                    raise ValueError(
+                                        f"Field {'.'.join(list(prefix_with_fname) + [k])} must be a dict if specified in the yaml")
+                                yaml_dict[k] = v
+
                             for key in keys:
-                                key_yaml = sub_yaml_val.get(key)
+                                # Use the order of keys
+                                key_yaml = yaml_dict.get(key)
                                 if key_yaml is None:
                                     key_yaml = {}
                                 if not isinstance(key_yaml, dict):
@@ -501,10 +521,10 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
     for f in fields(cls):
         if not f.init:
             continue
-        prefix_with_fname = list(prefix) + [f.name]
+        prefix_with_fname = ".".join(list(prefix) + [f.name])
         if f.name not in kwargs:
             if f.default == MISSING and f.default_factory == MISSING:
-                missing_required_fields.append(".".join(prefix_with_fname))
+                missing_required_fields.append(prefix_with_fname)
             else:
                 warnings.warn(f"DefaultValueWarning: Using default value for {prefix_with_fname}. "
                               "Using default values is not recommended as they may change between versions.")
@@ -534,8 +554,7 @@ def create(cls: Type[THparamsSubclass],
                                           argument_parsers=argparsers)
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
-        print("DOCS", add_docs)
-        print(f"Generating a template for {cls.__name__}:")
+        print(f"Generating a template for {cls.__name__}")
         if output_file == "stdout":
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
         elif output_file == "stderr":
@@ -544,6 +563,8 @@ def create(cls: Type[THparamsSubclass],
             with open(output_file, "x") as f:
                 cls.dump(add_docs=add_docs, interactive=interactive, output=f)
         # exit so we don't attempt to parse and instantiate if generate template is passed
+        print()
+        print("Finished")
         sys.exit(0)
 
     cli_f = _get_hparams_file_from_cli(cli_args=remaining_cli_args,

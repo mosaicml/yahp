@@ -128,7 +128,7 @@ class HparamsType:
     def is_json_dict(self) -> bool:
         return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
 
-    def convert(self, val: Any) -> Any:
+    def convert(self, val: Any, field_name: str) -> Any:
         # converts a value to the type specified by hparams
         # val can ether be a JSON or python representation for the value
         # Can be either a singleton or a list
@@ -136,12 +136,12 @@ class HparamsType:
             if val is None or (isinstance(val, str) and val.strip().lower() in ("", "none")):
                 return None
         if not self.is_optional and val is None:
-            raise YAHPException(f"{val} is None, but a value is required.")
+            raise YAHPException(f"{field_name} is None, but a value is required.")
         if isinstance(val, (tuple, list)):
             if not self.is_list:
-                raise TypeError(f"{val} is a list, but {self} is not a list")
+                raise TypeError(f"{field_name} is a list, but {self} is not a list")
             # If given a list, then return a list of converted values
-            return [self.convert(x) for x in ensure_tuple(val)]
+            return [self.convert(x, f"{field_name}[{i}]") for (i, x) in enumerate(ensure_tuple(val))]
         if self.is_enum:
             # could be a list of enums too
             enum_map = {k.name.lower(): k for k in self.type}
@@ -156,7 +156,7 @@ class HparamsType:
             if isinstance(val, str):
                 val = json.loads(val)
             if not isinstance(val, dict):
-                raise TypeError(f"{val} is not a dictionary")
+                raise TypeError(f"{field_name} is not a dictionary")
             return val
         if self.is_primitive:
             # could be a list of primitives

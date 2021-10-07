@@ -95,8 +95,8 @@ class Hparams(ABC):
                       allow_missing_keys: bool = False,
                       allow_extra_keys: bool = False) -> None:
         keys_in_yaml = set(keys)
-        keys_in_class = set([(f.name) for f in fields(cls)])
-        required_keys_in_class = set(f.name for f in fields(cls) if type_helpers.is_field_required(f))
+        keys_in_class = set([f.name for f in fields(cls) if f.init])
+        required_keys_in_class = set(f.name for f in fields(cls) if f.init and type_helpers.is_field_required(f))
 
         extra_keys = list(keys_in_yaml - keys_in_class)
         missing_keys = list(required_keys_in_class - keys_in_yaml)
