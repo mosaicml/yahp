@@ -4,7 +4,6 @@ from enum import Enum
 from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
 
 import yahp as hp
-from yahp.objects_helpers import YAHPException
 from yahp.utils import ensure_tuple
 
 
@@ -33,6 +32,8 @@ def _is_valid_primitive(*types: Type[Any]) -> bool:
 
 
 class HparamsType:
+    """HparamsType is used internall by YAHP to prase typing annotations
+    """
 
     def __init__(self, item: Type[Any]) -> None:
         self.types, self.is_optional, self.is_list = self._extract_type(item)
@@ -137,7 +138,7 @@ class HparamsType:
             if is_none_like(val, allow_list=self.is_list):
                 return None
         if not self.is_optional and val is None:
-            raise YAHPException(f"{field_name} is None, but a value is required.")
+            raise ValueError(f"{field_name} is None, but a value is required.")
         if self.is_list:
             # If given a list, then return a list of converted values
             if wrap_singletons:

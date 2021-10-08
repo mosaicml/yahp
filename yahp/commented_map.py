@@ -10,7 +10,7 @@ from yahp.type_helpers import HparamsType, get_default_value, is_field_required,
 from yahp.utils import ensure_tuple
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, SequenceStr, THparams
+    from yahp.types import JSON, HparamsField, SequenceStr
 
 try:
     from ruamel_yaml import YAML  # type: ignore
@@ -20,7 +20,7 @@ except ImportError as _:
     from ruamel.yaml.comments import CommentedMap, CommentedSeq  # type: ignore
 
 
-def _to_json_primitive(val: THparams) -> JSON:
+def _to_json_primitive(val: HparamsField) -> JSON:
     if isinstance(val, Enum):
         return val.name
     if val is None or isinstance(val, (str, float, int, dict)):
@@ -112,9 +112,9 @@ def _process_registry_entry(hparams: Type[hp.Hparams], path_with_fname: Sequence
 
 
 def to_commented_map(
-    cls: Type[hp.Hparams],
-    options: CMOptions,
-    path: SequenceStr = tuple(),
+        cls: Type[hp.Hparams],
+        options: CMOptions,
+        path: SequenceStr = tuple(),
 ) -> YAML:
     # TODO accept existing fields to create a new template from an existing one
     output = CommentedMap()

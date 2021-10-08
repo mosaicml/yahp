@@ -3,7 +3,6 @@ from typing import Dict, cast
 import pytest
 
 from tests.yahp_fixtures import ChoiceHparamRoot, ChoiceOneHparam, EmptyHparam, NestedHparam, PrimitiveHparam, YamlInput
-from yahp.objects_helpers import YAHPException
 from yahp.types import JSON
 
 
@@ -33,7 +32,7 @@ def test_register_new_hparam_choice(choice_one_yaml_input: YamlInput):
 
 def test_register_new_hparam_direct(nested_hparams: NestedHparam):
     # Should fail because directly nested hparams can't be over-registered
-    with pytest.raises(YAHPException):
+    with pytest.raises(ValueError):
         nested_hparams.register_class(
             field="primitive_hparam",
             register_class=EmptyHparam,
@@ -43,7 +42,7 @@ def test_register_new_hparam_direct(nested_hparams: NestedHparam):
 
 def test_register_non_existing(nested_hparams: NestedHparam):
     # Tries to register for a nonexisting field
-    with pytest.raises(YAHPException):
+    with pytest.raises(ValueError):
         nested_hparams.register_class(
             field="nonexisting_hparam",
             register_class=EmptyHparam,
@@ -53,7 +52,7 @@ def test_register_non_existing(nested_hparams: NestedHparam):
 
 def test_register_existing_primative():
     # Tries to register for a nonexisting field
-    with pytest.raises(YAHPException):
+    with pytest.raises(ValueError):
         PrimitiveHparam.register_class(
             field="intfield",
             register_class=EmptyHparam,

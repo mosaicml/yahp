@@ -3,12 +3,12 @@
 [tool.isort]
 multi_line_output = 0
 line_length = 120
-skip = [ "env", "wandb" ]
+skip = [ "env" ]
 
 # Pyright
 [tool.pyright]
 include = [
-    "composer/**",
+    "yahp/**",
     "tests/**"
 ]
 
@@ -55,7 +55,7 @@ filterwarnings = [
 [tool.coverage.run]
 parallel = true
 source = [
-    "composer"
+    "yahp"
 ]
 
 # Yapf

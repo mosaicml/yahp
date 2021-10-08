@@ -23,7 +23,7 @@ from yahp.type_helpers import HparamsType, get_default_value, is_field_required,
 from yahp.utils import extract_only_item_from_dict
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, SequenceStr, THparams, THparamsSubclass
+    from yahp.types import JSON, HparamsField, SequenceStr, THparams
 
 
 def _emit_should_be_list_warning(arg_name: str):
@@ -288,8 +288,8 @@ def _retrieve_args(
     return ans
 
 
-def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optional[List[str]], prefix: SequenceStr,
-          argparse_name_registry: _ArgparseNameRegistry, argparsers: List[argparse.ArgumentParser]) -> THparamsSubclass:
+def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List[str]], prefix: SequenceStr,
+          argparse_name_registry: _ArgparseNameRegistry, argparsers: List[argparse.ArgumentParser]) -> THparams:
     if cli_args is None:
         parsed_arg_dict = {}
     else:
@@ -304,7 +304,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
         parsed_arg_namespace, cli_args[:] = parser.parse_known_args(cli_args)
         parsed_arg_dict = vars(parsed_arg_namespace)
         argparsers.append(parser)
-    kwargs: Dict[str, THparams] = {}
+    kwargs: Dict[str, HparamsField] = {}
     missing_required_fields: List[str] = [
     ]  # keep track of missing required fields so we can build a nice error message
     cls.validate_keys(list(data.keys()), allow_missing_keys=True)
@@ -547,11 +547,11 @@ def _get_remaining_cli_args(cli_args: Union[SequenceStr, bool]) -> List[str]:
 
 
 def create(
-    cls: Type[THparamsSubclass],
+    cls: Type[THparams],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
     cli_args: Union[SequenceStr, bool] = True,
-) -> THparamsSubclass:
+) -> THparams:
     argparsers: List[argparse.ArgumentParser] = []
     remaining_cli_args = _get_remaining_cli_args(cli_args)
     try:
@@ -586,12 +586,12 @@ def create(
 
 
 def _get_hparams(
-    cls: Type[THparamsSubclass],
+    cls: Type[THparams],
     data: Optional[Dict[str, JSON]],
     f: Union[str, TextIO, pathlib.PurePath, None],
     remaining_cli_args: List[str],
     argparsers: List[argparse.ArgumentParser],
-) -> Tuple[THparamsSubclass, Optional[str]]:
+) -> Tuple[THparams, Optional[str]]:
     argparse_name_registry = _ArgparseNameRegistry()
 
     cm_options = _get_cm_options_from_cli(cli_args=remaining_cli_args,
@@ -644,7 +644,7 @@ def _get_hparams(
 
 
 def get_argparse(
-    cls: Type[THparamsSubclass],
+    cls: Type[THparams],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
     cli_args: Union[SequenceStr, bool] = True,

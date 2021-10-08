@@ -7,17 +7,17 @@ import textwrap
 from abc import ABC
 from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, Union, get_type_hints
+from io import StringIO
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, Union, cast, get_type_hints
 
 import yaml
 
 from yahp import type_helpers
 from yahp.commented_map import CMOptions, to_commented_map
 from yahp.create import create, get_argparse
-from yahp.objects_helpers import StringDumpYAML, YAHPException
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, SequenceStr, THparamsSubclass
+    from yahp.types import JSON, SequenceStr, THparams
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -130,7 +130,7 @@ class Hparams(ABC):
                 that are not present in the :class:`Hparams`. Defaults to False.
 
         Raises:
-            YAHPException: Raised if there are missing or extra keys.
+            ValueError: Raised if there are missing or extra keys.
         """
         keys_in_yaml = set(keys)
         keys_in_class = set([f.name for f in fields(cls) if f.init])
@@ -140,18 +140,18 @@ class Hparams(ABC):
         missing_keys = list(required_keys_in_class - keys_in_yaml)
 
         if not allow_missing_keys and len(missing_keys) > 0:
-            raise YAHPException(f'Required keys missing in {cls.__name__}', missing_keys)
+            raise ValueError(f'Required keys missing in {cls.__name__}', missing_keys)
 
         if not allow_extra_keys and len(extra_keys) > 0:
-            raise YAHPException(f'Unexpected keys in {cls.__name__}: ', extra_keys)
+            raise ValueError(f'Unexpected keys in {cls.__name__}: ', extra_keys)
 
     @classmethod
     def create(
-        cls: Type[THparamsSubclass],
+        cls: Type[THparams],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
         cli_args: Union[SequenceStr, bool] = True,
-    ) -> THparamsSubclass:
+    ) -> THparams:
         """Create a instance of :class:`Hparams`.
 
         Args:
@@ -165,13 +165,13 @@ class Hparams(ABC):
                 If `false`, then do not use any CLI arguments.
 
         Returns:
-            THparamsSubclass: [description]
+            THparams: [description]
         """
         return create(cls, data=data, f=f, cli_args=cli_args)
 
     @classmethod
     def get_argparse(
-        cls: Type[THparamsSubclass],
+        cls: Type[THparams],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
         cli_args: Union[SequenceStr, bool] = True,
@@ -184,7 +184,7 @@ class Hparams(ABC):
         Returns:
             The object, as a yaml string.
         """
-        return yaml.dump(self.to_dict(), **yaml_args)
+        return cast(str, yaml.dump(self.to_dict(), **yaml_args))
 
     def to_dict(self) -> Dict[str, JSON]:
         """
@@ -301,16 +301,9 @@ class Hparams(ABC):
             The generated YAML, as a string.
 
         """
-        cm = to_commented_map(
-            cls=cls,
-            options=CMOptions(
-                add_docs=add_docs,
-                typing_column=typing_column,
-                interactive=interactive,
-            ),
-        )
-        s = StringDumpYAML()
-        return s.dump(cm)
+        stream = StringIO()
+        cls.dump(stream, add_docs=add_docs, typing_column=typing_column, interactive=interactive)
+        return stream.getvalue()
 
     @classmethod
     def register_class(cls, field: str, register_class: Type[Hparams], class_key: str) -> None:
@@ -328,12 +321,12 @@ class Hparams(ABC):
         if len(class_fields) == 0:
             message = f"Unable to find field: {field} in: {cls.__name__}"
             logger.warning(message)
-            raise YAHPException(message)
+            raise ValueError(message)
         if field not in cls.hparams_registry:
             message = f"Unable to find field: {field} in: {cls.__name__} registry. \n"
             message += "Is it a choose one or list Hparam?"
             logger.warning(message)
-            raise YAHPException(message)
+            raise ValueError(message)
 
         sub_registry = cls.hparams_registry[field]
         existing_keys = sub_registry.keys()
@@ -341,7 +334,7 @@ class Hparams(ABC):
             message = f"Field: {field} already registered in: {cls.__name__} registry for class: {sub_registry[field]}. \n"
             message += "Make sure you register new classes with a unique name"
             logger.warning(message)
-            raise YAHPException(message)
+            raise ValueError(message)
 
         logger.info(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
         sub_registry[class_key] = register_class
@@ -397,6 +390,7 @@ class Hparams(ABC):
             for x in value:
                 if not isinstance(x, ftype.type):
                     raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value)}")
+                assert isinstance(x, Hparams)
                 x.validate()
 
     def __str__(self) -> str:
