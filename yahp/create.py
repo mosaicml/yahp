@@ -319,10 +319,10 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
             argparse_or_yaml_value: Union[_MISSING_TYPE, JSON] = MISSING
             if full_name in parsed_arg_dict and parsed_arg_dict[full_name] != MISSING:
                 argparse_or_yaml_value = parsed_arg_dict.pop(full_name)
-            elif full_name.upper() in os.environ:
-                argparse_or_yaml_value = os.environ[full_name]
             elif f.name in data:
                 argparse_or_yaml_value = data[f.name]
+            elif full_name.upper() in os.environ:
+                argparse_or_yaml_value = os.environ[full_name.upper()]
 
             if not ftype.is_hparams_dataclass:
                 if argparse_or_yaml_value != MISSING:
