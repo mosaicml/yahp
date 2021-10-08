@@ -1,5 +1,0 @@
-{
-    "include": ["mosaicml/**", "tests/**"],
-    "typeCheckingMode": "basic",
-    "reportUnknownMemberType": "none"
-}

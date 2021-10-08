@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 from typing import Dict, cast
 
 import pytest
 
-import yahp as hp
 from tests.yahp_fixtures import ChoiceHparamRoot, ChoiceOneHparam, EmptyHparam, NestedHparam, PrimitiveHparam, YamlInput
 from yahp.objects_helpers import YAHPException
 from yahp.types import JSON

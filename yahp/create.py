@@ -80,7 +80,7 @@ def _get_hparams_file_from_cli(*, cli_args: List[str], argparse_name_registry: _
         default=None,
         required=False,
         metavar="stdout",
-        help="If present, dump the merged hparams to the specified file (defaults to stdout) and exit",
+        help="If present, dump the merged hparams to the specified file (defaults to stdout) and exit.",
     )
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
     return parsed_args.file, parsed_args.dump
