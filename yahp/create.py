@@ -538,6 +538,14 @@ def _add_help(argparsers: Sequence[argparse.ArgumentParser]) -> None:
     help_argparser.parse_known_args()  # Will print help and exit if the "--help" flag is present
 
 
+def _get_remaining_cli_args(cli_args: Union[SequenceStr, bool]) -> List[str]:
+    if cli_args is True:
+        return sys.argv[1:]  # remove the program name
+    if cli_args is False:
+        return []
+    return list(cli_args)
+
+
 def create(
     cls: Type[THparamsSubclass],
     data: Optional[Dict[str, JSON]] = None,
@@ -545,12 +553,7 @@ def create(
     cli_args: Union[SequenceStr, bool] = True,
 ) -> THparamsSubclass:
     argparsers: List[argparse.ArgumentParser] = []
-    if cli_args is True:
-        remaining_cli_args = sys.argv
-    elif cli_args is False:
-        remaining_cli_args = []
-    else:
-        remaining_cli_args = []
+    remaining_cli_args = _get_remaining_cli_args(cli_args)
     try:
         hparams, output_f = _get_hparams(cls=cls,
                                          data=data,
@@ -567,8 +570,6 @@ def create(
         # Only if successful, warn for extra cli arguments
         # If there is an error, then valid cli args may not have been discovered
         for arg in remaining_cli_args:
-            if arg == sys.argv[0]:
-                continue
             warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
 
         if output_f is not None:
@@ -649,12 +650,9 @@ def get_argparse(
     cli_args: Union[SequenceStr, bool] = True,
 ) -> argparse.ArgumentParser:
     argparsers: List[argparse.ArgumentParser] = []
-    if cli_args is True:
-        remaining_cli_args = sys.argv
-    elif cli_args is False:
-        remaining_cli_args = []
-    else:
-        remaining_cli_args = []
+
+    remaining_cli_args = _get_remaining_cli_args(cli_args)
+
     try:
         _get_hparams(cls=cls, data=data, f=f, remaining_cli_args=remaining_cli_args, argparsers=argparsers)
     except _MissingRequiredFieldException:

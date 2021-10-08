@@ -1,3 +1,5 @@
+import pytest
+
 from tests.yahp_fixtures import ListHparam, OptionalBooleansHparam, YamlInput
 
 
@@ -37,9 +39,18 @@ def test_list_hparam_int(empty_object_yaml_input: YamlInput):
 
 def test_list_hparam_bool(empty_object_yaml_input: YamlInput):
     o = ListHparam.create(cli_args=['-f', empty_object_yaml_input.filename, '--list_of_bool', 'true', 'false'])
-    assert isinstance(o, ListHparam)
     assert isinstance(o.list_of_bool, list)
     assert isinstance(o.list_of_bool[0], bool)
     assert o.list_of_bool[0] == True
     assert isinstance(o.list_of_bool[1], bool)
     assert o.list_of_bool[1] == False
+
+
+def test_get_helpless_argpars():
+    args = ['--default_true', 'false', '--default_false', 'true']
+    parser = OptionalBooleansHparam.get_argparse(cli_args=args)
+    namespace = parser.parse_args(args)
+    assert namespace.default_true == 'false'
+    assert namespace.default_false == 'true'
+    with pytest.raises(SystemExit):
+        parser.parse_args("--help")

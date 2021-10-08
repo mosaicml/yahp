@@ -430,7 +430,6 @@ class ListHparam(hp.Hparams):
 def empty_object_yaml_input(hparams_tempdir) -> YamlInput:
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data={}, filepath="empty_object.yaml")
 
-
 class DummyEnum(IntEnum):
     RED = 1
     GREEN = 2
