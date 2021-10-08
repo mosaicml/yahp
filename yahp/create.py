@@ -11,7 +11,7 @@ import os
 import pathlib
 import sys
 import warnings
-from dataclasses import _MISSING_TYPE, MISSING, InitVar, asdict, dataclass, field, fields
+from dataclasses import _MISSING_TYPE, MISSING, InitVar, asdict, dataclass, fields
 from enum import Enum
 from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, TextIO, Tuple, Type, Union, get_type_hints
 
@@ -44,16 +44,16 @@ class _ArgparseNameRegistry:
                 raise ValueError(f"{name} is already in the registry")
             self._names.add(name)
 
-    def safe_add(self, name: str) -> str:
-        if name not in self._names:
-            self._names.add(name)
-            return name
-        i = 1
-        candidate = f"name{i}"
-        while name + str(i) in self._names:
-            i += 1
-        self._names.add(candidate)
-        return candidate
+    def reserve_shortnames(self, *args: ParserArgument):
+        # sort args so short names get added deterministically
+        sorted_args = sorted(args, key=lambda arg: arg.full_name)
+        for arg in sorted_args:
+            for shortness_index in range(len(arg.full_name.split(".")) - 1):
+                short_name = arg.get_possible_short_name(index=shortness_index)
+                if short_name not in self:
+                    self.add(short_name)
+                    arg.short_name = short_name
+                    break
 
     def __contains__(self, name: str) -> bool:
         return name in self._names
@@ -124,23 +124,11 @@ class ParserArgument:
     nargs: Optional[str]
     child_hparams: Union[Dict[str, Type[hp.Hparams]], None, Type[hp.Hparams]] = None
     choices: Optional[SequenceStr] = None
-    short_name: Optional[str] = field(init=False)
+    short_name: Optional[str] = None
 
     def __post_init__(self, argparse_name_registry: _ArgparseNameRegistry) -> None:
         # register the full name in argparse_name_registry
-        # also attempt to register a short name in argparse_name_registry
-        self.full_name = argparse_name_registry.safe_add(self.full_name)
-
-        # attempt to get a short name
-        for shortness_index in range(len(self.full_name.split(".")) - 1):
-            # TODO this appears to be broken
-            # Counts leaves for conflicts
-            short_name = self.get_possible_short_name(index=shortness_index)
-            if short_name not in argparse_name_registry:
-                argparse_name_registry.add(short_name)
-                self.short_name = short_name
-                break
-        self.short_name = None
+        argparse_name_registry.add(self.full_name)
 
     def get_possible_short_name(self, index: int):
         items = self.full_name.split(".")[-(index + 1):]
@@ -296,6 +284,7 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
         parsed_arg_dict = {}
     else:
         args = _retrieve_args(cls, prefix, argparse_name_registry)
+        argparse_name_registry.reserve_shortnames(*args)
         parser = argparse.ArgumentParser(add_help=False)
         group = parser
         if len(prefix):
