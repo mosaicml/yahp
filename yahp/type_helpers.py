@@ -3,7 +3,7 @@ from dataclasses import MISSING, Field
 from enum import Enum
 from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
 
-import yahp
+import yahp as hp
 from yahp.objects_helpers import YAHPException
 from yahp.utils import ensure_tuple
 
@@ -60,7 +60,8 @@ class HparamsType:
             # item must be simple, like None, int, float, str, Enum, or Hparams
             if item is None or item is type(None):
                 return [], True, False
-            if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (yahp.Hparams, Enum)):
+            if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
+                print("HELLO", type(item))
                 raise TypeError(f"item of type ({item}) is not supported.")
             is_optional = False
             is_list = False
@@ -72,7 +73,7 @@ class HparamsType:
             # all args in the union must be subclasses of one of the following subsets
             is_primitive = _is_valid_primitive(*args_without_none)
             is_enum = all(safe_issubclass(arg, Enum) for arg in args_without_none)
-            is_hparams = all(safe_issubclass(arg, yahp.Hparams) for arg in args_without_none)
+            is_hparams = all(safe_issubclass(arg, hp.Hparams) for arg in args_without_none)
             is_list = all(get_origin(arg) is list for arg in args_without_none)
             is_json_dict = all(get_origin(arg) is dict for arg in args_without_none)
             if is_primitive or is_hparams or is_enum:
@@ -109,7 +110,7 @@ class HparamsType:
         list_origin = get_origin(list_item)
         if list_origin is None:
             # Must be either primitive or hparams
-            if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (yahp.Hparams, Enum)):
+            if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (hp.Hparams, Enum)):
                 raise error
             return [list_item]
         if list_origin is Union:
@@ -122,7 +123,7 @@ class HparamsType:
 
     @property
     def is_hparams_dataclass(self) -> bool:
-        return len(self.types) > 0 and all(safe_issubclass(t, yahp.Hparams) for t in self.types)
+        return len(self.types) > 0 and all(safe_issubclass(t, hp.Hparams) for t in self.types)
 
     @property
     def is_json_dict(self) -> bool:

@@ -130,6 +130,8 @@ class Hparams(ABC):
         res: Dict[str, JSON] = dict()
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
+            if f.init:
+                continue
             ftype = type_helpers.HparamsType(field_types[f.name])
             attr = getattr(self, f.name)
             if attr is None:  # first, take care of the optionals
@@ -250,6 +252,8 @@ class Hparams(ABC):
     def validate(self):
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
+            if f.init:
+                continue
             ftype = type_helpers.HparamsType(field_types[f.name])
             if ftype.is_json_dict:
                 # TODO

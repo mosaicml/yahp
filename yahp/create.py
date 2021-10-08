@@ -19,7 +19,7 @@ import yaml
 
 import yahp as hp
 from yahp.inheritance import load_yaml_with_inheritance
-from yahp.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like, safe_issubclass, to_bool
+from yahp.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like, safe_issubclass
 from yahp.utils import extract_only_item_from_dict
 
 if TYPE_CHECKING:
@@ -60,13 +60,30 @@ class _ArgparseNameRegistry:
 
 
 def _get_hparams_file_from_cli(*, cli_args: List[str], argparse_name_registry: _ArgparseNameRegistry,
-                               argument_parsers: List[argparse.ArgumentParser]) -> Optional[str]:
+                               argument_parsers: List[argparse.ArgumentParser]) -> Tuple[Optional[str], Optional[str]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
-    argparse_name_registry.add("f", "file")
-    parser.add_argument("-f", "--file", type=str, default=None, required=False, help="YAML file containing hparams")
+    argparse_name_registry.add("f", "file", "d", 'dump')
+    parser.add_argument("-f",
+                        "--file",
+                        type=str,
+                        default=None,
+                        dest='file',
+                        required=False,
+                        help="YAML file containing hparams")
+    parser.add_argument(
+        "-d",
+        "--dump",
+        type=str,
+        const="stdout",
+        nargs="?",
+        default=None,
+        required=False,
+        metavar="stdout",
+        help="If present, dump the merged hparams to the specified file (defaults to stdout) and exit",
+    )
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
-    return parsed_args.file
+    return parsed_args.file, parsed_args.dump
 
 
 def _get_cm_options_from_cli(*, cli_args: List[str], argparse_name_registry: _ArgparseNameRegistry,
@@ -74,7 +91,7 @@ def _get_cm_options_from_cli(*, cli_args: List[str], argparse_name_registry: _Ar
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
 
-    argparse_name_registry.add("s", "save_template", "i", "interactive", "d", "no_docs")
+    argparse_name_registry.add("s", "save_template", "i", "interactive", "c", "concise")
 
     parser.add_argument(
         "-s",
@@ -97,8 +114,8 @@ def _get_cm_options_from_cli(*, cli_args: List[str], argparse_name_registry: _Ar
     )
 
     parser.add_argument(
-        "-d",
-        "--no_docs",
+        "-c",
+        "--concise",
         action="store_true",
         default=False,
         help="Whether to skip adding documentation to the generated YAML. Only applicible if --save_template is present."
@@ -107,7 +124,7 @@ def _get_cm_options_from_cli(*, cli_args: List[str], argparse_name_registry: _Ar
     if parsed_args.save_template is None:
         return  # don't generate a template
 
-    return parsed_args.save_template, parsed_args.interactive, not parsed_args.no_docs
+    return parsed_args.save_template, parsed_args.interactive, not parsed_args.concise
 
 
 class _MissingRequiredFieldException(ValueError):
@@ -122,7 +139,6 @@ class ParserArgument:
     full_name: str
     helptext: str
     nargs: Optional[str]
-    child_hparams: Union[Dict[str, Type[hp.Hparams]], None, Type[hp.Hparams]] = None
     choices: Optional[SequenceStr] = None
     short_name: Optional[str] = None
 
@@ -151,6 +167,7 @@ class ParserArgument:
             # using a sentinel to distinguish between a missing value and a default value that could have been overridden in yaml
             default=MISSING,
             type=cli_to_json,
+            dest=self.full_name,
             const=True if self.nargs == "?" else None,
             help=self.helptext,
             metavar=metavar,
@@ -163,12 +180,6 @@ def cli_to_json(val: Union[str, _MISSING_TYPE]) -> Union[str, bool, float, None,
     assert not isinstance(val, _MISSING_TYPE)
     if isinstance(val, str) and val.strip().lower() in ("", "none"):
         return None
-    for t in (bool, float, int):
-        # bool, float, and int are mutually exclusive
-        try:
-            return to_bool(val) if t is bool else t(val)
-        except (TypeError, ValueError):
-            pass
     return val
 
 
@@ -187,12 +198,12 @@ def _retrieve_args(
     Returns:
         A sequence of :class:`ParserArgument` for this class. This is not computed recursively, to allow for lazily loading cli arguments.
     """
-    type_hints = get_type_hints(cls)
+    field_types = get_type_hints(cls)
     ans: List[ParserArgument] = []
     for f in fields(cls):
         if not f.init:
             continue
-        ftype = HparamsType(type_hints[f.name])
+        ftype = HparamsType(field_types[f.name])
         full_prefix = ".".join(prefix)
         if len(prefix):
             full_name = f'{full_prefix}.{f.name}'
@@ -273,7 +284,6 @@ def _retrieve_args(
                         nargs=nargs,
                         choices=choices,
                         helptext=helptext,
-                        child_hparams=registry_entry,
                     ))
     return ans
 
@@ -298,16 +308,17 @@ def _load(*, cls: Type[THparamsSubclass], data: Dict[str, JSON], cli_args: Optio
     missing_required_fields: List[str] = [
     ]  # keep track of missing required fields so we can build a nice error message
     cls.validate_keys(list(data.keys()), allow_missing_keys=True)
+    field_types = get_type_hints(cls)
     for f in fields(cls):
         if not f.init:
             continue
         prefix_with_fname = list(prefix) + [f.name]
         try:
-            ftype = HparamsType(f.type)
+            ftype = HparamsType(field_types[f.name])
             full_name = ".".join(prefix_with_fname)
             argparse_or_yaml_value: Union[_MISSING_TYPE, JSON] = MISSING
             if full_name in parsed_arg_dict and parsed_arg_dict[full_name] != MISSING:
-                argparse_or_yaml_value = parsed_arg_dict.pop(full_name)
+                argparse_or_yaml_value = parsed_arg_dict[full_name]
             elif f.name in data:
                 argparse_or_yaml_value = data[f.name]
             elif full_name.upper() in os.environ:
@@ -554,9 +565,9 @@ def create(cls: Type[THparamsSubclass],
         print("Finished")
         sys.exit(0)
 
-    cli_f = _get_hparams_file_from_cli(cli_args=remaining_cli_args,
-                                       argparse_name_registry=argparse_name_registry,
-                                       argument_parsers=argparsers)
+    cli_f, output_f = _get_hparams_file_from_cli(cli_args=remaining_cli_args,
+                                                 argparse_name_registry=argparse_name_registry,
+                                                 argument_parsers=argparsers)
     if cli_f is not None:
         if f is not None:
             raise ValueError("File cannot be specifed via both function arguments and the CLI")
@@ -597,5 +608,15 @@ def create(cls: Type[THparamsSubclass],
             if arg == sys.argv[0]:
                 continue
             warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
+
+        if output_f is not None:
+            if output_f == "stdout":
+                cls.dump(add_docs=False, interactive=False, output=sys.stdout)
+            elif output_f == "stderr":
+                cls.dump(add_docs=False, interactive=False, output=sys.stderr)
+            else:
+                with open(output_f, "x") as f:
+                    cls.dump(add_docs=False, interactive=False, output=f)
+            sys.exit(0)
 
         return hparams
