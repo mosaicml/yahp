@@ -160,7 +160,7 @@ class HparamsType:
                 val = val.lower()
             return enum_map[val]
         if self.is_hparams_dataclass:
-            raise NotImplementedError("convert() cannot be used with hparam dataclasses")
+            raise RuntimeError("convert() cannot be used with hparam dataclasses")
         if self.is_json_dict:
             if isinstance(val, str):
                 val = json.loads(val)
@@ -178,7 +178,7 @@ class HparamsType:
                         pass
 
             raise TypeError(f"Unable to convert value {val} for field {field_name} to type {self}")
-        raise RuntimeError("Unknown type")
+        raise RuntimeError(f"Unknown type for field {field_name}")
 
     @property
     def is_enum(self) -> bool:

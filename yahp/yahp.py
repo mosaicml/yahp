@@ -322,11 +322,11 @@ class Hparams(ABC):
         """
         class_fields = [x for x in fields(cls) if x.name == field]
         if len(class_fields) == 0:
-            message = f"Unable to find field: {field} in: {cls.__name__}"
+            message = f"Unable to find field: {class_key}.{field} in: {cls.__name__}"
             logger.warning(message)
             raise ValueError(message)
         if field not in cls.hparams_registry:
-            message = f"Unable to find field: {field} in: {cls.__name__} registry. \n"
+            message = f"Unable to find field: {class_key}.{field} in: {cls.__name__} registry. \n"
             message += "Is it a choose one or list Hparam?"
             logger.warning(message)
             raise ValueError(message)
@@ -334,7 +334,7 @@ class Hparams(ABC):
         sub_registry = cls.hparams_registry[field]
         existing_keys = sub_registry.keys()
         if class_key in existing_keys:
-            message = f"Field: {field} already registered in: {cls.__name__} registry for class: {sub_registry[field]}. \n"
+            message = f"Field {class_key}.{field} already registered in: {cls.__name__} registry for class: {sub_registry[field]}. \n"
             message += "Make sure you register new classes with a unique name"
             logger.warning(message)
             raise ValueError(message)
