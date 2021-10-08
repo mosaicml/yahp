@@ -538,14 +538,60 @@ def _add_help(argparsers: Sequence[argparse.ArgumentParser]) -> None:
     help_argparser.parse_known_args()  # Will print help and exit if the "--help" flag is present
 
 
-def create(cls: Type[THparamsSubclass],
-           data: Optional[Dict[str, JSON]] = None,
-           f: Union[str, TextIO, pathlib.PurePath, None] = None,
-           cli_args: Optional[SequenceStr] = None) -> THparamsSubclass:
-    remaining_cli_args = list(sys.argv if cli_args is None else cli_args)
-
-    argparse_name_registry = _ArgparseNameRegistry()
+def create(
+    cls: Type[THparamsSubclass],
+    data: Optional[Dict[str, JSON]] = None,
+    f: Union[str, TextIO, pathlib.PurePath, None] = None,
+    cli_args: Union[SequenceStr, bool] = True,
+) -> THparamsSubclass:
     argparsers: List[argparse.ArgumentParser] = []
+    if cli_args is True:
+        remaining_cli_args = sys.argv
+    elif cli_args is False:
+        remaining_cli_args = []
+    else:
+        remaining_cli_args = []
+    try:
+        hparams, output_f = _get_hparams(cls=cls,
+                                         data=data,
+                                         f=f,
+                                         remaining_cli_args=remaining_cli_args,
+                                         argparsers=argparsers)
+    except _MissingRequiredFieldException as e:
+        _add_help(argparsers)
+        raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
+                         f"{', '.join(e.args)}")
+    else:
+        _add_help(argparsers)
+
+        # Only if successful, warn for extra cli arguments
+        # If there is an error, then valid cli args may not have been discovered
+        for arg in remaining_cli_args:
+            if arg == sys.argv[0]:
+                continue
+            warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
+
+        if output_f is not None:
+            if output_f == "stdout":
+                cls.dump(add_docs=False, interactive=False, output=sys.stdout)
+            elif output_f == "stderr":
+                cls.dump(add_docs=False, interactive=False, output=sys.stderr)
+            else:
+                with open(output_f, "x") as f:
+                    cls.dump(add_docs=False, interactive=False, output=f)
+            sys.exit(0)
+
+        return hparams
+
+
+def _get_hparams(
+    cls: Type[THparamsSubclass],
+    data: Optional[Dict[str, JSON]],
+    f: Union[str, TextIO, pathlib.PurePath, None],
+    remaining_cli_args: List[str],
+    argparsers: List[argparse.ArgumentParser],
+) -> Tuple[THparamsSubclass, Optional[str]]:
+    argparse_name_registry = _ArgparseNameRegistry()
 
     cm_options = _get_cm_options_from_cli(cli_args=remaining_cli_args,
                                           argparse_name_registry=argparse_name_registry,
@@ -588,35 +634,30 @@ def create(cls: Type[THparamsSubclass],
     if not isinstance(data, dict):
         raise TypeError("`data` must be a dict or None")
 
-    try:
-        hparams = _load(cls=cls,
-                        data=data,
-                        cli_args=remaining_cli_args,
-                        prefix=[],
-                        argparse_name_registry=argparse_name_registry,
-                        argparsers=argparsers)
-    except _MissingRequiredFieldException as e:
-        _add_help(argparsers)
-        raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
-                         f"{', '.join(e.args)}")
+    return _load(cls=cls,
+                 data=data,
+                 cli_args=remaining_cli_args,
+                 prefix=[],
+                 argparse_name_registry=argparse_name_registry,
+                 argparsers=argparsers), output_f
+
+
+def get_argparse(
+    cls: Type[THparamsSubclass],
+    data: Optional[Dict[str, JSON]] = None,
+    f: Union[str, TextIO, pathlib.PurePath, None] = None,
+    cli_args: Union[SequenceStr, bool] = True,
+) -> argparse.ArgumentParser:
+    argparsers: List[argparse.ArgumentParser] = []
+    if cli_args is True:
+        remaining_cli_args = sys.argv
+    elif cli_args is False:
+        remaining_cli_args = []
     else:
-        _add_help(argparsers)
-
-        # Only if successful, warn for extra cli arguments
-        # If there is an error, then valid cli args may not have been discovered
-        for arg in remaining_cli_args:
-            if arg == sys.argv[0]:
-                continue
-            warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
-
-        if output_f is not None:
-            if output_f == "stdout":
-                cls.dump(add_docs=False, interactive=False, output=sys.stdout)
-            elif output_f == "stderr":
-                cls.dump(add_docs=False, interactive=False, output=sys.stderr)
-            else:
-                with open(output_f, "x") as f:
-                    cls.dump(add_docs=False, interactive=False, output=f)
-            sys.exit(0)
-
-        return hparams
+        remaining_cli_args = []
+    try:
+        _get_hparams(cls=cls, data=data, f=f, remaining_cli_args=remaining_cli_args, argparsers=argparsers)
+    except _MissingRequiredFieldException:
+        pass
+    helpless_parent_argparse = argparse.ArgumentParser(add_help=False, parents=argparsers)
+    return helpless_parent_argparse

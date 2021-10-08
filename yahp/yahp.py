@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import logging
 import pathlib
 import textwrap
@@ -12,7 +13,7 @@ import yaml
 
 from yahp import type_helpers
 from yahp.commented_map import CMOptions, to_commented_map
-from yahp.create import create
+from yahp.create import create, get_argparse
 from yahp.objects_helpers import StringDumpYAML, YAHPException
 
 if TYPE_CHECKING:
@@ -112,9 +113,18 @@ class Hparams(ABC):
         cls: Type[THparamsSubclass],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
-        cli_args: Optional[List[str]] = None,
+        cli_args: Union[SequenceStr, bool] = True,
     ) -> THparamsSubclass:
         return create(cls, data=data, f=f, cli_args=cli_args)
+
+    @classmethod
+    def get_argparse(
+        cls: Type[THparamsSubclass],
+        f: Union[str, None, TextIO, pathlib.PurePath] = None,
+        data: Optional[Dict[str, JSON]] = None,
+        cli_args: Union[SequenceStr, bool] = True,
+    ) -> argparse.ArgumentParser:
+        return get_argparse(cls, data=data, f=f, cli_args=cli_args)
 
     def to_yaml(self, **yaml_args: Any) -> str:
         """
@@ -130,7 +140,7 @@ class Hparams(ABC):
         res: Dict[str, JSON] = dict()
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
-            if f.init:
+            if not f.init:
                 continue
             ftype = type_helpers.HparamsType(field_types[f.name])
             attr = getattr(self, f.name)
@@ -252,7 +262,7 @@ class Hparams(ABC):
     def validate(self):
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
-            if f.init:
+            if not f.init:
                 continue
             ftype = type_helpers.HparamsType(field_types[f.name])
             if ftype.is_json_dict:
