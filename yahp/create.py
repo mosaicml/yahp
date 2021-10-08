@@ -604,9 +604,9 @@ def create(cls: Type[THparamsSubclass],
 
         # Only if successful, warn for extra cli arguments
         # If there is an error, then valid cli args may not have been discovered
-        if cli_args is not None:
-            # cli args has been modified in-place to just the unknown arguments
-            for arg in cli_args:
-                warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
+        for arg in remaining_cli_args:
+            if arg == sys.argv[0]:
+                continue
+            warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
 
         return hparams
