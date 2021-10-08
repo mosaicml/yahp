@@ -26,13 +26,6 @@ reportPrivateImportUsage = "warning"
 pythonVersion = "3.8"
 pythonPlatform = "Linux"
 
-# Coverage
-[tool.coverage.run]
-parallel = true
-source = [
-    "yahp"
-]
-
 # Yapf
 [tool.yapf]
 # Align closing bracket with visual indentation.
