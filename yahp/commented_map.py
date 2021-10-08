@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING, fields
 from enum import Enum
-from typing import TYPE_CHECKING, NamedTuple, Type, get_type_hints
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Type, get_type_hints
 
 import yahp as hp
 from yahp.interactive import query_with_options
@@ -10,7 +10,7 @@ from yahp.type_helpers import HparamsType, get_default_value, is_field_required,
 from yahp.utils import ensure_tuple
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, HparamsField, SequenceStr
+    from yahp.types import JSON, HparamsField
 
 try:
     from ruamel_yaml import YAML  # type: ignore
@@ -32,11 +32,11 @@ def _to_json_primitive(val: HparamsField) -> JSON:
 
 
 def _add_commenting(
-        cm: CommentedMap,
-        comment_key: str,
-        eol_comment: str,
-        typing_column: int,
-        choices: SequenceStr = tuple(),
+    cm: CommentedMap,
+    comment_key: str,
+    eol_comment: str,
+    typing_column: int,
+    choices: Optional[List[str]] = None,
 ) -> None:
     if choices:
         eol_comment = f"{eol_comment} Options: {', '.join(choices)}."
@@ -53,7 +53,21 @@ class CMOptions(NamedTuple):
     interactive: bool
 
 
-def _process_registry_entry(hparams: Type[hp.Hparams], path_with_fname: SequenceStr, is_list: bool, options: CMOptions):
+def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[str], is_list: bool, options: CMOptions):
+    """Generate a template for an abstract :class:`~yahp.Hparams`.
+
+    If in interactive mode (as specified in :param options:), then a CLI prompt is used to determine which
+    concrete subclass should be enumerated. Otherwise, all are dumped.
+
+    Args:
+        hparams (Type[hp.Hparams]): The parent of the abstract :class:`~yahp.Hparams` object.
+        path_with_fname (List[str]): The path from the root :class:`~yahp.Hparams` to the abstract field.
+        is_list (bool): Whether the abstract field is a list.
+        options (CMOptions): CMOptions from :meth:`to_commented_map`.
+
+    Returns:
+        The generated template for the field, as a :class:`CommentedSeq` if :param is_list:, otherwise, a `CommentedMap`
+    """
     field_name = path_with_fname[-1]
     possible_sub_hparams = hparams.hparams_registry[field_name]
     possible_keys = list(possible_sub_hparams.keys())
@@ -114,9 +128,23 @@ def _process_registry_entry(hparams: Type[hp.Hparams], path_with_fname: Sequence
 def to_commented_map(
         cls: Type[hp.Hparams],
         options: CMOptions,
-        path: SequenceStr = tuple(),
+        path: List[str] = tuple(),
 ) -> YAML:
-    # TODO accept existing fields to create a new template from an existing one
+    """Converts a Hparams class into a CommentedMap YAML template.
+
+    .. note::
+        This function should not be called directly. Instead, use :meth:`hp.Hparams.dump` or
+        :meth:`hp.Hparams.dumps`.
+
+    Args:
+        cls (Type[hp.Hparams]): The class to geneate into a template
+        options (CMOptions): Options for genearting the CommentedMap
+        path (List[str], optional): [description]. Defaults to tuple().
+
+    Returns:
+        YAML: [description]
+    """
+    # TODO(averlamp) accept existing fields to create a new template from an existing one
     output = CommentedMap()
     field_types = get_type_hints(cls)
     for f in fields(cls):
@@ -172,7 +200,7 @@ def to_commented_map(
             if default is None:
                 output[f.name] = None
             elif default == MISSING:
-                output[f.name] = _process_registry_entry(cls, path_with_fname, ftype.is_list, options)
+                output[f.name] = _process_abstract_hparams(cls, path_with_fname, ftype.is_list, options)
             else:
                 if ftype.is_list:
                     output[f.name] = [{inverted_hparams[type(x)]: x.to_dict()} for x in ensure_tuple(default)]

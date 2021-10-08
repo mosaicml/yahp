@@ -34,6 +34,9 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
+    entry_points={
+        'console_scripts': ['yahp-inherits = yahp.inheritance:main',],
+    },
     install_requires=install_requires,
     extras_require=extra_deps,
     python_requires='>=3.8',

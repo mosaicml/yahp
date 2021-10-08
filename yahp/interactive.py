@@ -76,6 +76,17 @@ def query_with_options(
     default_response: Optional[str],
     multiple_ok: bool,
 ) -> Union[str, List[str]]:
+    """Interactively queries the user to select from a list of options.
+
+    Args:
+        name (str): Prompt for the user.
+        options (List[str]): List of options.
+        default_response (Optional[str]): Default response, should the user return without selecting anything. Set to `None` to require a response.
+        multiple_ok (bool): Whether the user can specify multiple options via a comma-seperated response.
+
+    Returns:
+        The response, or if :param multiple_ok: is True, a list of responses.
+    """
     default_response_pren = f" [{default_response}]" if default_response is not None else ""
     while True:
         try:

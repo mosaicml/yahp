@@ -174,7 +174,7 @@ class HparamsType:
                     except (TypeError, ValueError):
                         pass
 
-            raise TypeError(f"Unable to convert value {val} to type {self}")
+            raise TypeError(f"Unable to convert value {val} for field {field_name} to type {self}")
         raise RuntimeError("Unknown type")
 
     @property

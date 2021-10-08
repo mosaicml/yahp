@@ -4,6 +4,7 @@ import argparse
 import logging
 import pathlib
 import textwrap
+import warnings
 from abc import ABC
 from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
 from enum import Enum
@@ -17,7 +18,7 @@ from yahp.commented_map import CMOptions, to_commented_map
 from yahp.create import create, get_argparse
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, SequenceStr, THparams
+    from yahp.types import JSON, THparams
 
 # This is for ruamel.yaml not importing properly in conda
 try:
@@ -115,7 +116,7 @@ class Hparams(ABC):
 
     @classmethod
     def validate_keys(cls,
-                      keys: SequenceStr,
+                      keys: List[str],
                       *,
                       allow_missing_keys: bool = False,
                       allow_extra_keys: bool = False) -> None:
@@ -150,7 +151,7 @@ class Hparams(ABC):
         cls: Type[THparams],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
-        cli_args: Union[SequenceStr, bool] = True,
+        cli_args: Union[List[str], bool] = True,
     ) -> THparams:
         """Create a instance of :class:`Hparams`.
 
@@ -160,12 +161,12 @@ class Hparams(ABC):
                 Cannot be specified with :param data:.
             data (Optional[Dict[str, JSON]], optional): If specified, uses this dictionary for instantiating
                 the :class:`Hparams`. Cannot be specified with :param f:.
-            cli_args (Union[SequenceStr, bool], optional): CLI argument overrides.
+            cli_args (Union[List[str], bool], optional): CLI argument overrides.
                 If `true` (the default), load CLI arguments from `sys.argv`.
                 If `false`, then do not use any CLI arguments.
 
         Returns:
-            THparams: [description]
+            THparams: An instance of :class:`Hparams`.
         """
         return create(cls, data=data, f=f, cli_args=cli_args)
 
@@ -174,7 +175,7 @@ class Hparams(ABC):
         cls: Type[THparams],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
-        cli_args: Union[SequenceStr, bool] = True,
+        cli_args: Union[List[str], bool] = True,
     ) -> argparse.ArgumentParser:
         return get_argparse(cls, data=data, f=f, cli_args=cli_args)
 
@@ -380,7 +381,7 @@ class Hparams(ABC):
                         if not is_allowed:
                             raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x)}")
                         continue
-                    raise RuntimeError("Exhausted all types")
+                    warnings.warn(f"{ftype} cannot be validated. This is a bug in YAHP. Please submit a bug report.")
                 continue
             # is hparams
             if ftype.is_list:
@@ -394,7 +395,7 @@ class Hparams(ABC):
                 x.validate()
 
     def __str__(self) -> str:
-        yaml_str = self.to_yaml()
+        yaml_str = self.to_yaml().strip()
         yaml_str = textwrap.indent(yaml_str, "  ")
         output = f"{self.__class__.__name__}:\n{yaml_str}"
         return output

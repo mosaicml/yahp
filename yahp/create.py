@@ -23,7 +23,7 @@ from yahp.type_helpers import HparamsType, get_default_value, is_field_required,
 from yahp.utils import extract_only_item_from_dict
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, HparamsField, SequenceStr, THparams
+    from yahp.types import JSON, HparamsField, THparams
 
 
 def _emit_should_be_list_warning(arg_name: str):
@@ -34,20 +34,38 @@ logger = logging.getLogger(__name__)
 
 
 class _ArgparseNameRegistry:
+    """_ArgparseNameRegistry tracks which names have already been used as argparse names to ensure no duplciates.
+    """
 
     def __init__(self) -> None:
         self._names: Set[str] = set()
 
     def add(self, *names: str) -> None:
+        """Add a name to the registry .
+
+        Raises:
+            ValueError: Raised if a `name` in :param names: is already in the registry.
+        """
         for name in names:
             if name in self._names:
                 raise ValueError(f"{name} is already in the registry")
             self._names.add(name)
 
-    def reserve_shortnames(self, *args: ParserArgument):
+    def reserve_shortnames(self, *args: _ParserArgument):
+        """Reserve short names for argparse
+
+        The order of :param args: is ignored. Short names are assigned deterministically, dependent
+        on only the current state of the registry and the set of :class:`_ParserArgument`s in the function call.         
+        
+        Args:
+            args (_ParserArgument): :class:`_ParserArgument`s to assign short names
+
+        """
         # sort args so short names get added deterministically
         sorted_args = sorted(args, key=lambda arg: arg.full_name)
         for arg in sorted_args:
+            if arg.short_name is not None:
+                raise ValueError(f"{arg.full_name} already has short name {arg.short_name}")
             for shortness_index in range(len(arg.full_name.split(".")) - 1):
                 short_name = arg.get_possible_short_name(index=shortness_index)
                 if short_name not in self:
@@ -132,14 +150,16 @@ class _MissingRequiredFieldException(ValueError):
 
 
 @dataclass
-class ParserArgument:
+class _ParserArgument:
+    """_ParserArgument represents an argument to add to Argparse.
+    """
     # if arg_type is None, then it should not have any entry in the argparse.
     # useful to represent its children
     argparse_name_registry: InitVar[_ArgparseNameRegistry]
     full_name: str
     helptext: str
     nargs: Optional[str]
-    choices: Optional[SequenceStr] = None
+    choices: Optional[List[str]] = None
     short_name: Optional[str] = None
 
     def __post_init__(self, argparse_name_registry: _ArgparseNameRegistry) -> None:
@@ -166,7 +186,7 @@ class ParserArgument:
             nargs=self.nargs,  # type: ignore
             # using a sentinel to distinguish between a missing value and a default value that could have been overridden in yaml
             default=MISSING,
-            type=cli_to_json,
+            type=cli_parse,
             dest=self.full_name,
             const=True if self.nargs == "?" else None,
             help=self.helptext,
@@ -174,7 +194,15 @@ class ParserArgument:
         )
 
 
-def cli_to_json(val: Union[str, _MISSING_TYPE]) -> Union[str, bool, float, None, _MISSING_TYPE]:
+def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
+    """Parse CLI input. This function is called internally by :module:`argparse`.
+
+    Args:
+        val: Argparse input.
+
+    Returns:
+        Union[str, None, _MISSING_TYPE]: Parsed value
+    """
     if val == MISSING:
         return val
     assert not isinstance(val, _MISSING_TYPE)
@@ -185,21 +213,22 @@ def cli_to_json(val: Union[str, _MISSING_TYPE]) -> Union[str, bool, float, None,
 
 def _retrieve_args(
     cls: Type[hp.Hparams],
-    prefix: SequenceStr,
+    prefix: List[str],
     argparse_name_registry: _ArgparseNameRegistry,
-) -> Sequence[ParserArgument]:
-    """get_argparse_group returns a argparse ArgumentGroup representing the arguments for a hp.Hparams
-    It does not recurse.
+) -> Sequence[_ParserArgument]:
+    """_retrieve_args retrieves the args in :param cls:. It does not recurse.
 
     Args:
         cls (Type[hp.Hparams]): The Hparams class
-        prefix (List[str]): The path containing the keys from the top-level :class:`hp.Hparams` to :arg:`cls`
-        parent_group (argparse._ActionsContainer): The :class:`argparse._ActionsContainer` to add a :class:`argparse._ArgumentGroup` for the :arg:`cls`
+        prefix (List[str]): The path containing the keys from the top-level :class:`~yahp.Hparams` to :arg:`cls`
+        parent_group (argparse._ActionsContainer): The :class:`argparse._ActionsContainer` to add a
+            :class:`argparse._ArgumentGroup` for the :arg:`cls`
     Returns:
-        A sequence of :class:`ParserArgument` for this class. This is not computed recursively, to allow for lazily loading cli arguments.
+        A sequence of :class:`_ParserArgument` for this class. This is not computed recursively,
+            to allow for lazily loading cli arguments.
     """
     field_types = get_type_hints(cls)
-    ans: List[ParserArgument] = []
+    ans: List[_ParserArgument] = []
     for f in fields(cls):
         if not f.init:
             continue
@@ -245,7 +274,7 @@ def _retrieve_args(
                 choices.append("none")
 
             ans.append(
-                ParserArgument(
+                _ParserArgument(
                     argparse_name_registry=argparse_name_registry,
                     full_name=full_name,
                     nargs=nargs,
@@ -263,7 +292,7 @@ def _retrieve_args(
                 elif ftype.is_optional:
                     # add a field to argparse that can be set to none to override the yaml (or default)
                     ans.append(
-                        ParserArgument(
+                        _ParserArgument(
                             argparse_name_registry=argparse_name_registry,
                             full_name=full_name,
                             nargs=nargs,
@@ -278,7 +307,7 @@ def _retrieve_args(
                     nargs = "+" if required else "*"
                     required = False
                 ans.append(
-                    ParserArgument(
+                    _ParserArgument(
                         argparse_name_registry=argparse_name_registry,
                         full_name=full_name,
                         nargs=nargs,
@@ -288,8 +317,23 @@ def _retrieve_args(
     return ans
 
 
-def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List[str]], prefix: SequenceStr,
-          argparse_name_registry: _ArgparseNameRegistry, argparsers: List[argparse.ArgumentParser]) -> THparams:
+def _create(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List[str]], prefix: List[str],
+            argparse_name_registry: _ArgparseNameRegistry, argparsers: List[argparse.ArgumentParser]) -> THparams:
+    """Helper method to recursively create an instance of :param cls:. It should not be called directly
+
+    Args:
+        cls (Type[THparams]): A :class:`~yahp.Hparams` to create.
+        data (Dict[str, JSON]): A JSON dictionary of values to use to initialize :param cls:.
+        cli_args (Optional[List[str]]): A list of cli args. This list is modified in-place, and all used arguments
+            are removed from the list.
+        prefix (List[str]): The prefix for the :param cli_args: that should be used to instantiate this class.
+        argparse_name_registry (_ArgparseNameRegistry): A registry to track CLI argument names
+        argparsers (List[argparse.ArgumentParser]): A list of :class:`~argparse.ArgumentParser`s,
+            which is extended in-place.
+
+    Returns:
+        THparams: An instance of :param cls:
+    """
     if cli_args is None:
         parsed_arg_dict = {}
     else:
@@ -346,12 +390,12 @@ def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List
                                 sub_yaml = {}
                             if not isinstance(sub_yaml, dict):
                                 raise ValueError(f"{full_name} must be a dict in the yaml")
-                            kwargs[f.name] = _load(cls=ftype.type,
-                                                   data=sub_yaml,
-                                                   prefix=prefix_with_fname,
-                                                   cli_args=cli_args,
-                                                   argparse_name_registry=argparse_name_registry,
-                                                   argparsers=argparsers)
+                            kwargs[f.name] = _create(cls=ftype.type,
+                                                     data=sub_yaml,
+                                                     prefix=prefix_with_fname,
+                                                     cli_args=cli_args,
+                                                     argparse_name_registry=argparse_name_registry,
+                                                     argparsers=argparsers)
                     else:
                         # list of concrete hparams
                         # potentially none
@@ -376,7 +420,7 @@ def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
                                     raise TypeError(f"{full_name} must be a dict in the yaml")
-                                sub_hparams = _load(
+                                sub_hparams = _create(
                                     cls=ftype.type,
                                     prefix=prefix_with_fname + [str(i)],
                                     data=sub_yaml_item,
@@ -429,12 +473,12 @@ def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List
                                 raise ValueError(
                                     f"Field {'.'.join(prefix_with_fname + [key])} must be a dict if specified in the yaml"
                                 )
-                            kwargs[f.name] = _load(cls=cls.hparams_registry[f.name][key],
-                                                   prefix=prefix_with_fname + [key],
-                                                   data=yaml_val,
-                                                   cli_args=cli_args,
-                                                   argparse_name_registry=argparse_name_registry,
-                                                   argparsers=argparsers)
+                            kwargs[f.name] = _create(cls=cls.hparams_registry[f.name][key],
+                                                     prefix=prefix_with_fname + [key],
+                                                     data=yaml_val,
+                                                     cli_args=cli_args,
+                                                     argparse_name_registry=argparse_name_registry,
+                                                     argparsers=argparsers)
                     else:
                         # list of abstract hparams
                         # potentially none
@@ -504,12 +548,12 @@ def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List
                                     raise ValueError(
                                         f"Field {'.'.join(prefix_with_fname + [key])} must be a dict if specified in the yaml"
                                     )
-                                sub_hparams = _load(cls=cls.hparams_registry[f.name][key],
-                                                    prefix=prefix_with_fname + [key],
-                                                    data=key_yaml,
-                                                    cli_args=cli_args,
-                                                    argparse_name_registry=argparse_name_registry,
-                                                    argparsers=argparsers)
+                                sub_hparams = _create(cls=cls.hparams_registry[f.name][key],
+                                                      prefix=prefix_with_fname + [key],
+                                                      data=key_yaml,
+                                                      cli_args=cli_args,
+                                                      argparse_name_registry=argparse_name_registry,
+                                                      argparsers=argparsers)
                                 sub_hparams_list.append(sub_hparams)
                             kwargs[f.name] = sub_hparams_list
         except _MissingRequiredFieldException as e:
@@ -534,11 +578,17 @@ def _load(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List
 
 
 def _add_help(argparsers: Sequence[argparse.ArgumentParser]) -> None:
+    """Add an :class:`~argparse.ArgumentParser` that adds help.
+
+    Args:
+        argparsers (Sequence[argparse.ArgumentParser]): List of :class:`~argparse.ArgumentParser`s
+            to extend.
+    """
     help_argparser = argparse.ArgumentParser(parents=argparsers)
     help_argparser.parse_known_args()  # Will print help and exit if the "--help" flag is present
 
 
-def _get_remaining_cli_args(cli_args: Union[SequenceStr, bool]) -> List[str]:
+def _get_remaining_cli_args(cli_args: Union[List[str], bool]) -> List[str]:
     if cli_args is True:
         return sys.argv[1:]  # remove the program name
     if cli_args is False:
@@ -550,8 +600,23 @@ def create(
     cls: Type[THparams],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
-    cli_args: Union[SequenceStr, bool] = True,
+    cli_args: Union[List[str], bool] = True,
 ) -> THparams:
+    """Create a instance of :class:`~yahp.Hparams`.
+
+    Args:
+        f (Union[str, None, TextIO, pathlib.PurePath], optional):
+            If specified, load values from a YAML file. Can be either a filepath or file-like object.
+            Cannot be specified with :param data:.
+        data (Optional[Dict[str, JSON]], optional): If specified, uses this dictionary for instantiating
+            the :class:`~yahp.Hparams`. Cannot be specified with :param f:.
+        cli_args (Union[List[str], bool], optional): CLI argument overrides.
+            If `true` (the default), load CLI arguments from `sys.argv`.
+            If `false`, then do not use any CLI arguments.
+
+    Returns:
+        THparams: An instance of :class:`~yahp.Hparams`.
+    """
     argparsers: List[argparse.ArgumentParser] = []
     remaining_cli_args = _get_remaining_cli_args(cli_args)
     try:
@@ -635,20 +700,35 @@ def _get_hparams(
     if not isinstance(data, dict):
         raise TypeError("`data` must be a dict or None")
 
-    return _load(cls=cls,
-                 data=data,
-                 cli_args=remaining_cli_args,
-                 prefix=[],
-                 argparse_name_registry=argparse_name_registry,
-                 argparsers=argparsers), output_f
+    return _create(cls=cls,
+                   data=data,
+                   cli_args=remaining_cli_args,
+                   prefix=[],
+                   argparse_name_registry=argparse_name_registry,
+                   argparsers=argparsers), output_f
 
 
 def get_argparse(
     cls: Type[THparams],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
-    cli_args: Union[SequenceStr, bool] = True,
+    cli_args: Union[List[str], bool] = True,
 ) -> argparse.ArgumentParser:
+    """Get an :class:`~argparse.ArgumentParser` containing all CLI arguments.
+
+    Args:
+        f (Union[str, None, TextIO, pathlib.PurePath], optional):
+            If specified, load values from a YAML file. Can be either a filepath or file-like object.
+            Cannot be specified with :param data:.
+        data (Optional[Dict[str, JSON]], optional): If specified, uses this dictionary for instantiating
+            the :class:`~yahp.Hparams`. Cannot be specified with :param f:.
+        cli_args (Union[List[str], bool], optional): CLI argument overrides.
+            If `true` (the default), load CLI arguments from `sys.argv`.
+            If `false`, then do not use any CLI arguments.
+
+    Returns:
+        argparse.ArgumentParser: An argparser with all CLI arguments, but without any help.
+    """
     argparsers: List[argparse.ArgumentParser] = []
 
     remaining_cli_args = _get_remaining_cli_args(cli_args)
