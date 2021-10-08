@@ -1,8 +1,3 @@
-# pyright: strict
-# pyright: reportPrivateUsage=none
-# pyright: reportUnnecessaryIsInstance=none
-# pyright: reportUnnecessaryComparison=none
-
 from __future__ import annotations
 
 import argparse

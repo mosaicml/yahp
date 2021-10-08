@@ -6,7 +6,7 @@ import pathlib
 import textwrap
 import warnings
 from abc import ABC
-from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
+from dataclasses import _MISSING_TYPE, MISSING, Field, dataclass, field, fields
 from enum import Enum
 from io import StringIO
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, Union, cast, get_type_hints
@@ -29,7 +29,7 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 
-def required(doc: str, template_default: Any = MISSING):
+def required(doc: str, template_default: Any = MISSING) -> Field[Any]:
     """
     A required field for a :class:`yahp.yahp.Hparams`.
 
@@ -47,7 +47,9 @@ def required(doc: str, template_default: Any = MISSING):
     },)
 
 
-def optional(doc: str, default: Any = MISSING, default_factory: Union[_MISSING_TYPE, Callable[[], Any]] = MISSING):
+def optional(doc: str,
+             default: Any = MISSING,
+             default_factory: Union[_MISSING_TYPE, Callable[[], Any]] = MISSING) -> Field[Any]:
     """
     An optional field for a :class:`yahp.yahp.Hparams`. A default value can be optionally specified.
     If the default value is immutable, specify it via :param default:.

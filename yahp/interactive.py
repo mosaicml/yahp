@@ -107,7 +107,7 @@ def query_with_options(
                 return [default_response] if multiple_ok else default_response
             if multiple_ok:
                 responses = response.split(",")
-                ans = []
+                ans: List[str] = []
                 for x in responses:
                     ans.append(_parse_response(x, options))
                 return ans

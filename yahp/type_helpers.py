@@ -1,10 +1,13 @@
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Dict, Sequence, Tuple, Type, Union, cast, get_args, get_origin
 
 import yahp as hp
 from yahp.utils import ensure_tuple
+
+if TYPE_CHECKING:
+    from yahp.types import JSON
 
 
 class _JSONDict:  # sentential for representing JSON dictionary types
@@ -14,7 +17,7 @@ class _JSONDict:  # sentential for representing JSON dictionary types
 _PRIMITIVE_TYPES = (bool, int, float, str)
 
 
-def safe_issubclass(item, class_or_tuple) -> bool:
+def safe_issubclass(item: Any, class_or_tuple: Union[Type[Any], Tuple[Type[Any], ...]]) -> bool:
     return isinstance(item, type) and issubclass(item, class_or_tuple)
 
 
@@ -147,7 +150,7 @@ class HparamsType:
                     for (i, x) in enumerate(ensure_tuple(val))
                 ]
             elif isinstance(val, (tuple, list)):
-                raise TypeError(f"{field_name} is a {type(val)}, but wrap_singletons is false")
+                raise TypeError(f"{field_name} is a list, but wrap_singletons is false")
         if self.is_enum:
             # could be a list of enums too
             enum_map = {k.name.lower(): k for k in self.type}
@@ -163,7 +166,7 @@ class HparamsType:
                 val = json.loads(val)
             if not isinstance(val, dict):
                 raise TypeError(f"{field_name} is not a dictionary")
-            return val
+            return cast(Dict[str, JSON], val)
         if self.is_primitive:
             # could be a list of primitives
             for t in (bool, float, int, str):
@@ -226,11 +229,11 @@ class HparamsType:
         return ans
 
 
-def is_field_required(f: Field) -> bool:
+def is_field_required(f: Field[Any]) -> bool:
     return get_default_value(f) == MISSING
 
 
-def get_default_value(f: Field) -> Any:
+def get_default_value(f: Field[Any]) -> Any:
     if f.default != MISSING:
         return f.default
     if f.default_factory != MISSING:
@@ -248,7 +251,7 @@ def to_bool(x: Any):
     raise ValueError(f"Could not parse {x} as bool")
 
 
-def is_none_like(x: Any, *, allow_list: bool):
+def is_none_like(x: Any, *, allow_list: bool) -> bool:
     if x is None:
         return True
     if isinstance(x, str) and x.lower() in ["", "none"]:
