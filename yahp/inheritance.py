@@ -1,13 +1,16 @@
 # pyright: strict
 
+from __future__ import annotations
+
 import argparse
 import collections.abc
 import os
-from typing import Dict, List, Sequence, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Union, cast
 
 import yaml
 
-from yahp.types import JSON
+if TYPE_CHECKING:
+    from yahp.types import JSON
 
 
 def _get_inherits_paths(

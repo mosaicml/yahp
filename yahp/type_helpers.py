@@ -128,20 +128,24 @@ class HparamsType:
     def is_json_dict(self) -> bool:
         return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
 
-    def convert(self, val: Any, field_name: str) -> Any:
+    def convert(self, val: Any, field_name: str, *, wrap_singletons: bool = True) -> Any:
         # converts a value to the type specified by hparams
         # val can ether be a JSON or python representation for the value
-        # Can be either a singleton or a list
+        # If a singleton is given to a list, it will be converted to a list
         if self.is_optional:
             if is_none_like(val, allow_list=self.is_list):
                 return None
         if not self.is_optional and val is None:
             raise YAHPException(f"{field_name} is None, but a value is required.")
-        if isinstance(val, (tuple, list)):
-            if not self.is_list:
-                raise TypeError(f"{field_name} is a list, but {self} is not a list")
+        if self.is_list:
             # If given a list, then return a list of converted values
-            return [self.convert(x, f"{field_name}[{i}]") for (i, x) in enumerate(ensure_tuple(val))]
+            if wrap_singletons:
+                return [
+                    self.convert(x, f"{field_name}[{i}]", wrap_singletons=False)
+                    for (i, x) in enumerate(ensure_tuple(val))
+                ]
+            elif isinstance(val, (tuple, list)):
+                raise TypeError(f"{field_name} is a {type(val)}, but wrap_singletons is false")
         if self.is_enum:
             # could be a list of enums too
             enum_map = {k.name.lower(): k for k in self.type}
