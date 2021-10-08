@@ -126,9 +126,9 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
 
 
 def to_commented_map(
-        cls: Type[hp.Hparams],
-        options: CMOptions,
-        path: List[str] = tuple(),
+    cls: Type[hp.Hparams],
+    options: CMOptions,
+    path: List[str],
 ) -> YAML:
     """Converts a Hparams class into a CommentedMap YAML template.
 
@@ -139,10 +139,10 @@ def to_commented_map(
     Args:
         cls (Type[hp.Hparams]): The class to geneate into a template
         options (CMOptions): Options for genearting the CommentedMap
-        path (List[str], optional): [description]. Defaults to tuple().
+        path (List[str]): Path to :param cls: from the root.
 
     Returns:
-        YAML: [description]
+        YAML: YAML template for :param cls:
     """
     # TODO(averlamp) accept existing fields to create a new template from an existing one
     output = CommentedMap()

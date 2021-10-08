@@ -3,13 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Sequence, Tuple, Type, Union, cast, get_args, get_origin
+from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
 
 import yahp as hp
 from yahp.utils import ensure_tuple
-
-if TYPE_CHECKING:
-    from yahp.types import JSON
 
 
 class _JSONDict:  # sentential for representing JSON dictionary types
@@ -168,7 +165,7 @@ class HparamsType:
                 val = json.loads(val)
             if not isinstance(val, dict):
                 raise TypeError(f"{field_name} is not a dictionary")
-            return cast(Dict[str, JSON], val)
+            return val
         if self.is_primitive:
             # could be a list of primitives
             for t in (bool, float, int, str):
