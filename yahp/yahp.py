@@ -29,7 +29,17 @@ logger = logging.getLogger(__name__)
 
 
 def required(doc: str, template_default: Any = MISSING):
-    """A required field for a dataclass, including documentation."""
+    """
+    A required field for a :class:`yahp.yahp.Hparams`.
+
+    Args:
+        doc (str): A description for the field. This description is included in :module:`argparse` help
+            and the generated yaml template.
+        template_default (Any, optional): Optional default to use when generating a template.
+
+    Returns:
+        A :class:`dataclasses.field`
+    """
     return field(metadata={
         'doc': doc,
         'template_default': template_default,
@@ -37,7 +47,21 @@ def required(doc: str, template_default: Any = MISSING):
 
 
 def optional(doc: str, default: Any = MISSING, default_factory: Union[_MISSING_TYPE, Callable[[], Any]] = MISSING):
-    """An optional field for a dataclass, including a default value and documentation."""
+    """
+    An optional field for a :class:`yahp.yahp.Hparams`. A default value can be optionally specified.
+    If the default value is immutable, specify it via :param default:.
+    Otherwise, specify a function that returns a new instance of the default value via :param default_factory:
+    :param default: and :param default_factory: cannot both be specified.
+
+    Args:
+        doc (str): [desc
+        default (Any, optional): Default value for the field. Cannot be specified with :param default_factory:.
+        default_factory (Callable[[], Any]], optional):
+            A function that returns a default value for the field. Cannot be specified with :default:.
+
+    Returns:
+        A :class:`dataclasses.field`
+    """
     return field(  # type: ignore
         metadata={
             'doc': doc,
@@ -95,6 +119,19 @@ class Hparams(ABC):
                       *,
                       allow_missing_keys: bool = False,
                       allow_extra_keys: bool = False) -> None:
+        """
+        Validates that :param keys: matches the fields of the :class:`Hparams`.
+
+        Args:
+            keys (List[str]): Keys to validate.
+            allow_missing_keys (bool, optional): Whether to ignore fields that do not have default values
+                and are also not specified in :param keys:. Defaults to False.
+            allow_extra_keys (bool, optional): Whether to allow extra members of :param keys:
+                that are not present in the :class:`Hparams`. Defaults to False.
+
+        Raises:
+            YAHPException: Raised if there are missing or extra keys.
+        """
         keys_in_yaml = set(keys)
         keys_in_class = set([f.name for f in fields(cls) if f.init])
         required_keys_in_class = set(f.name for f in fields(cls) if f.init and type_helpers.is_field_required(f))
@@ -115,6 +152,21 @@ class Hparams(ABC):
         data: Optional[Dict[str, JSON]] = None,
         cli_args: Union[SequenceStr, bool] = True,
     ) -> THparamsSubclass:
+        """Create a instance of :class:`Hparams`.
+
+        Args:
+            f (Union[str, None, TextIO, pathlib.PurePath], optional):
+                If specified, load values from a YAML file. Can be either a filepath or file-like object.
+                Cannot be specified with :param data:.
+            data (Optional[Dict[str, JSON]], optional): If specified, uses this dictionary for instantiating
+                the :class:`Hparams`. Cannot be specified with :param f:.
+            cli_args (Union[SequenceStr, bool], optional): CLI argument overrides.
+                If `true` (the default), load CLI arguments from `sys.argv`.
+                If `false`, then do not use any CLI arguments.
+
+        Returns:
+            THparamsSubclass: [description]
+        """
         return create(cls, data=data, f=f, cli_args=cli_args)
 
     @classmethod
@@ -127,14 +179,19 @@ class Hparams(ABC):
         return get_argparse(cls, data=data, f=f, cli_args=cli_args)
 
     def to_yaml(self, **yaml_args: Any) -> str:
+        """Serialize the object to a YAML string.
+
+        Returns:
+            The object, as a yaml string.
         """
-        Serialize this object into a yaml string.
-        """
-        return yaml.dump(self.to_dict(), **yaml_args)  # type: ignore
+        return yaml.dump(self.to_dict(), **yaml_args)
 
     def to_dict(self) -> Dict[str, JSON]:
         """
         Convert this object into a dict.
+
+        Returns:
+            The instance, as a JSON dictionary.
         """
 
         res: Dict[str, JSON] = dict()
@@ -177,20 +234,25 @@ class Hparams(ABC):
                 # Not a hparams type
                 if isinstance(attr, list):
                     if len(attr) and isinstance(attr[0], Enum):
-                        res[f.name] = [x.value for x in attr]
+                        res[f.name] = [x.name for x in attr]
                     else:
                         res[f.name] = attr
                 else:
                     if isinstance(attr, Enum):
-                        res[f.name] = attr.value
+                        res[f.name] = attr.name
                     else:
                         res[f.name] = attr
         return res
 
     def initialize_object(self, *args: Any, **kwargs: Any) -> Any:
         """
-        Optional method to initialize an associated object (e.g. for AdamHparams, torch.util.Adam)
+        Optional method to initialize an associated object from the :class:`Hparams`.
+        This method must be implemented for each :class:`Hparams`.
+
+        Returns:
+            The initialized object.
         """
+        del args, kwargs
         raise NotImplementedError("Initializing object not supported for this Hparams. "
                                   "To enable, add initialize_object method.")
 
@@ -200,15 +262,21 @@ class Hparams(ABC):
         output: TextIO,
         add_docs: bool = True,
         typing_column: int = 45,
-        choice_option_column: int = 35,
         interactive: bool = False,
     ) -> None:
+        """Generate a YAML template for :class:`Hparams` and save the template to a file.
+
+        Args:
+            output (TextIO): Output file-like object.
+            add_docs (bool, optional): Whether to add docs (as comments) to the YAML. Defaults to True.
+            typing_column (int, optional): Column at which to add documentation. Defaults to 45.
+            interactive (bool, optional): [description]. Whether to interactively generate the template. Defaults to False.
+        """
         cm = to_commented_map(
             cls=cls,
             options=CMOptions(
                 add_docs=add_docs,
                 typing_column=typing_column,
-                choice_option_column=choice_option_column,
                 interactive=interactive,
             ),
         )
@@ -220,23 +288,42 @@ class Hparams(ABC):
         cls,
         add_docs: bool = False,
         typing_column: int = 45,
-        choice_option_column: int = 35,
         interactive: bool = False,
     ) -> str:
+        """Generate a YAML template for :class:`Hparams`, and returns the generated YAML as a string.
+
+        Args:
+            add_docs (bool, optional): Whether to add docs (as comments) to the YAML. Defaults to True.
+            typing_column (int, optional): Column at which to add documentation. Defaults to 45.
+            interactive (bool, optional): [description]. Whether to interactively generate the template.
+                Defaults to False.
+        Returns:
+            The generated YAML, as a string.
+
+        """
         cm = to_commented_map(
             cls=cls,
             options=CMOptions(
                 add_docs=add_docs,
                 typing_column=typing_column,
-                choice_option_column=choice_option_column,
                 interactive=interactive,
             ),
         )
         s = StringDumpYAML()
-        return s.dump(cm)  # type: ignore
+        return s.dump(cm)
 
     @classmethod
     def register_class(cls, field: str, register_class: Type[Hparams], class_key: str) -> None:
+        """Dynamically add additional entries into the :attr:`Hparams.hparams_registry`.
+
+        For abstract fields whose concrete classes are listed in the :attr:`Hparams.hparams_registry`,
+        this function registers additional fields in the registry.
+
+        Args:
+            field (str): The field name
+            register_class (Type[Hparams]): The additional class to register.
+            class_key (str): The identifier to specify the class in CLI args and YAML.
+        """
         class_fields = [x for x in fields(cls) if x.name == field]
         if len(class_fields) == 0:
             message = f"Unable to find field: {field} in: {cls.__name__}"
@@ -260,34 +347,57 @@ class Hparams(ABC):
         sub_registry[class_key] = register_class
 
     def validate(self):
+        """Validate that the hparams are of the correct types.
+        Recurses through sub-hparams.
+
+        Raises:
+            TypeError: Raises a :class:`TypeError` if any fields are an incorrect type.
+        """
         field_types = get_type_hints(self.__class__)
         for f in fields(self):
             if not f.init:
                 continue
+            fname = f.name
             ftype = type_helpers.HparamsType(field_types[f.name])
+            value = getattr(self, f.name)
+            if ftype.is_optional:
+                if value is None:
+                    continue
             if ftype.is_json_dict:
-                # TODO
+                if not isinstance(value, dict):
+                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value)}")
                 continue
-            if ftype.is_primitive:
-                # TODO
-                continue
-            if ftype.is_enum:
-                # TODO
-                continue
-            if ftype.is_list:
-                # TODO
-                continue
-            if ftype.is_hparams_dataclass:
-                field_value = getattr(self, f.name)
-                if isinstance(field_value, list):
-                    for item in field_value:
-                        item.validate()
+            if not ftype.is_hparams_dataclass:
+                if ftype.is_list:
+                    if not isinstance(value, list):
+                        raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value)}")
                 else:
-                    # TODO: Look into how this can be done
-                    if field_value:
-                        field_value.validate()
+                    value = [value]
+                for x in value:
+                    if ftype.is_enum:
+                        if not isinstance(x, ftype.type):
+                            raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x)}")
+                        continue
+                    if ftype.is_primitive:
+                        is_allowed = False
+                        for allowed_type in ftype.types:
+                            if isinstance(x, allowed_type):
+                                is_allowed = True
+                                break
+                        if not is_allowed:
+                            raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x)}")
+                        continue
+                    raise RuntimeError("Exhausted all types")
                 continue
-            raise ValueError(f"{self.__class__.__name__}.{f.name} has invalid type: {ftype}")
+            # is hparams
+            if ftype.is_list:
+                if not isinstance(value, list):
+                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value)}")
+            value = [value]
+            for x in value:
+                if not isinstance(x, ftype.type):
+                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value)}")
+                x.validate()
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml()

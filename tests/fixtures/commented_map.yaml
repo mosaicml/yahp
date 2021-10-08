@@ -42,10 +42,10 @@ nullable_required_subhparams_field_list:
   default_true: true                         #                 bool (Optional). Description: defaults to true.
 #   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 required_choice:
-  one:                             # ChoiceOneHparam
+  one:                                       # ChoiceOneHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
     intfield:                                #                  int (Required). Description: int field.
-  two:                             # ChoiceTwoHparam
+  two:                                       # ChoiceTwoHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
     primitive_hparam:                        #      PrimitiveHparam (Required). Description: Primitive Hparams.
       intfield:                              #                  int (Required). Description: int field.
@@ -57,14 +57,14 @@ required_choice:
       enumstringfield:
       jsonfield:                             #                 JSON (Required). Description: Required json type.
     boolfield:                               #                  int (Required). Description: int field.
-  three:                           # ChoiceThreeHparam
+  three:                                     # ChoiceThreeHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
 #   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
     choice:
-      one:                         # ChoiceOneHparam
+      one:                                   # ChoiceOneHparam
         commonfield:                         #                 bool (Required). Description: bool common field.
         intfield:                            #                  int (Required). Description: int field.
-      two:                         # ChoiceTwoHparam
+      two:                                   # ChoiceTwoHparam
         commonfield:                         #                 bool (Required). Description: bool common field.
         primitive_hparam:                    #      PrimitiveHparam (Required). Description: Primitive Hparams.
           intfield:                          #                  int (Required). Description: int field.
@@ -84,10 +84,10 @@ nullable_required_choice:
     intfield: 0
 # List[ChoiceHparamParent] (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 required_choice_list:
-- one:                             # ChoiceOneHparam
+- one:                                       # ChoiceOneHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
     intfield:                                #                  int (Required). Description: int field.
-- two:                             # ChoiceTwoHparam
+- two:                                       # ChoiceTwoHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
     primitive_hparam:                        #      PrimitiveHparam (Required). Description: Primitive Hparams.
       intfield:                              #                  int (Required). Description: int field.
@@ -99,14 +99,14 @@ required_choice_list:
       enumstringfield:
       jsonfield:                             #                 JSON (Required). Description: Required json type.
     boolfield:                               #                  int (Required). Description: int field.
-- three:                           # ChoiceThreeHparam
+- three:                                     # ChoiceThreeHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
 #   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
     choice:
-      one:                         # ChoiceOneHparam
+      one:                                   # ChoiceOneHparam
         commonfield:                         #                 bool (Required). Description: bool common field.
         intfield:                            #                  int (Required). Description: int field.
-      two:                         # ChoiceTwoHparam
+      two:                                   # ChoiceTwoHparam
         commonfield:                         #                 bool (Required). Description: bool common field.
         primitive_hparam:                    #      PrimitiveHparam (Required). Description: Primitive Hparams.
           intfield:                          #                  int (Required). Description: int field.

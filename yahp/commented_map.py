@@ -50,7 +50,6 @@ def _add_commenting(
 class CMOptions(NamedTuple):
     add_docs: bool
     typing_column: int
-    choice_option_column: int
     interactive: bool
 
 
@@ -101,21 +100,21 @@ def _process_registry_entry(hparams: Type[hp.Hparams], path_with_fname: Sequence
                 _add_commenting(sub_item,
                                 comment_key=sub_key,
                                 eol_comment=sub_type.__name__,
-                                typing_column=options.choice_option_column)
+                                typing_column=options.typing_column)
             continue
         sub_hparams[sub_key] = sub_map
         if options.add_docs:
             _add_commenting(sub_hparams,
                             comment_key=sub_key,
                             eol_comment=sub_type.__name__,
-                            typing_column=options.choice_option_column)
+                            typing_column=options.typing_column)
     return sub_hparams
 
 
 def to_commented_map(
-        cls: Type[hp.Hparams],
-        options: CMOptions,
-        path: SequenceStr = tuple(),
+    cls: Type[hp.Hparams],
+    options: CMOptions,
+    path: SequenceStr = tuple(),
 ) -> YAML:
     # TODO accept existing fields to create a new template from an existing one
     output = CommentedMap()
