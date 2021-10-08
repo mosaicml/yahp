@@ -83,7 +83,7 @@ def _get_hparams_file_from_cli(*, cli_args: List[str], argparse_name_registry: _
                         default=None,
                         dest='file',
                         required=False,
-                        help="YAML file containing hparams")
+                        help="Load data from this YAML file into the Hparams.")
     parser.add_argument(
         "-d",
         "--dump",
@@ -93,7 +93,7 @@ def _get_hparams_file_from_cli(*, cli_args: List[str], argparse_name_registry: _
         default=None,
         required=False,
         metavar="stdout",
-        help="If present, dump the merged hparams to the specified file (defaults to stdout) and exit.",
+        help="Dump the resulting Hparams to the specified YAML file (defaults to `stdout`) and exit.",
     )
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
     return parsed_args.file, parsed_args.dump
@@ -106,33 +106,28 @@ def _get_cm_options_from_cli(*, cli_args: List[str], argparse_name_registry: _Ar
 
     argparse_name_registry.add("s", "save_template", "i", "interactive", "c", "concise")
 
-    parser.add_argument(
-        "-s",
-        "--save_template",
-        type=str,
-        const="stdout",
-        nargs="?",
-        default=None,
-        required=False,
-        metavar="stdout",
-        help="If present, generate a hparams template and dump the template to the specified file (defaults to stdout)."
-    )
+    parser.add_argument("-s",
+                        "--save_template",
+                        type=str,
+                        const="stdout",
+                        nargs="?",
+                        default=None,
+                        required=False,
+                        metavar="stdout",
+                        help="Generate and dump a YAML template to the specified file (defaults to `stdout`) and exit.")
     parser.add_argument(
         "-i",
         "--interactive",
         action="store_true",
         default=False,
-        help=
-        "Whether to generate the template interactively. Otherwise, will dump everything. Only applicible if --save_template is present."
-    )
+        help="Whether to generate the template interactively. Only applicable if `--save_template` is present.")
 
     parser.add_argument(
         "-c",
         "--concise",
         action="store_true",
         default=False,
-        help="Whether to skip adding documentation to the generated YAML. Only applicible if --save_template is present."
-    )
+        help="Skip adding documentation to the generated YAML. Only applicable if `--save_template` is present.")
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
     if parsed_args.save_template is None:
         return  # don't generate a template
