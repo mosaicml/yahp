@@ -27,7 +27,7 @@ jobs:
       - name: Setup
         run: |
           set -ex
-          python -m pip install -e .
+          python -m pip install -e .[all]
       - uses: ./.github/actions/yapf
         with:
           working_directory: ${{ github.workspace }}
