@@ -12,11 +12,21 @@ install_requires = [
 extra_deps = {}
 
 extra_deps["dev"] = {
-    "junitparser>=2.1.1",
-    "coverage>=5.5",
-    "pytest>=6.2.4",
-    "yapf>=0.31.0",
-    "isort>=5.9.3",
+    'junitparser>=2.1.1',
+    'coverage[toml]>=5.5',
+    'pytest>=6.2.0',
+    'yapf>=0.13.0',
+    'isort>=5.9.3',
+    'yamllint>=1.26.2',
+    'pytest-timeout>=1.4.2',
+    'recommonmark>=0.7.1',
+    'sphinx>=4.2.0',
+    'sphinx_copybutton>=0.4.0',
+    'sphinx_markdown_tables>=0.0.15',
+    'sphinxcontrib.katex>=0.8.6',
+    'sphinxext.opengraph>=0.4.2',
+    'sphinx_rtd_theme>=1.0.0',
+    'myst-parser>=0.15.2',
 }
 
 extra_deps['all'] = set(dep for deps in extra_deps.values() for dep in deps)
