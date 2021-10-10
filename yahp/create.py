@@ -353,26 +353,25 @@ def create(
     except _MissingRequiredFieldException as e:
         _add_help(argparsers)
         raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
-                         f"{', '.join(e.args)}")
-    else:
-        _add_help(argparsers)
+                         f"{', '.join(e.args)}") from e
+    _add_help(argparsers)
 
-        # Only if successful, warn for extra cli arguments
-        # If there is an error, then valid cli args may not have been discovered
-        for arg in remaining_cli_args:
-            warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
+    # Only if successful, warn for extra cli arguments
+    # If there is an error, then valid cli args may not have been discovered
+    for arg in remaining_cli_args:
+        warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
 
-        if output_f is not None:
-            if output_f == "stdout":
-                cls.dump(add_docs=False, interactive=False, output=sys.stdout)
-            elif output_f == "stderr":
-                cls.dump(add_docs=False, interactive=False, output=sys.stderr)
-            else:
-                with open(output_f, "x") as f:
-                    cls.dump(add_docs=False, interactive=False, output=f)
-            sys.exit(0)
+    if output_f is not None:
+        if output_f == "stdout":
+            cls.dump(add_docs=False, interactive=False, output=sys.stdout)
+        elif output_f == "stderr":
+            cls.dump(add_docs=False, interactive=False, output=sys.stderr)
+        else:
+            with open(output_f, "x") as f:
+                cls.dump(add_docs=False, interactive=False, output=f)
+        sys.exit(0)
 
-        return hparams
+    return hparams
 
 
 def _get_hparams(
