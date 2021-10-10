@@ -32,8 +32,15 @@ def _emit_should_be_list_warning(arg_name: str):
 logger = logging.getLogger(__name__)
 
 
-def _create(*, cls: Type[THparams], data: Dict[str, JSON], cli_args: Optional[List[str]], prefix: List[str],
-            argparse_name_registry: ArgparseNameRegistry, argparsers: List[argparse.ArgumentParser]) -> THparams:
+def _create(
+    *,
+    cls: Type[THparams],
+    data: Dict[str, JSON],
+    cli_args: Optional[List[str]],
+    prefix: List[str],
+    argparse_name_registry: ArgparseNameRegistry,
+    argparsers: List[argparse.ArgumentParser],
+) -> THparams:
     """Helper method to recursively create an instance of :param cls:. It should not be called directly
 
     Args:
