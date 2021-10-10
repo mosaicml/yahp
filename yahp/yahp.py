@@ -6,10 +6,11 @@ import pathlib
 import textwrap
 import warnings
 from abc import ABC
-from dataclasses import _MISSING_TYPE, MISSING, dataclass, field, fields
+from dataclasses import MISSING, dataclass, field, fields
 from enum import Enum
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, Union, cast, get_type_hints
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast,
+                    get_type_hints, overload)
 
 import yaml
 
@@ -28,8 +29,20 @@ except ImportError as e:
 
 logger = logging.getLogger(__name__)
 
+TDefault = TypeVar("TDefault")
 
-def required(doc: str, template_default: Any = MISSING):
+
+@overload
+def required(doc: str) -> TDefault:
+    pass
+
+
+@overload
+def required(doc: str, template_default: TDefault) -> TDefault:
+    pass
+
+
+def required(doc: str, template_default=MISSING):
     """
     A required field for a :class:`yahp.yahp.Hparams`.
 
@@ -47,7 +60,17 @@ def required(doc: str, template_default: Any = MISSING):
     },)
 
 
-def optional(doc: str, default: Any = MISSING, default_factory: Union[_MISSING_TYPE, Callable[[], Any]] = MISSING):
+@overload
+def optional(doc: str, default: TDefault) -> TDefault:
+    pass
+
+
+@overload
+def optional(doc: str, default_factory: Callable[[], TDefault]) -> TDefault:
+    pass
+
+
+def optional(doc: str, default=MISSING, default_factory=MISSING):
     """
     An optional field for a :class:`yahp.yahp.Hparams`. A default value can be optionally specified.
     If the default value is immutable, specify it via :param default:.
@@ -57,7 +80,7 @@ def optional(doc: str, default: Any = MISSING, default_factory: Union[_MISSING_T
     Args:
         doc (str): [desc
         default (Any, optional): Default value for the field. Cannot be specified with :param default_factory:.
-        default_factory (Callable[[], Any]], optional):
+        default_factory (Any, optional):
             A function that returns a default value for the field. Cannot be specified with :default:.
 
     Returns:
