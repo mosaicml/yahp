@@ -186,37 +186,45 @@ class HparamsType:
         return self.types[0]
 
     def __str__(self) -> str:
+        ans = None
         if self.is_primitive:  # str, float, int, bool
             if len(self.types) > 1:
-                return f"One of: {', '.join(self.types)}"
-            return self.type.__name__
+                ans = f"{' | '.join(t.__name__ for t in self.types)}"
+            else:
+                ans = self.type.__name__
 
         if self.is_enum:
-            enum_values_string = ", ".join([str(x.name.lower()) for x in self.type])
-            return f"Enum: {enum_values_string}"
-
-        if self.is_list:
-            return f"List of {self.type}"
-
-        if self.is_json_dict:
-            return "JSON Dictionary"
+            enum_values_string = ", ".join([x.name for x in self.type])
+            ans = f"{self.type.__name__}{{{enum_values_string}}}"
 
         if self.is_hparams_dataclass:
-            return self.type.__name__
+            ans = self.type.__name__
 
-        if self.is_optional:
+        if self.is_json_dict:
+            ans = "JSON"
+
+        if ans is None:
+            # always None
             return "None"
 
-        raise RuntimeError("Unknown type")
+        if self.is_list:
+            ans = f"List[{ans}]"
+
+        if self.is_optional:
+            ans = f"Optional[{ans}]"
+        return ans
 
 
-def get_required_default_from_field(field: Field) -> Tuple[bool, Any]:
-    default = None
-    required = True
-    if field.default != MISSING or field.default_factory != MISSING:
-        required = False
-        default = field.metadata["default"]
-    return required, default
+def is_field_required(f: Field) -> bool:
+    return get_default_value(f) == MISSING
+
+
+def get_default_value(f: Field) -> Any:
+    if f.default != MISSING:
+        return f.default
+    if f.default_factory != MISSING:
+        return f.default_factory()
+    return MISSING
 
 
 def to_bool(x: Any):

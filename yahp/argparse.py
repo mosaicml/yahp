@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple, Type, get_type_hints
 
 import yahp as hp
 from yahp.objects_helpers import ParserArgument
-from yahp.type_helpers import HparamsType, get_required_default_from_field, safe_issubclass, to_bool
+from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass, to_bool
 from yahp.types import JSON
 
 
@@ -31,8 +31,9 @@ def _retrieve_args(
             raise Exception(f"Please fill out documentation for the field: \n{field}")
         helptext = field.metadata['doc']
 
-        required, default = get_required_default_from_field(field=field)
         type_name = str(ftype)
+        required = is_field_required(field)
+        default = get_default_value(field)
         if required:
             helptext = f'(required): <{type_name}> {helptext}'
         else:
@@ -52,7 +53,7 @@ def _retrieve_args(
                 inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[field.name].items()}
                 default = inverted_field_registry[type(default)]
 
-        parser_argument_default_kwargs["default"] = default if default is not None else MISSING
+        parser_argument_default_kwargs["default"] = default
 
         if ftype.is_list and not ftype.is_hparams_dataclass:
             parser_argument_default_kwargs["nargs"] = "+"
