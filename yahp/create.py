@@ -363,12 +363,12 @@ def create(
 
     if output_f is not None:
         if output_f == "stdout":
-            cls.dump(add_docs=False, interactive=False, output=sys.stdout)
+            print(hparams.to_yaml(), file=sys.stdout)
         elif output_f == "stderr":
-            cls.dump(add_docs=False, interactive=False, output=sys.stderr)
+            print(hparams.to_yaml(), file=sys.stderr)
         else:
             with open(output_f, "x") as f:
-                cls.dump(add_docs=False, interactive=False, output=f)
+                f.write(hparams.to_yaml())
         sys.exit(0)
 
     return hparams
