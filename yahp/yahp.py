@@ -388,6 +388,7 @@ class Hparams(ABC):
             if ftype.is_list:
                 if not isinstance(value, list):
                     raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value)}")
+                continue
             value = [value]
             for x in value:
                 if not isinstance(x, ftype.type):
