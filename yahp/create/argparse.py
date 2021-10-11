@@ -14,10 +14,6 @@ from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_req
 logger = logging.getLogger(__name__)
 
 
-class _DuplicateShortnameError(RuntimeError):
-    pass
-
-
 @dataclass(eq=False)
 class _ParserArgument:
     """_ParserArgument represents an argument to add to Argparse.
@@ -94,7 +90,7 @@ class ArgparseNameRegistry:
         """
         shortnames_list = list(self._shortnames.items())
         # sort the shortnames from longest to shortest
-        shortnames_list.sort(key=lambda x: x[0], reverse=True)
+        shortnames_list.sort(key=lambda x: len(x[0]), reverse=True)
 
         while len(shortnames_list) > 0:
             # get the shortest shortname from the tail
@@ -103,11 +99,12 @@ class ArgparseNameRegistry:
                 continue
             if len(args) == 1:
                 # it's a good shortname
-                # assign it
-                self._names.add(shortname)  # ensure it can't be used again by anything
-                arg = args.pop()
+                arg = list(args)[0]
+                if arg.short_name is not None:
+                    # arg already has a shortname
+                    continue
                 arg.short_name = shortname
-                # Don't free up other shortnames
+                self._names.add(shortname)  # ensure it can't be used again by anything
 
     def __contains__(self, x: Union[str, _ParserArgument]) -> bool:
         if isinstance(x, str):
@@ -273,7 +270,6 @@ def retrieve_args(
                 choices=choices,
                 helptext=helptext,
             )
-            argparse_name_registry.add(arg)
             ans.append(arg)
         else:
             # Split into choose one
@@ -290,7 +286,6 @@ def retrieve_args(
                         nargs=nargs,
                         helptext=helptext,
                     )
-                    argparse_name_registry.add(arg)
                     ans.append(arg)
             else:
                 # Found in registry
@@ -306,6 +301,6 @@ def retrieve_args(
                     choices=choices,
                     helptext=helptext,
                 )
-                argparse_name_registry.add(arg)
                 ans.append(arg)
+    argparse_name_registry.add(*ans)
     return ans

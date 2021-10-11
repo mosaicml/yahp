@@ -11,16 +11,14 @@ import os
 import pathlib
 import sys
 import warnings
-from dataclasses import MISSING, fields
-from typing import (TYPE_CHECKING, Dict, List, NamedTuple, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
-                    get_type_hints)
+from dataclasses import MISSING, dataclass, fields
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, get_type_hints
 
 import yaml
 
 import yahp as hp
 from yahp.create.argparse import (ArgparseNameRegistry, _ParserArgument, get_commented_map_options_from_cli,
                                   get_hparams_file_from_cli, retrieve_args)
-from yahp.hparams import Hparams
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
@@ -35,7 +33,8 @@ class _MissingRequiredFieldException(ValueError):
     pass
 
 
-class _DeferredCreateCall(NamedTuple):
+@dataclass
+class _DeferredCreateCall:
     hparams_cls: Type[hp.Hparams]
     data: Dict[str, JSON]
     prefix: List[str]
@@ -340,7 +339,7 @@ def _create(
         argparse_name_registry.assign_shortnames()
         for fname, create_calls in deferred_create_calls.items():
             # TODO parse args from
-            sub_hparams: List[Hparams] = []
+            sub_hparams: List[hp.Hparams] = []
             for create_call in ensure_tuple(create_calls):
                 prefix = create_call.prefix
                 if create_call.parser_args is None:
