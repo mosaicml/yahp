@@ -1,3 +1,7 @@
+# pyright: strict
+# pyright: reportPrivateUsage=none
+# pyright: reportUnnecessaryIsInstance=none
+
 from __future__ import annotations
 
 import argparse
@@ -6,14 +10,16 @@ import os
 import pathlib
 import sys
 import warnings
+import functools
 from dataclasses import MISSING, fields
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, get_type_hints
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, get_type_hints
 
 import yaml
 
 import yahp as hp
-from yahp.create.argparse import (ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
+from yahp.create.argparse import (_ParserArgument, ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
                                   retrieve_args)
+from yahp.hparams import Hparams
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.utils.iter_helpers import extract_only_item_from_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
@@ -34,11 +40,11 @@ def _emit_should_be_list_warning(arg_name: str):
 
 logger = logging.getLogger(__name__)
 
-
 def _create(
     *,
     cls: Type[THparams],
     data: Dict[str, JSON],
+    parsed_args: Optional[Dict[str, str]],
     cli_args: Optional[List[str]],
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
@@ -49,6 +55,8 @@ def _create(
     Args:
         data (Dict[str, JSON]):
             A JSON dictionary of values to use to initialize the class.
+        parsed_args (Dict[str, str]):
+            Parsed args for this cls
         cli_args (Optional[List[str]]):
             A list of cli args. This list is modified in-place,
             and all used arguments are removed from the list.
@@ -64,21 +72,9 @@ def _create(
     Returns:
         An instance of the class.
     """
-    if cli_args is None:
-        parsed_arg_dict = {}
-    else:
-        args = retrieve_args(cls, prefix, argparse_name_registry)
-        argparse_name_registry.reserve_shortnames(*args)
-        parser = argparse.ArgumentParser(add_help=False)
-        group = parser
-        if len(prefix):
-            group = parser.add_argument_group(title=".".join(prefix), description=cls.__name__)
-        for arg in args:
-            arg.add_to_argparse(group)
-        parsed_arg_namespace, cli_args[:] = parser.parse_known_args(cli_args)
-        parsed_arg_dict = vars(parsed_arg_namespace)
-        argparsers.append(parser)
     kwargs: Dict[str, HparamsField] = {}
+    sub_args: Dict[str, Union[Sequence[_ParserArgument], List[Sequence[_ParserArgument]]]] = {}
+    deferred_create_calls: Dict[str, Union[Callable[[], Hparams], List[Callable[[], Hparams]]]] = {}
 
     # keep track of missing required fields so we can build a nice error message
     missing_required_fields: List[str] = []
@@ -92,9 +88,9 @@ def _create(
         try:
             ftype = HparamsType(field_types[f.name])
             full_name = ".".join(prefix_with_fname)
-            if full_name in parsed_arg_dict and parsed_arg_dict[full_name] != MISSING:
+            if parsed_args is not None and full_name in parsed_args and parsed_args[full_name] != MISSING:
                 # use CLI args first
-                argparse_or_yaml_value = parsed_arg_dict[full_name]
+                argparse_or_yaml_value = parsed_args[full_name]
             elif f.name in data:
                 # then use YAML
                 argparse_or_yaml_value = data[f.name]
@@ -133,7 +129,8 @@ def _create(
                                 sub_yaml = {}
                             if not isinstance(sub_yaml, dict):
                                 raise ValueError(f"{full_name} must be a dict in the yaml")
-                            kwargs[f.name] = _create(
+                            sub_args[f.name] = retrieve_args(cls=ftype.type, prefix=prefix_with_fname, argparse_name_registry=argparse_name_registry)
+                            deferred_create_calls[f.name] = functools.partial(_create,
                                 cls=ftype.type,
                                 data=sub_yaml,
                                 prefix=prefix_with_fname,
@@ -159,13 +156,13 @@ def _create(
                                 sub_yaml = [sub_yaml]
                             if not isinstance(sub_yaml, list):
                                 raise TypeError(f"{full_name} must be a list in the yaml")
-                            hparams_list: List[hp.Hparams] = []
+                            hparams_list: List[Callable[[], hp.Hparams]] = []
                             for (i, sub_yaml_item) in enumerate(sub_yaml):
                                 if sub_yaml_item is None:
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
                                     raise TypeError(f"{full_name} must be a dict in the yaml")
-                                sub_hparams = _create(
+                                sub_hparams = functools.partial(_create,
                                     cls=ftype.type,
                                     prefix=prefix_with_fname + [str(i)],
                                     data=sub_yaml_item,
@@ -174,7 +171,7 @@ def _create(
                                     argparsers=argparsers,
                                 )
                                 hparams_list.append(sub_hparams)
-                            kwargs[f.name] = hparams_list
+                            deferred_create_calls[f.name] = hparams_list
                 else:
                     # abstract, singleton hparams
                     # list of abstract hparams
@@ -218,7 +215,8 @@ def _create(
                                 raise ValueError(
                                     f"Field {'.'.join(prefix_with_fname + [key])} must be a dict if specified in the yaml"
                                 )
-                            kwargs[f.name] = _create(
+                            sub_args[f.name] = retrieve_args(cls=cls.hparams_registry[f.name][key], prefix=prefix_with_fname + [key], argparse_name_registry=argparse_name_registry)
+                            deferred_create_calls[f.name] = functools.partial(_create,
                                 cls=cls.hparams_registry[f.name][key],
                                 prefix=prefix_with_fname + [key],
                                 data=yaml_val,
@@ -270,7 +268,6 @@ def _create(
                             if not isinstance(yaml_val, list):
                                 raise ValueError(
                                     f"Field {'.'.join(prefix_with_fname)} must be a list if specified in the yaml")
-                            sub_hparams_list: List[hp.Hparams] = []
 
                             # Convert the yaml list to a dict
                             yaml_dict: Dict[str, Dict[str, JSON]] = {}
@@ -285,6 +282,8 @@ def _create(
                                         f"Field {'.'.join(list(prefix_with_fname) + [k])} must be a dict if specified in the yaml"
                                     )
                                 yaml_dict[k] = v
+                            sub_hparams_list: List[Callable[[], hp.Hparams]] = []
+                            sub_sub_args: List[Sequence[_ParserArgument]] = []
 
                             for key in keys:
                                 # Use the order of keys
@@ -295,7 +294,7 @@ def _create(
                                     raise ValueError(
                                         f"Field {'.'.join(prefix_with_fname + [key])} must be a dict if specified in the yaml"
                                     )
-                                sub_hparams = _create(
+                                sub_hparams = functools.partial(_create,
                                     cls=cls.hparams_registry[f.name][key],
                                     prefix=prefix_with_fname + [key],
                                     data=key_yaml,
@@ -304,10 +303,31 @@ def _create(
                                     argparsers=argparsers,
                                 )
                                 sub_hparams_list.append(sub_hparams)
-                            kwargs[f.name] = sub_hparams_list
+                                sub_sub_args.append(retrieve_args(cls=cls.hparams_registry[f.name][key], prefix=prefix_with_fname + [key], argparse_name_registry=argparse_name_registry))
+                            deferred_create_calls[f.name] = sub_hparams_list
+                            sub_args[f.name] = sub_sub_args
         except _MissingRequiredFieldException as e:
             missing_required_fields.extend(e.args)
             # continue processing the other fields and gather everything together
+    
+    # for arg
+    if cli_args is None:
+        parsed_arg_dict = {}
+    else:
+        args = retrieve_args(cls, prefix, argparse_name_registry)
+        argparse_name_registry.reserve_shortnames(*args)
+        parser = argparse.ArgumentParser(add_help=False)
+        group = parser
+        if len(prefix):
+            group = parser.add_argument_group(title=".".join(prefix), description=cls.__name__)
+        for arg in args:
+            arg.add_to_argparse(group)
+        parsed_arg_namespace, cli_args[:] = parser.parse_known_args(cli_args)
+        parsed_arg_dict = vars(parsed_arg_namespace)
+        argparsers.append(parser)
+
+
+
 
     for f in fields(cls):
         if not f.init:

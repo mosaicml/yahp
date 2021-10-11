@@ -54,3 +54,6 @@ def test_get_helpless_argpars():
     assert namespace.default_false == 'true'
     with pytest.raises(SystemExit):
         parser.parse_args("--help")
+
+def test_shortnames():
+    
