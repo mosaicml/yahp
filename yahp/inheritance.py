@@ -1,13 +1,14 @@
-# pyright: strict
+from __future__ import annotations
 
 import argparse
 import collections.abc
 import os
-from typing import Dict, List, Sequence, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Union, cast
 
 import yaml
 
-from yahp.types import JSON
+if TYPE_CHECKING:
+    from yahp.types import JSON
 
 
 def _get_inherits_paths(
@@ -34,7 +35,6 @@ def _data_by_path(
     argument_path: Sequence[Union[int, str]],
 ) -> JSON:
     for key in argument_path:
-        # path_str = '.'.join(str(x) for x in argument_path)
         if isinstance(namespace, dict):
             assert isinstance(key, str)
             namespace = namespace[key]
@@ -89,7 +89,7 @@ def _recursively_update_leaf_data_items(
             new_inner = inner_namespace
 
         for key in update_argument_path[:-1]:
-            key_element: JSON = inner_namespace.get(key, None)
+            key_element: JSON = inner_namespace.get(key)
             if key_element is None or not isinstance(key_element, dict):
                 # If the nested item isn't a dict, it will need to be to store leaves
                 key_element = {}
@@ -98,7 +98,7 @@ def _recursively_update_leaf_data_items(
             inner_namespace = key_element
             new_inner = key_element
 
-        new_inner_value = new_inner.get(update_argument_path[-1], None)
+        new_inner_value = new_inner.get(update_argument_path[-1])
         if new_inner_value is None or isinstance(
                 new_inner_value,
                 _OverridenValue,
@@ -107,13 +107,41 @@ def _recursively_update_leaf_data_items(
 
 
 def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
+    """Loads a YAML file from :param yaml_path: with inheritance.
+
+    Inhertiance allows one YAML file to include data from another yaml file.
+
+    Example:
+
+    Given two yaml files -- `foo.yaml` and `bar.yaml`:
+    
+    `foo.yaml`:
+    .. code-block:: yaml
+        foo:
+            inherits: bar.yaml
+    
+    `bar.yaml`:
+    .. code-block:: yaml
+        bar: hello_world
+    
+
+    Then this function will return one Dictionary with:
+    .. code-block:: python
+        { "foo": { "bar": "hello_world" } }
+
+    Args:
+        yaml_path (str): The filepath to the yaml to load
+
+    Raises:
+        FileNotFoundError: Raised if the file is not found
+
+    Returns:
+        Dict[str, JSON]: The flattened YAML, with inheritance stripped.
+    """
     abs_path = os.path.abspath(yaml_path)
     file_directory = os.path.dirname(abs_path)
-    try:
-        with open(abs_path, 'r') as f:
-            data: JSON = yaml.full_load(f)
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Inherits path not found for {abs_path}") from e
+    with open(abs_path, 'r') as f:
+        data: JSON = yaml.full_load(f)
 
     assert isinstance(data, dict)
 
@@ -139,6 +167,14 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
 
 
 def preprocess_yaml_with_inheritance(yaml_path: str, output_yaml_path: str) -> None:
+    """Helper function to preprocess yaml with inheritance and dump it to another file
+
+    See :meth:`load_yaml_with_inheritance` for how inheritance works.
+
+    Args:
+        yaml_path (str): Filepath to load
+        output_yaml_path (str): Filepath to write flattened yaml to.
+    """
     data = load_yaml_with_inheritance(yaml_path)
     with open(output_yaml_path, "w+") as f:
         yaml.dump(data, f, explicit_end=False, explicit_start=False, indent=2, default_flow_style=False)  # type: ignore

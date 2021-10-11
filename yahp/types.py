@@ -1,12 +1,13 @@
-from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Union
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from yahp.yahp import Hparams
+from enum import Enum
+from typing import Dict, List, TypeVar, Union
+
+import yahp as hp
 
 JSON = Union[str, float, int, None, List['JSON'], Dict[str, 'JSON']]
 
-TPrimitiveHparams = Union[str, float, None, int, bool, Enum, "Hparams",]
-# We explicitely do not allow lists of mixed types
-# For compatibility with third-party libraries we allow Dict[str, JSON]
-THparams = Union[TPrimitiveHparams, List[str], List[float], List[int], List[Enum], List["Hparams"], Dict[str, "JSON",],]
+HparamsField = Union[str, float, Enum, hp.Hparams, int, None, List[hp.Hparams], List[str], List[float], List[int],
+                     List[Enum], Dict[str, JSON], List[Union[str, float]], List[Union[str, int]],]
+
+THparams = TypeVar("THparams", bound=hp.Hparams)
