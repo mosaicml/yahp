@@ -144,7 +144,7 @@ def to_commented_map(
     Returns:
         YAML: YAML template for :param cls:
     """
-    # TODO(averlamp) accept existing fields to create a new template from an existing one
+    # TODO(averylamp) accept existing fields to create a new template from an existing one
     output = CommentedMap()
     field_types = get_type_hints(cls)
     for f in fields(cls):

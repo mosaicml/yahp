@@ -36,8 +36,8 @@ class ArgparseNameRegistry:
         """Reserve short names for argparse
 
         The order of :param args: is ignored. Short names are assigned deterministically, dependent
-        on only the current state of the registry and the set of :class:`_ParserArgument`s in the function call.         
-        
+        on only the current state of the registry and the set of :class:`_ParserArgument`s in the function call.
+
         Args:
             args (_ParserArgument): :class:`_ParserArgument`s to assign short names
 
@@ -58,8 +58,12 @@ class ArgparseNameRegistry:
         return name in self._names
 
 
-def get_hparams_file_from_cli(*, cli_args: List[str], argparse_name_registry: ArgparseNameRegistry,
-                              argument_parsers: List[argparse.ArgumentParser]) -> Tuple[Optional[str], Optional[str]]:
+def get_hparams_file_from_cli(
+    *,
+    cli_args: List[str],
+    argparse_name_registry: ArgparseNameRegistry,
+    argument_parsers: List[argparse.ArgumentParser],
+) -> Tuple[Optional[str], Optional[str]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
     argparse_name_registry.add("f", "file", "d", 'dump')
@@ -85,35 +89,43 @@ def get_hparams_file_from_cli(*, cli_args: List[str], argparse_name_registry: Ar
     return parsed_args.file, parsed_args.dump
 
 
-def get_cm_options_from_cli(*, cli_args: List[str], argparse_name_registry: ArgparseNameRegistry,
-                            argument_parsers: List[argparse.ArgumentParser]) -> Optional[Tuple[str, bool, bool]]:
+def get_commented_map_options_from_cli(
+    *,
+    cli_args: List[str],
+    argparse_name_registry: ArgparseNameRegistry,
+    argument_parsers: List[argparse.ArgumentParser],
+) -> Optional[Tuple[str, bool, bool]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
 
     argparse_name_registry.add("s", "save_template", "i", "interactive", "c", "concise")
 
-    parser.add_argument("-s",
-                        "--save_template",
-                        type=str,
-                        const="stdout",
-                        nargs="?",
-                        default=None,
-                        required=False,
-                        metavar="stdout",
-                        help="Generate and dump a YAML template to the specified file (defaults to `stdout`) and exit.")
+    parser.add_argument(
+        "-s",
+        "--save_template",
+        type=str,
+        const="stdout",
+        nargs="?",
+        default=None,
+        required=False,
+        metavar="stdout",
+        help="Generate and dump a YAML template to the specified file (defaults to `stdout`) and exit.",
+    )
     parser.add_argument(
         "-i",
         "--interactive",
         action="store_true",
         default=False,
-        help="Whether to generate the template interactively. Only applicable if `--save_template` is present.")
-
+        help="Whether to generate the template interactively. Only applicable if `--save_template` is present.",
+    )
     parser.add_argument(
         "-c",
         "--concise",
         action="store_true",
         default=False,
-        help="Skip adding documentation to the generated YAML. Only applicable if `--save_template` is present.")
+        help="Skip adding documentation to the generated YAML. Only applicable if `--save_template` is present.",
+    )
+
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
     if parsed_args.save_template is None:
         return  # don't generate a template
@@ -205,11 +217,7 @@ def retrieve_args(
         if not f.init:
             continue
         ftype = HparamsType(field_types[f.name])
-        full_prefix = ".".join(prefix)
-        if len(prefix):
-            full_name = f'{full_prefix}.{f.name}'
-        else:
-            full_name = f'{f.name}'
+        full_name = ".".join(prefix + [f.name])
         type_name = str(ftype)
         helptext = f"<{type_name}> {f.metadata['doc']}"
 

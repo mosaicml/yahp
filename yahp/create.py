@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple,
 import yaml
 
 import yahp as hp
-from yahp.argparse import ArgparseNameRegistry, get_cm_options_from_cli, get_hparams_file_from_cli, retrieve_args
+from yahp.argparse import (ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
+                           retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.type_helpers import HparamsType, is_none_like
 from yahp.utils import extract_only_item_from_dict
@@ -71,8 +72,10 @@ def _create(
         parsed_arg_dict = vars(parsed_arg_namespace)
         argparsers.append(parser)
     kwargs: Dict[str, HparamsField] = {}
-    missing_required_fields: List[str] = [
-    ]  # keep track of missing required fields so we can build a nice error message
+
+    # keep track of missing required fields so we can build a nice error message
+    missing_required_fields: List[str] = []
+
     cls.validate_keys(list(data.keys()), allow_missing_keys=True)
     field_types = get_type_hints(cls)
     for f in fields(cls):
@@ -112,12 +115,14 @@ def _create(
                                 sub_yaml = {}
                             if not isinstance(sub_yaml, dict):
                                 raise ValueError(f"{full_name} must be a dict in the yaml")
-                            kwargs[f.name] = _create(cls=ftype.type,
-                                                     data=sub_yaml,
-                                                     prefix=prefix_with_fname,
-                                                     cli_args=cli_args,
-                                                     argparse_name_registry=argparse_name_registry,
-                                                     argparsers=argparsers)
+                            kwargs[f.name] = _create(
+                                cls=ftype.type,
+                                data=sub_yaml,
+                                prefix=prefix_with_fname,
+                                cli_args=cli_args,
+                                argparse_name_registry=argparse_name_registry,
+                                argparsers=argparsers,
+                            )
                     else:
                         # list of concrete hparams
                         # potentially none
@@ -195,12 +200,14 @@ def _create(
                                 raise ValueError(
                                     f"Field {'.'.join(prefix_with_fname + [key])} must be a dict if specified in the yaml"
                                 )
-                            kwargs[f.name] = _create(cls=cls.hparams_registry[f.name][key],
-                                                     prefix=prefix_with_fname + [key],
-                                                     data=yaml_val,
-                                                     cli_args=cli_args,
-                                                     argparse_name_registry=argparse_name_registry,
-                                                     argparsers=argparsers)
+                            kwargs[f.name] = _create(
+                                cls=cls.hparams_registry[f.name][key],
+                                prefix=prefix_with_fname + [key],
+                                data=yaml_val,
+                                cli_args=cli_args,
+                                argparse_name_registry=argparse_name_registry,
+                                argparsers=argparsers,
+                            )
                     else:
                         # list of abstract hparams
                         # potentially none
@@ -270,12 +277,14 @@ def _create(
                                     raise ValueError(
                                         f"Field {'.'.join(prefix_with_fname + [key])} must be a dict if specified in the yaml"
                                     )
-                                sub_hparams = _create(cls=cls.hparams_registry[f.name][key],
-                                                      prefix=prefix_with_fname + [key],
-                                                      data=key_yaml,
-                                                      cli_args=cli_args,
-                                                      argparse_name_registry=argparse_name_registry,
-                                                      argparsers=argparsers)
+                                sub_hparams = _create(
+                                    cls=cls.hparams_registry[f.name][key],
+                                    prefix=prefix_with_fname + [key],
+                                    data=key_yaml,
+                                    cli_args=cli_args,
+                                    argparse_name_registry=argparse_name_registry,
+                                    argparsers=argparsers,
+                                )
                                 sub_hparams_list.append(sub_hparams)
                             kwargs[f.name] = sub_hparams_list
         except _MissingRequiredFieldException as e:
@@ -383,9 +392,11 @@ def _get_hparams(
 ) -> Tuple[THparams, Optional[str]]:
     argparse_name_registry = ArgparseNameRegistry()
 
-    cm_options = get_cm_options_from_cli(cli_args=remaining_cli_args,
-                                         argparse_name_registry=argparse_name_registry,
-                                         argument_parsers=argparsers)
+    cm_options = get_commented_map_options_from_cli(
+        cli_args=remaining_cli_args,
+        argparse_name_registry=argparse_name_registry,
+        argument_parsers=argparsers,
+    )
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
         print(f"Generating a template for {cls.__name__}")
