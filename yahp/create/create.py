@@ -310,8 +310,20 @@ def _create(
             missing_required_fields.extend(e.args)
             # continue processing the other fields and gather everything together
     
-    # for arg
+    all_args: List[_ParserArgument] = []
+    for fname, args in sub_args.items():
+        for x in args:
+            if isinstance(x, _ParserArgument):
+                all_args.append(x)
+            else:
+                all_args.extend(x)
+    argparse_name_registry.assign_shortnames(*all_args)
     if cli_args is None:
+        for fname, deferred_call in deferred_create_calls.items():
+            if callable(deferred_call):
+                kwargs[fname] = deferred_call()
+            else:
+
         parsed_arg_dict = {}
     else:
         args = retrieve_args(cls, prefix, argparse_name_registry)
