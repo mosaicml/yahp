@@ -15,11 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(eq=False)
-class _ParserArgument:
-    """_ParserArgument represents an argument to add to Argparse.
-    """
-    # if arg_type is None, then it should not have any entry in the argparse.
-    # useful to represent its children
+class ParserArgument:
+    # ParserArgument represents an argument to add to argparse.
     full_name: str
     helptext: str
     nargs: Optional[str]
@@ -47,7 +44,8 @@ class _ParserArgument:
         container.add_argument(
             *names,
             nargs=self.nargs,  # type: ignore
-            # using a sentinel to distinguish between a missing value and a default value that could have been overridden in yaml
+            # using a sentinel to distinguish between a missing value and
+            # a default value that could have been overridden in yaml
             default=MISSING,
             type=cli_parse,
             dest=self.full_name,
@@ -58,23 +56,20 @@ class _ParserArgument:
 
 
 class ArgparseNameRegistry:
-    """ArgparseNameRegistry tracks which names have already been used as argparse names to ensure no duplicates.
-    """
-
+    # ArgparseNameRegistry tracks which names have already been used as argparse names to ensure no duplicates.
     def __init__(self) -> None:
-        self._args: Set[_ParserArgument] = set()
+        self._args: Set[ParserArgument] = set()
         self._names: Set[str] = set()
         # tracks the shortname: possible args awaiting shortnames that could be assigned to it.
-        self._shortnames: Dict[str, Set[_ParserArgument]] = {}
+        self._shortnames: Dict[str, Set[ParserArgument]] = {}
 
     def reserve(self, *names: str) -> None:
-        """Reserve names for non-parser-arguments"""
+        # Reserve names for non-parser-arguments
         for name in names:
             self._names.add(name)
 
-    def add(self, *args: _ParserArgument) -> None:
-        """Add a arg to the registry .
-        """
+    def add(self, *args: ParserArgument) -> None:
+        # Add args to the registry
         for arg in args:
             if arg.full_name in self._names:
                 raise ValueError(f"{arg.full_name} is already in the registry")
@@ -86,8 +81,11 @@ class ArgparseNameRegistry:
                 self._shortnames[shortname].add(arg)
 
     def assign_shortnames(self):
-        """Reserve short names for args that do not already have shortnames
-        """
+        # Assign short names for args that do not already have shortnames
+        #
+        # It assigns the shortest name possible, while ensuring that if
+        # multiple arguments (which have yet to get a shortname)
+        # want the same shortname, then none get it.
         shortnames_list = list(self._shortnames.items())
         # sort the shortnames from longest to shortest
         shortnames_list.sort(key=lambda x: len(x[0]), reverse=True)
@@ -106,10 +104,10 @@ class ArgparseNameRegistry:
                 arg.short_name = shortname
                 self._names.add(shortname)  # ensure it can't be used again by anything
 
-    def __contains__(self, x: Union[str, _ParserArgument]) -> bool:
+    def __contains__(self, x: Union[str, ParserArgument]) -> bool:
         if isinstance(x, str):
             return x in self._names
-        elif isinstance(x, _ParserArgument):
+        elif isinstance(x, ParserArgument):
             return x in self._args
         else:
             raise NotImplementedError()
@@ -191,14 +189,8 @@ def get_commented_map_options_from_cli(
 
 
 def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
-    """Parse CLI input. This function is called internally by :module:`argparse`.
-
-    Args:
-        val: Argparse input.
-
-    Returns:
-        Union[str, None, _MISSING_TYPE]: Parsed value
-    """
+    # Helper to parse CLI input.
+    # Almost like the default of `str`, but handles MISSING and none gracefully
     if val == MISSING:
         return val
     assert not isinstance(val, _MISSING_TYPE)
@@ -211,20 +203,10 @@ def retrieve_args(
     cls: Type[hp.Hparams],
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
-) -> Sequence[_ParserArgument]:
-    """retrieve_args retrieves the args in :param cls:. It does not recurse.
-
-    Args:
-        cls (Type[hp.Hparams]): The Hparams class
-        prefix (List[str]): The path containing the keys from the top-level :class:`~yahp.Hparams` to :arg:`cls`
-        parent_group (argparse._ActionsContainer): The :class:`argparse._ActionsContainer` to add a
-            :class:`argparse._ArgumentGroup` for the :arg:`cls`
-    Returns:
-        A sequence of :class:`_ParserArgument` for this class. This is not computed recursively,
-            to allow for lazily loading cli arguments.
-    """
+) -> Sequence[ParserArgument]:
+    # Retreive argparse args for the class. Does NOT recruse.
     field_types = get_type_hints(cls)
-    ans: List[_ParserArgument] = []
+    ans: List[ParserArgument] = []
     for f in fields(cls):
         if not f.init:
             continue
@@ -264,7 +246,7 @@ def retrieve_args(
                 choices = ["true", "false"]
             if choices is not None and ftype.is_optional:
                 choices.append("none")
-            arg = _ParserArgument(
+            arg = ParserArgument(
                 full_name=full_name,
                 nargs=nargs,
                 choices=choices,
@@ -281,7 +263,7 @@ def retrieve_args(
                     logger.info("%s cannot be set via CLI arguments", full_name)
                 elif ftype.is_optional:
                     # add a field to argparse that can be set to none to override the yaml (or default)
-                    arg = _ParserArgument(
+                    arg = ParserArgument(
                         full_name=full_name,
                         nargs=nargs,
                         helptext=helptext,
@@ -295,7 +277,7 @@ def retrieve_args(
                 if ftype.is_list:
                     nargs = "+" if required else "*"
                     required = False
-                arg = _ParserArgument(
+                arg = ParserArgument(
                     full_name=full_name,
                     nargs=nargs,
                     choices=choices,

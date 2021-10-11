@@ -1,8 +1,3 @@
-# pyright: strict
-# pyright: reportPrivateUsage=none
-# pyright: reportUnnecessaryIsInstance=none
-# pyright: reportUnnecessaryComparison=none
-
 from __future__ import annotations
 
 import argparse
@@ -17,7 +12,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple,
 import yaml
 
 import yahp as hp
-from yahp.create.argparse import (ArgparseNameRegistry, _ParserArgument, get_commented_map_options_from_cli,
+from yahp.create.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
                                   get_hparams_file_from_cli, retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict
@@ -38,7 +33,7 @@ class _DeferredCreateCall:
     hparams_cls: Type[hp.Hparams]
     data: Dict[str, JSON]
     prefix: List[str]
-    parser_args: Optional[Sequence[_ParserArgument]]
+    parser_args: Optional[Sequence[ParserArgument]]
 
 
 def _emit_should_be_list_warning(arg_name: str):
@@ -64,17 +59,18 @@ def _create(
         data (Dict[str, JSON]):
             A JSON dictionary of values to use to initialize the class.
         parsed_args (Dict[str, str]):
-            Parsed args for this cls
+            Parsed args for this class.
         cli_args (Optional[List[str]]):
             A list of cli args. This list is modified in-place,
             and all used arguments are removed from the list.
+            Should be None if no cli args are to be used.
         prefix (List[str]):
             The prefix corresponding to the subset of ``cli_args``
             that should be used to instantiate this class.
         argparse_name_registry (_ArgparseNameRegistry):
             A registry to track CLI argument names.
         argparsers (List[argparse.ArgumentParser]):
-            A list of :class:`~argparse.ArgumentParser`s,
+            A list of :class:`~argparse.ArgumentParser` instances,
             which is extended in-place.
 
     Returns:
@@ -331,7 +327,7 @@ def _create(
             else:
                 kwargs[fname] = sub_hparams[0]
     else:
-        all_args: List[_ParserArgument] = []
+        all_args: List[ParserArgument] = []
         for fname, create_calls in deferred_create_calls.items():
             for create_call in ensure_tuple(create_calls):
                 if create_call.parser_args is not None:
@@ -411,7 +407,7 @@ def create(
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
     cli_args: Union[List[str], bool] = True,
 ) -> THparams:
-    """Create a instance of :class:`~yahp.Hparams`.
+    """Create a instance of :class:`~yahp.hparams.Hparams`.
 
     Args:
         f (Union[str, None, TextIO, pathlib.PurePath], optional):
@@ -420,14 +416,14 @@ def create(
             Cannot be specified with ``data``.
         data (Optional[Dict[str, JSON]], optional): 
             f specified, uses this dictionary for instantiating
-            the :class:`~yahp.Hparams`. Cannot be specified with ``f``.
+            the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
             Can either be a list of CLI argument,
             True (the default) to load CLI arguments from ``sys.argv``,
             or False to not use any CLI arguments.
 
     Returns:
-        THparams: An instance of :class:`~yahp.Hparams`.
+        THparams: An instance of :class:`~yahp.hparams.Hparams`.
     """
     argparsers: List[argparse.ArgumentParser] = []
     remaining_cli_args = _get_remaining_cli_args(cli_args)
