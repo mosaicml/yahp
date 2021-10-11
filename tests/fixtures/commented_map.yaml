@@ -1,7 +1,7 @@
-required_int_field:                          # int (Required). Description: required_int_field.
-nullable_required_int_field:                 # Optional[int] (Required). Description: nullable_required_int_field.
-required_bool_field:                         # bool (Required). Description: required_bool_field.
-nullable_required_bool_field:                # Optional[bool] (Required). Description: nullable_required_bool_field.
+required_int_field:                          #                  int (Required). Description: required_int_field.
+nullable_required_int_field:                 #        Optional[int] (Required). Description: nullable_required_int_field.
+required_bool_field:                         #                 bool (Required). Description: required_bool_field.
+nullable_required_bool_field:                #       Optional[bool] (Required). Description: nullable_required_bool_field.
 # List[DummyEnum{RED, GREEN, blue}] (Required). Description: required_enum_field with default.
 required_enum_field_list:
 - RED
@@ -10,17 +10,18 @@ required_enum_field_list:
 required_enum_field_with_default: GREEN      # DummyEnum{RED, GREEN, blue} (Required). Description: required_enum_field.
 # Optional[DummyEnum{RED, GREEN, blue}] (Required). Description: nullable_required_enum_field.
 nullable_required_enum_field:
-required_union_bool_str_field: hi            # bool | str (Required). Description: required_union_bool_str_field.
+#           bool | str (Required). Description: required_union_bool_str_field.
+required_union_bool_str_field: hi
 # Optional[bool | str] (Required). Description: nullable_required_union_bool_str_field.
 nullable_required_union_bool_str_field:
-required_int_list_field:                     # List[int] (Required). Description: required_list_int_field.
+required_int_list_field:                     #            List[int] (Required). Description: required_list_int_field.
 - 2
-# Optional[List[int]] (Required). Description: nullable_required_list_int_field.
+#  Optional[List[int]] (Required). Description: nullable_required_list_int_field.
 nullable_required_list_int_field:
 - 3
 # Optional[List[bool | str]] (Required). Description: nullable_required_list_union_bool_str_field.
 nullable_required_list_union_bool_str_field: []
-# List[bool | str] (Required). Description: required_list_union_bool_str_field.
+#     List[bool | str] (Required). Description: required_list_union_bool_str_field.
 required_list_union_bool_str_field:
 - true
 - hello
@@ -29,53 +30,53 @@ required_subhparams_field:                   # OptionalBooleansHparam (Required)
   default_true: true
 # Optional[OptionalBooleansHparam] (Required). Description: nullable_required_subhparams_field.
 nullable_required_subhparams_field:
-  default_false: false                       # bool (Optional). Description: defaults to false.
-  default_true: true                         # bool (Optional). Description: defaults to true.
+  default_false: false                       #                 bool (Optional). Description: defaults to false.
+  default_true: true                         #                 bool (Optional). Description: defaults to true.
 # List[OptionalBooleansHparam] (Required). Description: required_subhparams_field.
 required_subhparams_field_list:
 - default_false: true
   default_true: true
 # Optional[List[OptionalBooleansHparam]] (Required). Description: nullable_required_subhparams_field.
 nullable_required_subhparams_field_list:
-- default_false: false                       # bool (Optional). Description: defaults to false.
-  default_true: true                         # bool (Optional). Description: defaults to true.
-# ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
+- default_false: false                       #                 bool (Optional). Description: defaults to false.
+  default_true: true                         #                 bool (Optional). Description: defaults to true.
+#   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 required_choice:
-  one:                             # ChoiceOneHparam
-    commonfield:                             # bool (Required). Description: bool common field.
-    intfield:                                # int (Required). Description: int field.
-  two:                             # ChoiceTwoHparam
-    commonfield:                             # bool (Required). Description: bool common field.
-    primitive_hparam:                        # PrimitiveHparam (Required). Description: Primitive Hparams.
-      intfield:                              # int (Required). Description: int field.
-      strfield:                              # str (Required). Description: str field.
-      floatfield:                            # float (Required). Description: float field.
-      boolfield:                             # bool (Required). Description: bool field.
+  one:                                       # ChoiceOneHparam
+    commonfield:                             #                 bool (Required). Description: bool common field.
+    intfield:                                #                  int (Required). Description: int field.
+  two:                                       # ChoiceTwoHparam
+    commonfield:                             #                 bool (Required). Description: bool common field.
+    primitive_hparam:                        #      PrimitiveHparam (Required). Description: Primitive Hparams.
+      intfield:                              #                  int (Required). Description: int field.
+      strfield:                              #                  str (Required). Description: str field.
+      floatfield:                            #                float (Required). Description: float field.
+      boolfield:                             #                 bool (Required). Description: bool field.
       enumintfield:                          # EnumIntField{ONE, TWO, THREE} (Required). Description: enum int field.
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
       enumstringfield:
-      jsonfield:                             # JSON (Required). Description: Required json type.
-    boolfield:                               # int (Required). Description: int field.
-  three:                           # ChoiceThreeHparam
-    commonfield:                             # bool (Required). Description: bool common field.
-# ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
+      jsonfield:                             #                 JSON (Required). Description: Required json type.
+    boolfield:                               #                  int (Required). Description: int field.
+  three:                                     # ChoiceThreeHparam
+    commonfield:                             #                 bool (Required). Description: bool common field.
+#   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
     choice:
-      one:                         # ChoiceOneHparam
-        commonfield:                         # bool (Required). Description: bool common field.
-        intfield:                            # int (Required). Description: int field.
-      two:                         # ChoiceTwoHparam
-        commonfield:                         # bool (Required). Description: bool common field.
-        primitive_hparam:                    # PrimitiveHparam (Required). Description: Primitive Hparams.
-          intfield:                          # int (Required). Description: int field.
-          strfield:                          # str (Required). Description: str field.
-          floatfield:                        # float (Required). Description: float field.
-          boolfield:                         # bool (Required). Description: bool field.
+      one:                                   # ChoiceOneHparam
+        commonfield:                         #                 bool (Required). Description: bool common field.
+        intfield:                            #                  int (Required). Description: int field.
+      two:                                   # ChoiceTwoHparam
+        commonfield:                         #                 bool (Required). Description: bool common field.
+        primitive_hparam:                    #      PrimitiveHparam (Required). Description: Primitive Hparams.
+          intfield:                          #                  int (Required). Description: int field.
+          strfield:                          #                  str (Required). Description: str field.
+          floatfield:                        #                float (Required). Description: float field.
+          boolfield:                         #                 bool (Required). Description: bool field.
           enumintfield:                      # EnumIntField{ONE, TWO, THREE} (Required). Description: enum int field.
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
           enumstringfield:
-          jsonfield:                         # JSON (Required). Description: Required json type.
-        boolfield:                           # int (Required). Description: int field.
-    strfield:                                # str (Required). Description: str field.
+          jsonfield:                         #                 JSON (Required). Description: Required json type.
+        boolfield:                           #                  int (Required). Description: int field.
+    strfield:                                #                  str (Required). Description: str field.
 # Optional[ChoiceHparamParent] (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 nullable_required_choice:
   one:
@@ -83,51 +84,52 @@ nullable_required_choice:
     intfield: 0
 # List[ChoiceHparamParent] (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 required_choice_list:
-- one:                             # ChoiceOneHparam
-    commonfield:                             # bool (Required). Description: bool common field.
-    intfield:                                # int (Required). Description: int field.
-- two:                             # ChoiceTwoHparam
-    commonfield:                             # bool (Required). Description: bool common field.
-    primitive_hparam:                        # PrimitiveHparam (Required). Description: Primitive Hparams.
-      intfield:                              # int (Required). Description: int field.
-      strfield:                              # str (Required). Description: str field.
-      floatfield:                            # float (Required). Description: float field.
-      boolfield:                             # bool (Required). Description: bool field.
+- one:                                       # ChoiceOneHparam
+    commonfield:                             #                 bool (Required). Description: bool common field.
+    intfield:                                #                  int (Required). Description: int field.
+- two:                                       # ChoiceTwoHparam
+    commonfield:                             #                 bool (Required). Description: bool common field.
+    primitive_hparam:                        #      PrimitiveHparam (Required). Description: Primitive Hparams.
+      intfield:                              #                  int (Required). Description: int field.
+      strfield:                              #                  str (Required). Description: str field.
+      floatfield:                            #                float (Required). Description: float field.
+      boolfield:                             #                 bool (Required). Description: bool field.
       enumintfield:                          # EnumIntField{ONE, TWO, THREE} (Required). Description: enum int field.
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
       enumstringfield:
-      jsonfield:                             # JSON (Required). Description: Required json type.
-    boolfield:                               # int (Required). Description: int field.
-- three:                           # ChoiceThreeHparam
-    commonfield:                             # bool (Required). Description: bool common field.
-# ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
+      jsonfield:                             #                 JSON (Required). Description: Required json type.
+    boolfield:                               #                  int (Required). Description: int field.
+- three:                                     # ChoiceThreeHparam
+    commonfield:                             #                 bool (Required). Description: bool common field.
+#   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
     choice:
-      one:                         # ChoiceOneHparam
-        commonfield:                         # bool (Required). Description: bool common field.
-        intfield:                            # int (Required). Description: int field.
-      two:                         # ChoiceTwoHparam
-        commonfield:                         # bool (Required). Description: bool common field.
-        primitive_hparam:                    # PrimitiveHparam (Required). Description: Primitive Hparams.
-          intfield:                          # int (Required). Description: int field.
-          strfield:                          # str (Required). Description: str field.
-          floatfield:                        # float (Required). Description: float field.
-          boolfield:                         # bool (Required). Description: bool field.
+      one:                                   # ChoiceOneHparam
+        commonfield:                         #                 bool (Required). Description: bool common field.
+        intfield:                            #                  int (Required). Description: int field.
+      two:                                   # ChoiceTwoHparam
+        commonfield:                         #                 bool (Required). Description: bool common field.
+        primitive_hparam:                    #      PrimitiveHparam (Required). Description: Primitive Hparams.
+          intfield:                          #                  int (Required). Description: int field.
+          strfield:                          #                  str (Required). Description: str field.
+          floatfield:                        #                float (Required). Description: float field.
+          boolfield:                         #                 bool (Required). Description: bool field.
           enumintfield:                      # EnumIntField{ONE, TWO, THREE} (Required). Description: enum int field.
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
           enumstringfield:
-          jsonfield:                         # JSON (Required). Description: Required json type.
-        boolfield:                           # int (Required). Description: int field.
-    strfield:                                # str (Required). Description: str field.
+          jsonfield:                         #                 JSON (Required). Description: Required json type.
+        boolfield:                           #                  int (Required). Description: int field.
+    strfield:                                #                  str (Required). Description: str field.
 # Optional[List[ChoiceHparamParent]] (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 nullable_required_choice_list:
 - one:
     commonfield: true
     intfield: 0
-optional_int_field_default_1: 1              # Optional[int] (Optional). Description: optional int field default 1.
-# Optional[int] (Optional). Description: optional int field default None. Defaults to None.
+optional_int_field_default_1: 1              #        Optional[int] (Optional). Description: optional int field default 1.
+#        Optional[int] (Optional). Description: optional int field default None. Defaults to None.
 optional_int_field_default_none:
-optional_bool_field_default_true: true       # Optional[bool] (Optional). Description: optional bool field default True.
-# Optional[bool] (Optional). Description: optional bool field default None. Defaults to None.
+#       Optional[bool] (Optional). Description: optional bool field default True.
+optional_bool_field_default_true: true
+#       Optional[bool] (Optional). Description: optional bool field default None. Defaults to None.
 optional_bool_field_default_none:
 # Optional[DummyEnum{RED, GREEN, blue}] (Optional). Description: optional enum field default red.
 optional_enum_field_default_red: RED
@@ -139,12 +141,12 @@ optional_union_bool_str_field_default_true: true
 optional_union_bool_str_field_default_hello: hello
 # Optional[bool | str] (Optional). Description: optional union_bool_str field default None. Defaults to None.
 optional_union_bool_str_field_default_none:
-# Optional[List[int]] (Optional). Description: optional list_int field default 1.
+#  Optional[List[int]] (Optional). Description: optional list_int field default 1.
 optional_list_int_field_default_1:
 - 1
-# Optional[List[int]] (Optional). Description: optional list_int field default None. Defaults to None.
+#  Optional[List[int]] (Optional). Description: optional list_int field default None. Defaults to None.
 optional_list_int_field_default_none:
-# List[bool | str] (Optional). Description: optional list_union_bool_str field default hello.
+#     List[bool | str] (Optional). Description: optional list_union_bool_str field default hello.
 optional_list_union_bool_str_field_default_hello:
 - hello
 # Optional[List[bool | str]] (Optional). Description: optional list_union_bool_str field default None. Defaults to None.
@@ -158,7 +160,7 @@ optional_subhparams_field_default_not_none:
   default_true: true
 # Optional[OptionalBooleansHparam] (Optional). Description: optional subhparams field default None. Defaults to None.
 optional_subhparams_field_default_none:
-# ChoiceHparamParent (Optional). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
+#   ChoiceHparamParent (Optional). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 optional_choice_default_not_none:
   one:
     commonfield: false

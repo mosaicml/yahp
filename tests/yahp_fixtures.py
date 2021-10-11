@@ -41,7 +41,7 @@ def generate_named_tuple_from_str(hparams_tempdir, input_str: str, filepath: str
     input_data = yaml.full_load(input_str)
     f = hparams_tempdir / filepath
     f.write_text(input_str)
-    out = YamlInput(input_str, input_data, f)
+    out = YamlInput(input_str, input_data, str(f))
     return out
 
 
@@ -49,7 +49,7 @@ def generate_named_tuple_from_data(hparams_tempdir, input_data: Dict[str, Any], 
     input_str = yaml.dump(input_data)
     f = hparams_tempdir / filepath
     f.write_text(input_str)
-    return YamlInput(input_str, input_data, f)
+    return YamlInput(input_str, input_data, str(f))
 
 
 # -------------------------------------------------
@@ -144,7 +144,7 @@ def primitive_yaml_input(hparams_tempdir) -> YamlInput:
 
 @pytest.fixture
 def primitive_hparam(primitive_yaml_input: YamlInput):
-    return PrimitiveHparam.create_from_dict(primitive_yaml_input.dict_data)
+    return PrimitiveHparam.create(data=primitive_yaml_input.dict_data)
 
 
 # -------------------------------------------------
@@ -175,7 +175,7 @@ def nested_yaml_input(hparams_tempdir, primitive_yaml_input: YamlInput) -> YamlI
 
 @pytest.fixture
 def nested_hparams(nested_yaml_input: YamlInput) -> NestedHparam:
-    hp = NestedHparam.create_from_dict(nested_yaml_input.dict_data)
+    hp = NestedHparam.create(data=nested_yaml_input.dict_data)
     assert isinstance(hp, NestedHparam)
     return hp
 
@@ -206,7 +206,7 @@ def double_nested_yaml_input(hparams_tempdir, nested_yaml_input: YamlInput) -> Y
 
 @pytest.fixture
 def double_nested_hparams(double_nested_yaml_input: YamlInput) -> DoubleNestedHparam:
-    hp = DoubleNestedHparam.create_from_dict(double_nested_yaml_input.dict_data)
+    hp = DoubleNestedHparam.create(data=double_nested_yaml_input.dict_data)
     assert isinstance(hp, DoubleNestedHparam)
     return hp
 
@@ -248,7 +248,7 @@ def choice_one_yaml_input(hparams_tempdir) -> YamlInput:
 
 @pytest.fixture
 def choice_one_hparams(choice_one_yaml_input: YamlInput) -> ChoiceOneHparam:
-    hp = ChoiceOneHparam.create_from_dict(choice_one_yaml_input.dict_data)
+    hp = ChoiceOneHparam.create(data=choice_one_yaml_input.dict_data)
     assert isinstance(hp, ChoiceOneHparam)
     return hp
 
@@ -282,7 +282,7 @@ def choice_two_yaml_input(hparams_tempdir, primitive_yaml_input: YamlInput) -> Y
 
 @pytest.fixture
 def choice_two_hparams(choice_two_yaml_input: YamlInput) -> ChoiceTwoHparam:
-    hp = ChoiceTwoHparam.create_from_dict(choice_two_yaml_input.dict_data)
+    hp = ChoiceTwoHparam.create(data=choice_two_yaml_input.dict_data)
     assert isinstance(hp, ChoiceTwoHparam)
     return hp
 
@@ -340,14 +340,14 @@ def choice_three_one_yaml_input(hparams_tempdir, choice_one_yaml_input: YamlInpu
 
 @pytest.fixture
 def choice_three_two_hparam(choice_three_two_yaml_input: YamlInput) -> ChoiceThreeHparam:
-    hp = ChoiceThreeHparam.create_from_dict(choice_three_two_yaml_input.dict_data)
+    hp = ChoiceThreeHparam.create(data=choice_three_two_yaml_input.dict_data)
     assert isinstance(hp, ChoiceThreeHparam)
     return hp
 
 
 @pytest.fixture
 def choice_three_one_hparam(choice_three_one_yaml_input: YamlInput) -> ChoiceThreeHparam:
-    hp = ChoiceThreeHparam.create_from_dict(choice_three_one_yaml_input.dict_data)
+    hp = ChoiceThreeHparam.create(data=choice_three_one_yaml_input.dict_data)
     assert isinstance(hp, ChoiceThreeHparam)
     return hp
 

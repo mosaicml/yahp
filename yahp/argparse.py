@@ -1,436 +1,297 @@
 from __future__ import annotations
 
 import argparse
-import collections.abc
-from collections import defaultdict
-from dataclasses import MISSING, fields
+import logging
+from dataclasses import _MISSING_TYPE, MISSING, InitVar, asdict, dataclass, fields
 from enum import Enum
-from typing import Any, Dict, List, Tuple, Type, get_type_hints
+from typing import List, Optional, Sequence, Set, Tuple, Type, Union, get_type_hints
+
+import yaml
 
 import yahp as hp
-from yahp.objects_helpers import ParserArgument
-from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass, to_bool
-from yahp.types import JSON
+from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
+
+logger = logging.getLogger(__name__)
 
 
-def _retrieve_args(
+class ArgparseNameRegistry:
+    """ArgparseNameRegistry tracks which names have already been used as argparse names to ensure no duplicates.
+    """
+
+    def __init__(self) -> None:
+        self._names: Set[str] = set()
+
+    def add(self, *names: str) -> None:
+        """Add a name to the registry .
+
+        Raises:
+            ValueError: Raised if a `name` in :param names: is already in the registry.
+        """
+        for name in names:
+            if name in self._names:
+                raise ValueError(f"{name} is already in the registry")
+            self._names.add(name)
+
+    def reserve_shortnames(self, *args: _ParserArgument):
+        """Reserve short names for argparse
+
+        The order of :param args: is ignored. Short names are assigned deterministically, dependent
+        on only the current state of the registry and the set of :class:`_ParserArgument`s in the function call.
+
+        Args:
+            args (_ParserArgument): :class:`_ParserArgument`s to assign short names
+
+        """
+        # sort args so short names get added deterministically
+        sorted_args = sorted(args, key=lambda arg: arg.full_name)
+        for arg in sorted_args:
+            if arg.short_name is not None:
+                raise ValueError(f"{arg.full_name} already has short name {arg.short_name}")
+            for shortness_index in range(len(arg.full_name.split(".")) - 1):
+                short_name = arg.get_possible_short_name(index=shortness_index)
+                if short_name not in self:
+                    self.add(short_name)
+                    arg.short_name = short_name
+                    break
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._names
+
+
+def get_hparams_file_from_cli(
+    *,
+    cli_args: List[str],
+    argparse_name_registry: ArgparseNameRegistry,
+    argument_parsers: List[argparse.ArgumentParser],
+) -> Tuple[Optional[str], Optional[str]]:
+    parser = argparse.ArgumentParser(add_help=False)
+    argument_parsers.append(parser)
+    argparse_name_registry.add("f", "file", "d", 'dump')
+    parser.add_argument("-f",
+                        "--file",
+                        type=str,
+                        default=None,
+                        dest='file',
+                        required=False,
+                        help="Load data from this YAML file into the Hparams.")
+    parser.add_argument(
+        "-d",
+        "--dump",
+        type=str,
+        const="stdout",
+        nargs="?",
+        default=None,
+        required=False,
+        metavar="stdout",
+        help="Dump the resulting Hparams to the specified YAML file (defaults to `stdout`) and exit.",
+    )
+    parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
+    return parsed_args.file, parsed_args.dump
+
+
+def get_commented_map_options_from_cli(
+    *,
+    cli_args: List[str],
+    argparse_name_registry: ArgparseNameRegistry,
+    argument_parsers: List[argparse.ArgumentParser],
+) -> Optional[Tuple[str, bool, bool]]:
+    parser = argparse.ArgumentParser(add_help=False)
+    argument_parsers.append(parser)
+
+    argparse_name_registry.add("s", "save_template", "i", "interactive", "c", "concise")
+
+    parser.add_argument(
+        "-s",
+        "--save_template",
+        type=str,
+        const="stdout",
+        nargs="?",
+        default=None,
+        required=False,
+        metavar="stdout",
+        help="Generate and dump a YAML template to the specified file (defaults to `stdout`) and exit.",
+    )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        default=False,
+        help="Whether to generate the template interactively. Only applicable if `--save_template` is present.",
+    )
+    parser.add_argument(
+        "-c",
+        "--concise",
+        action="store_true",
+        default=False,
+        help="Skip adding documentation to the generated YAML. Only applicable if `--save_template` is present.",
+    )
+
+    parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
+    if parsed_args.save_template is None:
+        return  # don't generate a template
+
+    return parsed_args.save_template, parsed_args.interactive, not parsed_args.concise
+
+
+@dataclass
+class _ParserArgument:
+    """_ParserArgument represents an argument to add to Argparse.
+    """
+    # if arg_type is None, then it should not have any entry in the argparse.
+    # useful to represent its children
+    argparse_name_registry: InitVar[ArgparseNameRegistry]
+    full_name: str
+    helptext: str
+    nargs: Optional[str]
+    choices: Optional[List[str]] = None
+    short_name: Optional[str] = None
+
+    def __post_init__(self, argparse_name_registry: ArgparseNameRegistry) -> None:
+        # register the full name in argparse_name_registry
+        argparse_name_registry.add(self.full_name)
+
+    def get_possible_short_name(self, index: int):
+        items = self.full_name.split(".")[-(index + 1):]
+        return ".".join(items)
+
+    def __str__(self) -> str:
+        return yaml.dump(asdict(self))  # type: ignore
+
+    def add_to_argparse(self, container: argparse._ActionsContainer) -> None:
+        names = [f"--{self.full_name}"]
+        if self.short_name is not None and self.short_name != self.full_name:
+            names.insert(0, f"--{self.short_name}")
+        # not using argparse choices as they are too strict (e.g. case sensitive)
+        metavar = self.full_name.split(".")[-1].upper()
+        if self.choices is not None:
+            metavar = f"{{{','.join(self.choices)}}}"
+        container.add_argument(
+            *names,
+            nargs=self.nargs,  # type: ignore
+            # using a sentinel to distinguish between a missing value and a default value that could have been overridden in yaml
+            default=MISSING,
+            type=cli_parse,
+            dest=self.full_name,
+            const=True if self.nargs == "?" else None,
+            help=self.helptext,
+            metavar=metavar,
+        )
+
+
+def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
+    """Parse CLI input. This function is called internally by :module:`argparse`.
+
+    Args:
+        val: Argparse input.
+
+    Returns:
+        Union[str, None, _MISSING_TYPE]: Parsed value
+    """
+    if val == MISSING:
+        return val
+    assert not isinstance(val, _MISSING_TYPE)
+    if isinstance(val, str) and val.strip().lower() in ("", "none"):
+        return None
+    return val
+
+
+def retrieve_args(
     cls: Type[hp.Hparams],
     prefix: List[str],
-    passed_args: Dict[str, Any],
-) -> List[ParserArgument]:
-    added_args = []
-    type_hints = get_type_hints(cls)
-    for field in fields(cls):
-        ftype = HparamsType(type_hints[field.name])
-        full_prefix = ".".join(prefix)
-        if len(prefix):
-            arg_name = f'--{full_prefix}.{field.name}'
-        else:
-            arg_name = f'--{field.name}'
-        if 'doc' not in field.metadata:
-            raise Exception(f"Please fill out documentation for the field: \n{field}")
-        helptext = field.metadata['doc']
+    argparse_name_registry: ArgparseNameRegistry,
+) -> Sequence[_ParserArgument]:
+    """_retrieve_args retrieves the args in :param cls:. It does not recurse.
 
+    Args:
+        cls (Type[hp.Hparams]): The Hparams class
+        prefix (List[str]): The path containing the keys from the top-level :class:`~yahp.Hparams` to :arg:`cls`
+        parent_group (argparse._ActionsContainer): The :class:`argparse._ActionsContainer` to add a
+            :class:`argparse._ArgumentGroup` for the :arg:`cls`
+    Returns:
+        A sequence of :class:`_ParserArgument` for this class. This is not computed recursively,
+            to allow for lazily loading cli arguments.
+    """
+    field_types = get_type_hints(cls)
+    ans: List[_ParserArgument] = []
+    for f in fields(cls):
+        if not f.init:
+            continue
+        ftype = HparamsType(field_types[f.name])
+        full_name = ".".join(prefix + [f.name])
         type_name = str(ftype)
-        required = is_field_required(field)
-        default = get_default_value(field)
-        if required:
-            helptext = f'(required): <{type_name}> {helptext}'
-        else:
-            helptext = f'(default: {default}): <{type_name}>  {helptext}'
+        helptext = f"<{type_name}> {f.metadata['doc']}"
 
-        parser_argument_default_kwargs = {
-            "arg_type": ftype.convert,
-            "full_arg_name": arg_name,
-            "helptext": helptext,
-            "required": required,
-        }
+        required = is_field_required(f)
+        default = get_default_value(f)
+        if required:
+            helptext = f'(required): {helptext}'
+        if default != MISSING:
+            if default is None or safe_issubclass(default, (int, float, str, Enum)):
+                helptext = f"{helptext} (Default: {default})."
+            elif safe_issubclass(default, hp.Hparams):
+                helptext = f"{helptext} (Default: {type(default).__name__})."
+
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
         if safe_issubclass(type(default), hp.Hparams):
             # if the default is hparams, set the argparse default to the hparams registry key
             # for this hparams object
-            if field.name in cls.hparams_registry:
-                inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[field.name].items()}
+            if f.name in cls.hparams_registry:
+                inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
                 default = inverted_field_registry[type(default)]
 
-        parser_argument_default_kwargs["default"] = default
-
-        if ftype.is_list and not ftype.is_hparams_dataclass:
-            parser_argument_default_kwargs["nargs"] = "+"
+        if not ftype.is_hparams_dataclass:
+            nargs = None
+            if ftype.is_list:
+                nargs = "*"
+            elif ftype.is_boolean:
+                nargs = "?"
+            choices = None
             if ftype.is_enum:
-                parser_argument_default_kwargs["arg_type"] = str
-            if ftype.is_boolean:
-                parser_argument_default_kwargs["arg_type"] = to_bool
-            new_arg = ParserArgument(**parser_argument_default_kwargs)
-            added_args.append(new_arg)
-        elif ftype.is_enum:
-            assert issubclass(ftype.type, Enum)
-            parser_argument_default_kwargs["choices"] = [x.name.lower() for x in ftype.type]
-            parser_argument_default_kwargs["arg_type"] = str
-            new_arg = ParserArgument(**parser_argument_default_kwargs)
-            added_args.append(new_arg)
-        elif ftype.is_boolean:
-            parser_argument_default_kwargs["arg_type"] = to_bool
-            parser_argument_default_kwargs["nargs"] = "?"
-            parser_argument_default_kwargs["const"] = True
-            new_arg = ParserArgument(**parser_argument_default_kwargs)
-            added_args.append(new_arg)
-        elif ftype.is_primitive:
-            new_arg = ParserArgument(**parser_argument_default_kwargs)
-            added_args.append(new_arg)
-        elif ftype.is_hparams_dataclass:
+                choices = [x.name.lower() for x in ftype.type]
+            if ftype.is_boolean and len(ftype.types) == 1:
+                choices = ["true", "false"]
+            if choices is not None and ftype.is_optional:
+                choices.append("none")
+
+            ans.append(
+                _ParserArgument(
+                    argparse_name_registry=argparse_name_registry,
+                    full_name=full_name,
+                    nargs=nargs,
+                    choices=choices,
+                    helptext=helptext,
+                ))
+        else:
             # Split into choose one
-            if field.name not in cls.hparams_registry:
+            if f.name not in cls.hparams_registry:
                 # Defaults to direct nesting if missing from hparams_registry
-                added_args += _retrieve_args(
-                    cls=ftype.type,
-                    prefix=prefix + [field.name],
-                    passed_args=passed_args,
-                )
+                if ftype.is_list:
+                    # if it's a list of singletons, then print a warning and skip it
+                    # Will use the default or yaml-provided value
+                    logger.info("%s cannot be set via CLI arguments", full_name)
+                elif ftype.is_optional:
+                    # add a field to argparse that can be set to none to override the yaml (or default)
+                    ans.append(
+                        _ParserArgument(
+                            argparse_name_registry=argparse_name_registry,
+                            full_name=full_name,
+                            nargs=nargs,
+                            helptext=helptext,
+                        ))
             else:
                 # Found in registry
-                registry_entry = cls.hparams_registry[field.name]
-                if isinstance(registry_entry, collections.abc.Mapping):
-                    hparam_options = sorted(list(registry_entry.keys()))
-
-                    parser_argument_default_kwargs["arg_type"] = str
-                    if ftype.is_list:
-                        # List Support
-                        parser_argument_default_kwargs["nargs"] = "+"
-                    parser_argument_default_kwargs["choices"] = hparam_options
-                    parser_argument_default_kwargs["is_hparams_subclass"] = True
-                    new_arg = ParserArgument(**parser_argument_default_kwargs)
-                    added_args.append(new_arg)
-                    if new_arg.get_namespace_name() in passed_args:
-                        selected_subhparam = passed_args[new_arg.get_namespace_name()]
-                        if isinstance(selected_subhparam, list):
-                            for subhparam_selected in selected_subhparam:
-                                subhparam_class: Type[hp.Hparams] = registry_entry[subhparam_selected]
-                                added_args += _retrieve_args(
-                                    cls=subhparam_class,
-                                    prefix=prefix + [field.name, subhparam_selected],
-                                    passed_args=passed_args,
-                                )
-                        elif isinstance(selected_subhparam, str):
-                            subhparam_class: Type[hp.Hparams] = registry_entry[selected_subhparam]
-                            added_args += _retrieve_args(
-                                cls=subhparam_class,
-                                prefix=prefix + [field.name, selected_subhparam],
-                                passed_args=passed_args,
-                            )
-                # Direct listing
-                elif ftype.is_hparams_dataclass:
-                    added_args += _retrieve_args(  # type: ignore
-                        cls=registry_entry,
-                        prefix=prefix + [field.name],
-                        passed_args=passed_args,
-                    )
-    return added_args
-
-
-def _add_short_arg_names_to_parser_argument_list(arg_list: List[ParserArgument],) -> List[ParserArgument]:
-    #  Adds unique short argparse names if they exist, nesting if not, none if fully conflicted
-    #  Shortness refers to how many nested layers deep arguments get shortened to
-    short_name_dict = defaultdict(int)
-    shortness_index = 0
-    args_to_shorten = list(arg_list)
-    while len(args_to_shorten):
-        # Counts leaves for conflicts
-        for arg_item in args_to_shorten:
-            short_name_dict[arg_item.get_possible_short_name(index=shortness_index)] += 1
-        done = []
-        for arg_item in args_to_shorten:
-            # If there is no conflict, shorten it
-            if short_name_dict[arg_item.get_possible_short_name(index=shortness_index)] == 1:
-                arg_item.short_arg_name = arg_item.get_possible_short_name(index=shortness_index)
-                done.append(arg_item)
-        for done_item in done:
-            args_to_shorten.remove(done_item)
-
-        # Increase the nesting factor for uniqueness
-        shortness_index += 1
-        if len(args_to_shorten):
-            max_nesting = max([x.full_arg_name.count(".") for x in args_to_shorten])
-            if shortness_index > max_nesting + 3:
-                break
-
-    # Fix formatting to ensure that -- prepends and no duplicate short names are added
-    for args_item in arg_list:
-        # prepend -- if not there
-        if args_item.short_arg_name and not args_item.short_arg_name.startswith("--"):  # type: ignore
-            args_item.short_arg_name = "--" + args_item.short_arg_name  # type: ignore
-        if args_item.short_arg_name and args_item.short_arg_name == args_item.full_arg_name:  # type: ignore
-            args_item.short_arg_name = None
-    return arg_list
-
-
-def _add_parser_argument_list_to_parser(arg_list: List[ParserArgument], parser_to_add: argparse.ArgumentParser) -> None:
-    for arg_item in arg_list:
-        add_argument_kwargs = {
-            "type": arg_item.arg_type,
-            "help": arg_item.helptext,
-            "required": arg_item.required,
-            "dest": arg_item.get_namespace_name(),
-        }
-        if arg_item.const:
-            add_argument_kwargs["const"] = arg_item.const
-        if arg_item.default != MISSING:
-            add_argument_kwargs["default"] = arg_item.default
-        if arg_item.choices:
-            add_argument_kwargs["choices"] = arg_item.choices
-        if arg_item.nargs:
-            add_argument_kwargs["nargs"] = arg_item.nargs
-
-        if arg_item.short_arg_name:
-            # Encodes namespace with full path, but allows people to use short names for brevity
-            parser_to_add.add_argument(
-                arg_item.short_arg_name,
-                arg_item.full_arg_name,
-                **add_argument_kwargs,
-            )
-        else:
-            parser_to_add.add_argument(
-                arg_item.full_arg_name,
-                **add_argument_kwargs,
-            )
-
-
-def _add_args(
-    cls: Type[hp.Hparams],
-    parser: argparse.ArgumentParser,
-    prefix: List[str],
-    defaults: Dict[str, Any],
-) -> None:
-    """
-    Add the fields of the class as arguments to `parser`.
-
-    Optionally, provide an instance of this class to serve as default arguments.
-    Optionally, provide a prefix to apply to all flags that are added.
-    Optionally, add all of these arguments to an argument group called `group_name` with
-        description `group_description`.
-    """
-
-    found_subparsers = 0
-    found_subparser_args = dict()
-    # This loop automagically recurses on runtime, creating parsers for found nested hparams
-    # Allows nested Hparams to display their args
-    # Iteratively runs a subparser over sub-hparam fields to determine if they are
-    # selected in argparse
-    # Allows for stuff like: ./main.py --optimizer sgd --help to include the sgd hparams object's helptext
-    while True:
-        all_args: List[ParserArgument] = _retrieve_args(
-            cls=cls,
-            prefix=prefix,
-            passed_args=found_subparser_args,
-        )
-        subparser_args = [x for x in all_args if x.is_hparams_subclass]
-        subparser_args = _add_short_arg_names_to_parser_argument_list(arg_list=subparser_args)
-        for subparser_arg in subparser_args:
-            subparser_arg.required = False
-            # Use the subarguments in defaults to determine if a subparser has been selected
-            subparser_namespace = subparser_arg.get_namespace_name()
-            # TODO: Make robust to lists of subhparams
-            unfiltered_nested_defaults = [x for x in defaults.keys() if x.startswith(subparser_namespace)]
-
-            found_nested_defaults = set(
-                [x[len(subparser_namespace) + 1:].split(".")[0] for x in unfiltered_nested_defaults])
-
-            if "" in found_nested_defaults:
-                found_nested_defaults.remove("")
-            if subparser_arg.nargs == "+":
-                defaults[subparser_namespace] = list(found_nested_defaults)
-            else:
-                if len(found_nested_defaults) == 1:
-                    defaults[subparser_namespace] = found_nested_defaults.pop()
-
-        hparams_subparser = argparse.ArgumentParser(add_help=False)
-        hparams_subparser.set_defaults(**defaults)
-        _add_parser_argument_list_to_parser(
-            arg_list=subparser_args,
-            parser_to_add=hparams_subparser,
-        )
-
-        # ignores unknown args (extra args a user may pass in)
-        args, _ = hparams_subparser.parse_known_args()
-        found_args_count = len([x for x in vars(args).values() if x])
-        if found_args_count == found_subparsers:
-            break
-        found_subparsers = found_args_count
-        found_subparser_args = {k: v for k, v in vars(args).items() if v is not None}
-
-    all_args: List[ParserArgument] = _retrieve_args(
-        cls=cls,
-        prefix=prefix,
-        passed_args=found_subparser_args,
-    )
-    all_args = _add_short_arg_names_to_parser_argument_list(arg_list=all_args)
-    for arg in all_args:
-        if arg.get_namespace_name() in defaults:
-            arg.required = False
-            arg.default = defaults[arg.get_namespace_name()]
-
-    parser.set_defaults(**defaults)
-    _add_parser_argument_list_to_parser(
-        arg_list=all_args,
-        parser_to_add=parser,
-    )
-
-
-def _yaml_data_to_argparse_namespace(
-    yaml_data: Dict[str, Any],
-    _prefix: List[str],
-) -> Dict[str, Any]:
-    items: Dict[str, Any] = dict()
-    if len(yaml_data) == 0:
-        full_path_name = ".".join(_prefix)
-        items[full_path_name] = {}
-        return items
-
-    for key, val in yaml_data.items():
-        if isinstance(val, collections.abc.Mapping):
-            items.update(_yaml_data_to_argparse_namespace(
-                yaml_data=val,  # type: ignore
-                _prefix=_prefix + [key],
-            ))
-        else:
-            full_path_name = ".".join(_prefix + [key])
-            full_val = val
-            if not isinstance(full_val, list):
-                items[full_path_name] = full_val
-            else:
-                if not (len(full_val) and isinstance(full_val[0], collections.abc.Mapping)):
-                    items[full_path_name] = full_val
-                else:
-                    # TODO: Fix this differentiation
-                    # https://github.com/mosaicml/mosaicml/issues/147
-                    likely_hparams = all([len(x) == 1 for x in full_val])
-                    if not likely_hparams:
-                        # Likely a direct json with a list of dicts
-                        items[full_path_name] = full_val
-                    else:
-                        for sub_dict in full_val:
-                            if sub_dict is None:
-                                sub_dict = {}
-                            sub_name = _yaml_data_to_argparse_namespace(
-                                yaml_data=sub_dict,
-                                _prefix=_prefix + [key],
-                            )
-                            items.update(sub_name)
-    return items
-
-
-def _namespace_to_hparams_dict(
-    cls: Type[hp.Hparams],
-    namespace: List[Tuple[str, Any]],
-) -> Dict[str, Any]:
-    """
-    Converts an argparse namespace output back into the correct nested dict structure
-    necessary to create an Hparams object
-
-    This is necessary because argparse will flatten all arguments and lose information about
-    all subhparams, so we need to use the class and introspect in order to reconstruct the correct
-    data format
-
-    This function is safe and does not do any validation as validation is done later
-    """
-    from yahp.type_helpers import HparamsType
-
-    def sub_namespace(namespace_to_filter: List[Tuple[str, Any]], path: str):
-        return [(x[len(path) + 1:], y) for (x, y) in namespace_to_filter if x.startswith(path)]
-
-    def namespace_list_to_json_dict(namespace_list: List[Tuple[str, Any]]):
-        res = dict()
-        namespace_list = [(x.split("."), y) for (x, y) in namespace_list]  # type: ignore
-        namespace_list = sorted(namespace_list, key=lambda x: len(x[0]))
-        filtered_namespace_list = [(x, y) for (x, y) in namespace_list if len(x) == 1]
-        nested_namespace_list = [(x, y) for (x, y) in namespace_list if len(x) > 1]
-
-        for keys, value in filtered_namespace_list:
-            if keys[0] != "":
-                res[keys[0]] = value
-
-        nested_items = dict()
-        for keys, value in nested_namespace_list:
-            new_key = ".".join(keys[1:])
-            if keys[0] in nested_items:
-                nested_items[keys[0]].append((new_key, value))
-            else:
-                nested_items[keys[0]] = [(new_key, value)]
-
-        for sub_dict, sub_dict_items in nested_items.items():
-            res[sub_dict] = namespace_list_to_json_dict(namespace_list=sub_dict_items)
-
-        return res
-
-    res: Dict[str, JSON] = dict()
-    namespace_dict: Dict[str, Any] = dict(namespace)  # for keying into results
-    field_types = get_type_hints(cls)
-    for f in fields(cls):
-        ftype = HparamsType(field_types[f.name])
-        if not ftype.is_hparams_dataclass:
-            # Not an hparam
-            if not ftype.is_json_dict:
-                if f.name in namespace_dict:
-                    res[f.name] = namespace_dict[f.name]
-            else:
-                json_sub_namespace = sub_namespace(
-                    namespace_to_filter=namespace,
-                    path=f.name,
-                )
-                dict_data = namespace_list_to_json_dict(namespace_list=json_sub_namespace)
-                res[f.name] = dict_data
-        else:
-            if ftype.is_list:
-                selected_subhparams = namespace_dict[f.name]
-                subhparams_list = []
-                for selected_subhparam in selected_subhparams:
-                    subhparam_namespace = sub_namespace(
-                        namespace_to_filter=namespace,
-                        path=f.name + "." + selected_subhparam,
-                    )
-
-                    subhparam_class = cls.hparams_registry.get(f.name, dict()).get(  # type: ignore
-                        selected_subhparam,
-                        None,
-                    )
-                    assert subhparam_class is not None, f"Unable to find subhparam in {cls.__name__} for field {f.name} and key {selected_subhparam}"
-                    subhparams_list.append({
-                        selected_subhparam:
-                            _namespace_to_hparams_dict(
-                                cls=subhparam_class,
-                                namespace=subhparam_namespace,
-                            )
-                    })
-                res[f.name] = subhparams_list
-            else:
-                # Directly nested vs choice
-                if f.name not in cls.hparams_registry:
-                    subhparam_namespace = sub_namespace(
-                        namespace_to_filter=namespace,
-                        path=f.name,
-                    )
-                    subhparam_class = ftype.type
-                    assert issubclass(subhparam_class, hp.Hparams)
-                    res[f.name] = _namespace_to_hparams_dict(
-                        cls=subhparam_class,
-                        namespace=subhparam_namespace,
-                    )
-                else:
-                    selected_subhparam = namespace_dict[f.name]
-                    subhparam_namespace = sub_namespace(
-                        namespace_to_filter=namespace,
-                        path=f.name + "." + selected_subhparam,
-                    )
-                    subhparam_class = cls.hparams_registry.get(f.name, dict()).get(  # type: ignore
-                        selected_subhparam,
-                        None,
-                    )
-                    assert subhparam_class is not None, f"Unable to find subhparam in {cls.__name__} for field {f.name} and key {selected_subhparam}"
-                    res[f.name] = {
-                        selected_subhparam:
-                            _namespace_to_hparams_dict(
-                                cls=subhparam_class,
-                                namespace=subhparam_namespace,
-                            )
-                    }
-    return res
+                registry_entry = cls.hparams_registry[f.name]
+                choices = sorted(list(registry_entry.keys()))
+                nargs = None
+                if ftype.is_list:
+                    nargs = "+" if required else "*"
+                    required = False
+                ans.append(
+                    _ParserArgument(
+                        argparse_name_registry=argparse_name_registry,
+                        full_name=full_name,
+                        nargs=nargs,
+                        choices=choices,
+                        helptext=helptext,
+                    ))
+    return ans

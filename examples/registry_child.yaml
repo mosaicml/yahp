@@ -1,0 +1,7 @@
+person:
+  child:
+    name: Bob
+    age: 5
+    parents:
+      - Alice
+      - Charlie
