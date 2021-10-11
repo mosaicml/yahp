@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, List, NamedTuple, Optional, Type, get_type_hin
 
 import yahp as hp
 from yahp.utils.interactive import query_with_options
-from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 from yahp.utils.iter_helpers import ensure_tuple
+from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 
 if TYPE_CHECKING:
     from yahp.types import JSON, HparamsField

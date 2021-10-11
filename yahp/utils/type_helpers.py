@@ -198,6 +198,8 @@ class HparamsType:
                 val = val.lower()
             return enum_map[val]
         if self.is_hparams_dataclass:
+            if isinstance(val, self.type):
+                return val
             raise RuntimeError("convert() cannot be used with hparam dataclasses")
         if self.is_json_dict:
             if isinstance(val, str):

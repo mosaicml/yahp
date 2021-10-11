@@ -3,7 +3,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Type, Union
 
 import pytest
 
-from yahp.type_helpers import HparamsType, _JSONDict
+from yahp.utils.type_helpers import HparamsType, _JSONDict
 
 
 class TypeHelperFixture(NamedTuple):

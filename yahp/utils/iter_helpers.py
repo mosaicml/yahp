@@ -24,6 +24,7 @@ def ensure_tuple(x: Any, /) -> Tuple[Any, ...]:
         return tuple(x.values())
     return (x,)
 
+
 K = TypeVar("K")
 V = TypeVar("V")
 

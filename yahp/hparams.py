@@ -9,14 +9,13 @@ from abc import ABC
 from dataclasses import dataclass, fields
 from enum import Enum
 from io import StringIO
-from typing import (TYPE_CHECKING, Any, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast,
-                    get_type_hints)
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast, get_type_hints
 
 import yaml
 
-from yahp.utils import type_helpers
 from yahp.create.commented_map import CMOptions, to_commented_map
 from yahp.create.create import create, get_argparse
+from yahp.utils import type_helpers
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -31,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 TDefault = TypeVar("TDefault")
 THparams = TypeVar("THparams", bound="Hparams")
+
 
 @dataclass
 class Hparams(ABC):
@@ -380,8 +380,8 @@ class Hparams(ABC):
         existing_keys = sub_registry.keys()
         if class_key in existing_keys:
             raise ValueError(f"Field {class_key}.{field} already registered in the {cls.__name__} "
-                f"registry for class: {sub_registry[field]}. \n"
-                f"Make sure you register new classes with a unique name")
+                             f"registry for class: {sub_registry[field]}. \n"
+                             f"Make sure you register new classes with a unique name")
 
         logger.info(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
         sub_registry[class_key] = register_class

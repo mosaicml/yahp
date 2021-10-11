@@ -438,6 +438,11 @@ class DummyEnum(IntEnum):
 
 
 @dataclass
+class FloatToBoolFixture(hp.Hparams):
+    float_field: float = hp.optional(doc="please autoconvert to float", default=1)
+
+
+@dataclass
 class KitchenSinkHparams(hp.Hparams):
     hparams_registry = {
         fname: {
@@ -500,14 +505,13 @@ class KitchenSinkHparams(hp.Hparams):
     nullable_required_choice_list: Optional[List[ChoiceHparamParent]] = hp.required(
         doc="choice Hparam field", template_default=[ChoiceOneHparam(True, 0)])
 
-    optional_int_field_default_1: Optional[int] = hp.optional("optional int field default 1", default=1)
-    optional_int_field_default_none: Optional[int] = hp.optional("optional int field default None", default=None)
+    optional_float_field_default_1: Optional[float] = hp.optional("optional float field default 1", default=1)
+    optional_float_field_default_none: Optional[float] = hp.optional("optional float field default None", default=None)
 
     optional_bool_field_default_true: Optional[bool] = hp.optional("optional bool field default True", default=True)
     optional_bool_field_default_none: Optional[bool] = hp.optional("optional bool field default None", default=None)
 
-    optional_enum_field_default_red: Optional[DummyEnum] = hp.optional("optional enum field default red",
-                                                                       default=DummyEnum.RED)
+    optional_enum_field_default_red: Optional[DummyEnum] = hp.optional("optional enum field default red", default="red")
     optional_enum_field_default_none: Optional[DummyEnum] = hp.optional("optional enum field default None",
                                                                         default=None)
 
