@@ -13,8 +13,10 @@ from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_req
 
 logger = logging.getLogger(__name__)
 
+
 class _DuplicateShortnameError(RuntimeError):
     pass
+
 
 @dataclass(eq=False)
 class _ParserArgument:
@@ -68,8 +70,6 @@ class ArgparseNameRegistry:
         self._names: Set[str] = set()
         # tracks the shortname: possible args awaiting shortnames that could be assigned to it.
         self._shortnames: Dict[str, Set[_ParserArgument]] = {}
-        # tracks the shortnames that have been assigned
-        self._assigned_shortnames: Set[str] = set()
 
     def reserve(self, *names: str) -> None:
         """Reserve names for non-parser-arguments"""
@@ -102,14 +102,11 @@ class ArgparseNameRegistry:
             if shortname in self._names:
                 continue
             if len(args) == 1:
-                self._assigned_shortnames.add(shortname)
                 # it's a good shortname
                 # assign it
+                self._names.add(shortname)  # ensure it can't be used again by anything
                 arg = args.pop()
                 arg.short_name = shortname
-                if shortname in self._assign_shortnames:
-                    raise _DuplicateShortnameError()  # this is caught in create
-                self._names.add(shortname)  #  so it can't be used again
                 # Don't free up other shortnames
 
     def __contains__(self, x: Union[str, _ParserArgument]) -> bool:
