@@ -7,19 +7,21 @@ import pathlib
 import sys
 import warnings
 from dataclasses import _MISSING_TYPE, MISSING, fields
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, get_type_hints
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, get_type_hints, TypeVar
 
 import yaml
 
 import yahp as hp
-from yahp.argparse import (ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
+from yahp.create.argparse import (ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
                            retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
-from yahp.type_helpers import HparamsType, is_none_like
-from yahp.utils import extract_only_item_from_dict
+from yahp.utils.type_helpers import HparamsType, is_none_like
+from yahp.utils.iter_helpers import extract_only_item_from_dict
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, HparamsField, THparams
+    from yahp.types import JSON, HparamsField
+
+THparams = TypeVar("THparams", bound="hp.Hparams")
 
 
 class _MissingRequiredFieldException(ValueError):

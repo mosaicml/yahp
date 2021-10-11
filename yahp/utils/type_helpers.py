@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
 
 import yahp as hp
-from yahp.utils import ensure_tuple
+from yahp.utils.iter_helpers import ensure_tuple
 
 
 class _JSONDict:  # sentential for representing JSON dictionary types
@@ -34,7 +34,23 @@ def _is_valid_primitive(*types: Type[Any]) -> bool:
 
 
 class HparamsType:
-    """HparamsType is used internall by YAHP to prase typing annotations
+    """Wrapper to parse type annotations and determine type of field.
+
+    HparamsType parses typing annotations and provides convenience methods
+    to determine the field types.
+
+    Args:
+        item (type): Type annotation to parse.
+    
+    Attributes:
+        types (List[Type]): The allowed types for this annotation, as a list.
+            If the annotation is ``List[X]`` or ``Optional[X]``,
+            then ``X`` is stored in this attributed.
+            If the annotation is a ``Union[X, Y]``, then this attribute
+            is ``[X, Y]``. None is never stored here;
+            instead, see :attr:`is_optional`.
+        is_optional (bool): Whether the annotation allows None.
+        is_list (bool): Whether the annotation is a list.
     """
 
     def __init__(self, item: Type[Any]) -> None:
@@ -126,13 +142,36 @@ class HparamsType:
 
     @property
     def is_hparams_dataclass(self) -> bool:
+        """
+        Whether it is a subclass of :class:`~yahp.hparams.Hparams`,
+        or a list of :class:`~yahp.hparams.Hparams`.
+        """
         return len(self.types) > 0 and all(safe_issubclass(t, hp.Hparams) for t in self.types)
 
     @property
     def is_json_dict(self) -> bool:
+        """Whether it is a JSON Dictionary."""
         return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
 
     def convert(self, val: Any, field_name: str, *, wrap_singletons: bool = True) -> Any:
+        """Attempt to convert an item into a type allowed by the annotation.
+
+        Args:
+            val (Any): Item to convert.
+            field_name (str): Name for field being converted.
+            wrap_singletons (bool, optional):
+                If True (the default) and the field is a list, singletons will
+                be wrapped into a list. Otherwise, raise a :class:`TypeError`.
+
+        Raises:
+            ValueError: Raised if :attr:`val` is None, but
+                the annotation does not permit None.
+            TypeError: Raised if :attr:`val` cannot be converted into a type
+                specified by the annotation.
+
+        Returns:
+            The converted item.
+        """
         # converts a value to the type specified by hparams
         # val can ether be a JSON or python representation for the value
         # If a singleton is given to a list, it will be converted to a list
@@ -181,18 +220,38 @@ class HparamsType:
 
     @property
     def is_enum(self) -> bool:
+        """
+        Whether the annotation allows for a subclass of :class:`Enum`,
+        or a list of :class:`Enum`.
+        """
         return len(self.types) > 0 and all(safe_issubclass(t, Enum) for t in self.types)
 
     @property
     def is_primitive(self) -> bool:
+        """
+        Whether the annotation allows for a
+        :class:`bool`, :class:`int`, :class:`str`, or :class:`float`,
+        or a list of such types.
+        """
         return len(self.types) > 0 and all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
 
     @property
     def is_boolean(self) -> bool:
+        """
+        Whether the annotation allows for a :class:`bool`,
+        or a list of :class:`bool`.
+        """
         return len(self.types) > 0 and all(safe_issubclass(t, bool) for t in self.types)
 
     @property
     def type(self) -> Type[Any]:
+        """
+        The underlying type allowed by the annotation.
+        If the annotation is a ``List[x]`` or ``Optional[X]``, then ``X`` is returned.
+
+        This property is only available if the annotation is not a union
+        of multiple types. For these cases, see :attr:`types`.
+        """
         if len(self.types) != 1:
             # self.types it not 1 in the case of unions
             raise RuntimeError(".type is not defined for unions")
@@ -228,11 +287,23 @@ class HparamsType:
         return ans
 
 
-def is_field_required(f: Field[Any]) -> bool:
+def is_field_required(f: Field[Any], /) -> bool:
+    """
+    Returns whether a field is required
+    (i.e. does not have a default value).
+    
+    Args:
+        f (Field): The field.
+    """
     return get_default_value(f) == MISSING
 
 
-def get_default_value(f: Field[Any]) -> Any:
+def get_default_value(f: Field[Any], /) -> Any:
+    """Returns an instance of a default value for a field.
+    
+    Args:
+        f (Field): The field.
+    """
     if f.default != MISSING:
         return f.default
     if f.default_factory != MISSING:
@@ -240,17 +311,28 @@ def get_default_value(f: Field[Any]) -> Any:
     return MISSING
 
 
-def to_bool(x: Any):
+def to_bool(x: Any, /):
+    """Converts a value to a boolean
+    
+    Args:
+        x (object): Value to attempt to convert to a bool.
+    """
     if isinstance(x, str):
         x = x.lower()
     if x in ("t", "true", "y", "yes", 1, True):
         return True
     if x in ("f", "false", "n", "no", 0, False):
         return False
-    raise ValueError(f"Could not parse {x} as bool")
+    raise TypeError(f"Could not parse {x} as bool")
 
 
-def is_none_like(x: Any, *, allow_list: bool) -> bool:
+def is_none_like(x: Any, /, *, allow_list: bool) -> bool:
+    """Returns whether a value is ``None``, ``"none"``, ``[""]``, or ``["none"]``
+    
+    Args:
+        x (object): Value to examine.
+        allow_list (bool): Whether to treat ``[""]``, or ``["none"]`` as ``None``.
+    """
     if x is None:
         return True
     if isinstance(x, str) and x.lower() in ["", "none"]:
