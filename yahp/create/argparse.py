@@ -58,7 +58,6 @@ class ParserArgument:
 class ArgparseNameRegistry:
     # ArgparseNameRegistry tracks which names have already been used as argparse names to ensure no duplicates.
     def __init__(self) -> None:
-        self._args: Set[ParserArgument] = set()
         self._names: Set[str] = set()
         # tracks the shortname: possible args awaiting shortnames that could be assigned to it.
         self._shortnames: Dict[str, Set[ParserArgument]] = {}
@@ -74,7 +73,6 @@ class ArgparseNameRegistry:
             if arg.full_name in self._names:
                 raise ValueError(f"{arg.full_name} is already in the registry")
             self._names.add(arg.full_name)
-            self._args.add(arg)
             for shortname in arg.get_possible_short_names():
                 if shortname not in self._shortnames:
                     self._shortnames[shortname] = set()
@@ -94,23 +92,21 @@ class ArgparseNameRegistry:
             # get the shortest shortname from the tail
             shortname, args = shortnames_list.pop()
             if shortname in self._names:
+                # if the shortname is already taken (either as a long name,
+                # or as a shortname from a previous call to assign_shortnames), then skip it
                 continue
             if len(args) == 1:
-                # it's a good shortname
+                # Only one arg wants this shortname
                 arg = list(args)[0]
                 if arg.short_name is not None:
-                    # arg already has a shortname
+                    # This arg already has a shortname
+                    # (e.g. a shorter shortname was available and is being used)
                     continue
                 arg.short_name = shortname
                 self._names.add(shortname)  # ensure it can't be used again by anything
 
-    def __contains__(self, x: Union[str, ParserArgument]) -> bool:
-        if isinstance(x, str):
-            return x in self._names
-        elif isinstance(x, ParserArgument):
-            return x in self._args
-        else:
-            raise NotImplementedError()
+    def __contains__(self, x: str) -> bool:
+        return x in self._shortnames
 
 
 def get_hparams_file_from_cli(
