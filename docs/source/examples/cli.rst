@@ -17,7 +17,7 @@ Now, consider the following script called ``cli.py`` that defines the
 
 
 If you were to run ``python cli.py``, YAHP would complain that it does not have a value for ``foo``.
-This is because ``foo`` is a required field, but neither is a value is not specified in the YAML nor is
+This is because ``foo`` is a required field, but no value is specified in the YAML nor is
 there a default value.
 
 Instead, ``foo`` can be set on the command line. Arugments specified in YAML can also be overridden
