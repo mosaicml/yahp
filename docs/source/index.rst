@@ -11,6 +11,14 @@ YAHP
 
 .. toctree::
    :maxdepth: 1
+   :caption: Examples
+
+   examples/simple
+   examples/cli
+   examples/registry
+
+.. toctree::
+   :maxdepth: 1
    :caption: API Reference
 
    api_ref/hparams
