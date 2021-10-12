@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, TypeVar
+from typing import Any, Dict, List, Tuple, TypeVar, Union
+
+T = TypeVar("T")
 
 
-def ensure_tuple(x: Any, /) -> Tuple[Any, ...]:
+def ensure_tuple(x: Union[T, Tuple[T, ...], List[T], Dict[Any, T]], /) -> Tuple[T, ...]:
     """Converts ``x`` to a :class:`tuple`
 
     Args:
