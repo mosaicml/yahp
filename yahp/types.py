@@ -2,7 +2,7 @@
 
 Attributes:
     JSON: Representation for JSON-like types.
-    HparamsField: Union of allowed types for :class:`~yahp.hparams.hparams.Hparams` fields.
+    HparamsField: Union of allowed types for :class:`~yahp.hparams.Hparams` fields.
 """
 from __future__ import annotations
 
