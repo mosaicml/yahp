@@ -7,7 +7,7 @@ YAHP
    :maxdepth: 1
    :caption: Overview
 
-   ../../README.md
+   README.md
 
 .. toctree::
    :maxdepth: 1

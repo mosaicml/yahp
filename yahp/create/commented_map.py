@@ -54,7 +54,7 @@ class CMOptions(NamedTuple):
 
 
 def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[str], is_list: bool, options: CMOptions):
-    """Generate a template for an abstract :class:`~yahp.Hparams`.
+    """Generate a template for an abstract :class:`~yahp.hparams.Hparams`.
 
     If in interactive mode (as specified in ``options``), then a CLI prompt is used to determine which
     concrete subclass should be enumerated. Otherwise, all are dumped.
