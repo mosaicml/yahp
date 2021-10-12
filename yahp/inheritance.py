@@ -131,7 +131,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
             param: val
             other: 
                 whatever: 12
-            tomatoes: 11
+        tomatoes: 11
     
 
     Then this function will return one dictionary with:
