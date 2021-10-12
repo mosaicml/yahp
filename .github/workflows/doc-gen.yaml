@@ -43,7 +43,7 @@ jobs:
           make html
 
       - name: Publish to Docs Repo
-        if: ${{ contains(github.ref, 'refs/heads/dev') }}
+        #if: ${{ contains(github.ref, 'refs/heads/dev') }}
         run: |
           set -ex
 
