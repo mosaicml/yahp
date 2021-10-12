@@ -5,9 +5,9 @@ from enum import Enum
 from typing import TYPE_CHECKING, List, NamedTuple, Optional, Type, get_type_hints
 
 import yahp as hp
-from yahp.interactive import query_with_options
-from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
-from yahp.utils import ensure_tuple
+from yahp.utils.interactive import query_with_options
+from yahp.utils.iter_helpers import ensure_tuple
+from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 
 if TYPE_CHECKING:
     from yahp.types import JSON, HparamsField
@@ -54,19 +54,23 @@ class CMOptions(NamedTuple):
 
 
 def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[str], is_list: bool, options: CMOptions):
-    """Generate a template for an abstract :class:`~yahp.Hparams`.
+    """Generate a template for an abstract :class:`~yahp.hparams.Hparams`.
 
-    If in interactive mode (as specified in :param options:), then a CLI prompt is used to determine which
+    If in interactive mode (as specified in ``options``), then a CLI prompt is used to determine which
     concrete subclass should be enumerated. Otherwise, all are dumped.
 
     Args:
-        hparams (Type[hp.Hparams]): The parent of the abstract :class:`~yahp.Hparams` object.
-        path_with_fname (List[str]): The path from the root :class:`~yahp.Hparams` to the abstract field.
+        hparams (Type[hp.Hparams]):
+            The parent of the abstract :class:`~yahp.hparams.Hparams` object.
+        path_with_fname (List[str]):
+            The path from the root :class:`~yahp.hparams.Hparams` to the abstract field.
         is_list (bool): Whether the abstract field is a list.
         options (CMOptions): CMOptions from :meth:`to_commented_map`.
 
     Returns:
-        The generated template for the field, as a :class:`CommentedSeq` if :param is_list:, otherwise, a `CommentedMap`
+        The generated template for the field, as a
+        :class:`~ruamel.yaml.comments.CommentedSeq` if ``is_list``,
+        otherwise, a :class:`~ruamel.yaml.comments.CommentedMap``
     """
     field_name = path_with_fname[-1]
     possible_sub_hparams = hparams.hparams_registry[field_name]
@@ -133,16 +137,17 @@ def to_commented_map(
     """Converts a Hparams class into a CommentedMap YAML template.
 
     .. note::
-        This function should not be called directly. Instead, use :meth:`hp.Hparams.dump` or
-        :meth:`hp.Hparams.dumps`.
+        This function should not be called directly.
+        Instead, use :meth:`~yahp.hparams.Hparams.dump` or
+        :meth:`~yahp.hparams.Hparams.dumps`.
 
     Args:
         cls (Type[hp.Hparams]): The class to geneate into a template
         options (CMOptions): Options for genearting the CommentedMap
-        path (List[str]): Path to :param cls: from the root.
+        path (List[str]): Path to ``cls`` from the root.
 
     Returns:
-        YAML: YAML template for :param cls:
+        YAML: YAML template for ``cls``.
     """
     # TODO(averylamp) accept existing fields to create a new template from an existing one
     output = CommentedMap()

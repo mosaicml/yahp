@@ -124,15 +124,16 @@ nullable_required_choice_list:
 - one:
     commonfield: true
     intfield: 0
-optional_int_field_default_1: 1              #        Optional[int] (Optional). Description: optional int field default 1.
-#        Optional[int] (Optional). Description: optional int field default None. Defaults to None.
-optional_int_field_default_none:
+#      Optional[float] (Optional). Description: optional float field default 1.
+optional_float_field_default_1: 1
+#      Optional[float] (Optional). Description: optional float field default None. Defaults to None.
+optional_float_field_default_none:
 #       Optional[bool] (Optional). Description: optional bool field default True.
 optional_bool_field_default_true: true
 #       Optional[bool] (Optional). Description: optional bool field default None. Defaults to None.
 optional_bool_field_default_none:
 # Optional[DummyEnum{RED, GREEN, blue}] (Optional). Description: optional enum field default red.
-optional_enum_field_default_red: RED
+optional_enum_field_default_red: red
 # Optional[DummyEnum{RED, GREEN, blue}] (Optional). Description: optional enum field default None. Defaults to None.
 optional_enum_field_default_none:
 # Optional[bool | str] (Optional). Description: optional union_bool_str field default True.

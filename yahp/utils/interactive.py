@@ -11,6 +11,15 @@ def query_yes_no(
     question: str,
     default: bool = True,
 ):
+    """Query for a yes/no response on the CLI.
+
+    Args:
+        question (str): Question to ask.
+        default (bool, optional): Default response. Defaults to True.
+
+    Returns:
+        bool: The response. 
+    """
     if default is None:
         prompt = " [y/n] "
     elif default:
@@ -32,6 +41,16 @@ def query_with_default(
     name: str,
     default_response: Optional[str] = None,
 ) -> str:
+    """Query for a string response on the CLI.
+
+    Args:
+        question (str): Question to ask.
+        default_response (Optional[str], optional):
+            Default response. Set to None to require a response.
+
+    Returns:
+        str: The response.
+    """
     default_response_pren = f" [{default_response}]" if default_response is not None else ""
     while True:
         try:
@@ -83,11 +102,14 @@ def query_with_options(
     Args:
         name (str): Prompt for the user.
         options (List[str]): List of options.
-        default_response (Optional[str]): Default response, should the user return without selecting anything. Set to `None` to require a response.
-        multiple_ok (bool): Whether the user can specify multiple options via a comma-seperated response.
+        default_response (Optional[str]):
+            Default response. Set to `None` to require a response.
+        multiple_ok (bool):
+            Whether the user can specify multiple options
+            via a comma-seperated response.
 
     Returns:
-        The response, or if :param multiple_ok: is True, a list of responses.
+        The response, or if ``multiple_ok`` is True, a list of responses.
     """
     default_response_pren = f" [{default_response}]" if default_response is not None else ""
     while True:

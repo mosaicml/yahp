@@ -2,7 +2,7 @@
 
 YAHP introduces yet another hyperparameter management tool.
 
-## Features:
+## Features
 * Utilizes [dataclasses](https://docs.python.org/3.8/library/dataclasses.html) to describe the data model.
 * Supports `int`, `float`, `bool`, `str`, and `Enum`s; along with lists and nullable fields
 * Fields can be optional (with a default) or required
@@ -12,8 +12,8 @@ YAHP introduces yet another hyperparameter management tool.
 
 ## Getting Started
 
-* See the [simple example](examples/simple.py) for a simple data model and yaml file.
-* See the [cli example](examples/cli.py) for an example of the CLI.
+* See the [simple example](examples/simple) for a simple data model and yaml file.
+* See the [cli example](examples/cli) for an example of the CLI.
 * See the [registry example](examples/registry) for how to use nested dataclasses with inheritance.
 
 ## YAHP Command Line
