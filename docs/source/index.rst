@@ -7,7 +7,15 @@ YAHP
    :maxdepth: 1
    :caption: Overview
 
-   ../../README.md
+   README.md
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples
+
+   examples/simple
+   examples/cli
+   examples/registry
 
 .. toctree::
    :maxdepth: 1

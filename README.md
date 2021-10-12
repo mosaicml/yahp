@@ -12,9 +12,9 @@ YAHP introduces yet another hyperparameter management tool.
 
 ## Getting Started
 
-* See the [simple example](examples/simple.py) for a simple data model and yaml file.
-* See the [cli example](examples/cli.py) for an example of the CLI.
-* See the [registry example](examples/registry) for how to use nested dataclasses with inheritance.
+* See the [simple example](/examples/simple) for a simple data model and yaml file.
+* See the [cli example](/examples/cli) for an example of the CLI.
+* See the [registry example](/examples/registry) for how to use nested dataclasses with inheritance.
 
 ## YAHP Command Line
 Whenever `Hparams.create()` is invoked, YAHP adds the following command line options:

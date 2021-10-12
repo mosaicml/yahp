@@ -1,0 +1,9 @@
+owners:
+  - adult:
+      name: Alice
+      num_children: 1
+  - child:
+      name: Bob
+      parents:
+        - Alice
+        - Charlie
