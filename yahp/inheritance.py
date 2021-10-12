@@ -107,36 +107,51 @@ def _recursively_update_leaf_data_items(
 
 
 def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
-    """Loads a YAML file from :param yaml_path: with inheritance.
+    """Loads a YAML file with inheritance.
 
-    Inhertiance allows one YAML file to include data from another yaml file.
+    Inheritance allows one YAML file to include data from another yaml file.
 
     Example:
 
-    Given two yaml files -- `foo.yaml` and `bar.yaml`:
+    Given two yaml files -- ``foo.yaml`` and ``bar.yaml``:
     
-    `foo.yaml`:
+    ``foo.yaml``:
+
     .. code-block:: yaml
+
         foo:
-            inherits: bar.yaml
+            inherits:
+                - bar.yaml
     
-    `bar.yaml`:
+    ``bar.yaml``:
+
     .. code-block:: yaml
-        bar: hello_world
+
+        foo:
+            param: val
+            other: 
+                whatever: 12
+        tomatoes: 11
     
 
-    Then this function will return one Dictionary with:
+    Then this function will return one dictionary with:
+
     .. code-block:: python
-        { "foo": { "bar": "hello_world" } }
+
+        {
+            "foo": {
+                "param": "val",
+                "other: {
+                    "whatever": 12
+                }
+            },
+        }
 
     Args:
-        yaml_path (str): The filepath to the yaml to load
-
-    Raises:
-        FileNotFoundError: Raised if the file is not found
+        yaml_path (str): The filepath to the yaml to load.
 
     Returns:
-        Dict[str, JSON]: The flattened YAML, with inheritance stripped.
+        JSON Dictionary: The flattened YAML, with inheritance stripped.
     """
     abs_path = os.path.abspath(yaml_path)
     file_directory = os.path.dirname(abs_path)

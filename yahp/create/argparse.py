@@ -9,7 +9,7 @@ from typing import List, Optional, Sequence, Set, Tuple, Type, Union, get_type_h
 import yaml
 
 import yahp as hp
-from yahp.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
+from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 
 logger = logging.getLogger(__name__)
 

@@ -6,20 +6,22 @@ import os
 import pathlib
 import sys
 import warnings
-from dataclasses import _MISSING_TYPE, MISSING, fields
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, get_type_hints
+from dataclasses import MISSING, fields
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, get_type_hints
 
 import yaml
 
 import yahp as hp
-from yahp.argparse import (ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
-                           retrieve_args)
+from yahp.create.argparse import (ArgparseNameRegistry, get_commented_map_options_from_cli, get_hparams_file_from_cli,
+                                  retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
-from yahp.type_helpers import HparamsType, is_none_like
-from yahp.utils import extract_only_item_from_dict
+from yahp.utils.iter_helpers import extract_only_item_from_dict
+from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
 
 if TYPE_CHECKING:
-    from yahp.types import JSON, HparamsField, THparams
+    from yahp.types import JSON, HparamsField
+
+THparams = TypeVar("THparams", bound="hp.Hparams")
 
 
 class _MissingRequiredFieldException(ValueError):
@@ -42,20 +44,25 @@ def _create(
     argparse_name_registry: ArgparseNameRegistry,
     argparsers: List[argparse.ArgumentParser],
 ) -> THparams:
-    """Helper method to recursively create an instance of :param cls:. It should not be called directly
+    """Helper method to recursively create an instance of the :class:`~yahp.hparams.Hparams`.
 
     Args:
-        cls (Type[THparams]): A :class:`~yahp.Hparams` to create.
-        data (Dict[str, JSON]): A JSON dictionary of values to use to initialize :param cls:.
-        cli_args (Optional[List[str]]): A list of cli args. This list is modified in-place, and all used arguments
-            are removed from the list.
-        prefix (List[str]): The prefix for the :param cli_args: that should be used to instantiate this class.
-        argparse_name_registry (_ArgparseNameRegistry): A registry to track CLI argument names
-        argparsers (List[argparse.ArgumentParser]): A list of :class:`~argparse.ArgumentParser`s,
+        data (Dict[str, JSON]):
+            A JSON dictionary of values to use to initialize the class.
+        cli_args (Optional[List[str]]):
+            A list of cli args. This list is modified in-place,
+            and all used arguments are removed from the list.
+        prefix (List[str]):
+            The prefix corresponding to the subset of ``cli_args``
+            that should be used to instantiate this class.
+        argparse_name_registry (_ArgparseNameRegistry):
+            A registry to track CLI argument names.
+        argparsers (List[argparse.ArgumentParser]):
+            A list of :class:`~argparse.ArgumentParser`s,
             which is extended in-place.
 
     Returns:
-        THparams: An instance of :param cls:
+        An instance of the class.
     """
     if cli_args is None:
         parsed_arg_dict = {}
@@ -85,18 +92,29 @@ def _create(
         try:
             ftype = HparamsType(field_types[f.name])
             full_name = ".".join(prefix_with_fname)
-            argparse_or_yaml_value: Union[_MISSING_TYPE, JSON] = MISSING
             if full_name in parsed_arg_dict and parsed_arg_dict[full_name] != MISSING:
+                # use CLI args first
                 argparse_or_yaml_value = parsed_arg_dict[full_name]
             elif f.name in data:
+                # then use YAML
                 argparse_or_yaml_value = data[f.name]
             elif full_name.upper() in os.environ:
+                # then use environment variables
                 argparse_or_yaml_value = os.environ[full_name.upper()]
+            else:
+                # otherwise, set it as MISSING so the default will be used
+                argparse_or_yaml_value = MISSING
 
             if not ftype.is_hparams_dataclass:
-                if argparse_or_yaml_value != MISSING:
+                if argparse_or_yaml_value == MISSING:
+                    if not is_field_required(f):
+                        # if it's a primitive and there's a default value,
+                        # then convert and use it.
+                        # Sometimes primitives will not have correct default values
+                        # (e.g. type is float, but the default is an int)
+                        kwargs[f.name] = ftype.convert(get_default_value(f), full_name)
+                else:
                     kwargs[f.name] = ftype.convert(argparse_or_yaml_value, full_name)
-                # defaults will be set by the hparams constructor
             else:
                 if f.name not in cls.hparams_registry:
                     # concrete, singleton hparams
@@ -417,7 +435,7 @@ def _get_hparams(
                                                 argument_parsers=argparsers)
     if cli_f is not None:
         if f is not None:
-            raise ValueError("File cannot be specifed via both function arguments and the CLI")
+            raise ValueError("File cannot be specified via both function arguments and the CLI")
         f = cli_f
 
     if f is not None:
@@ -455,10 +473,10 @@ def get_argparse(
         f (Union[str, None, TextIO, pathlib.PurePath], optional):
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
-            Cannot be specified with :param data:.
+            Cannot be specified with ``data``.
         data (Optional[Dict[str, JSON]], optional): 
             f specified, uses this dictionary for instantiating
-            the :class:`~yahp.Hparams`. Cannot be specified with :param f:.
+            the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
             Can either be a list of CLI argument,
             `true` (the default) to load CLI arguments from `sys.argv`,

@@ -2,7 +2,7 @@
 
 YAHP introduces yet another hyperparameter management tool.
 
-## Features:
+## Features
 * Utilizes [dataclasses](https://docs.python.org/3.8/library/dataclasses.html) to describe the data model.
 * Supports `int`, `float`, `bool`, `str`, and `Enum`s; along with lists and nullable fields
 * Fields can be optional (with a default) or required
