@@ -1,0 +1,67 @@
+name: Generate Documentation
+on:
+  push:
+    paths:
+      - ".github/workflows/doc-gen.yaml"
+      - "docs/**"
+      - "mosaicml/**"
+  workflow_dispatch: {}
+env:
+  DOCS_REPO: "mosaicml/docs.yahp"
+  DOCS_REPO_BRANCH: "ghpages"
+  DOCS_REPO_RLTV_PATH: "docs.yahp"
+jobs:
+  doc-gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mosaicml/composer:dev
+      credentials:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+    steps:
+      - name: Checkout MosaicML
+        uses: actions/checkout@v2
+
+      - name: Nested Checkout Docs Repo
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.DOCS_REPO }}
+          token: ${{ secrets.MOSAICML_GITHUB_TOKEN }}
+          ref: ${{ env.DOCS_REPO_BRANCH }}
+          path: ${{ env.DOCS_REPO_RLTV_PATH }}
+
+      - name: Install MosaicML
+        run: |
+          set -ex
+          pip install -e .
+
+      - name: Generate Sphinx HTML
+        run: |
+          set -ex
+          cd docs
+          make html
+
+      - name: Publish to Docs Repo
+        if: ${{ contains(github.ref, 'refs/heads/dev') }}
+        run: |
+          set -ex
+
+          # ENV
+          SRC_REPO=$GITHUB_REPOSITORY
+          SRC_BRANCH_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+
+          # Cleanup previous site
+          cd ${{ env.DOCS_REPO_RLTV_PATH }}
+          git rm -r docs/
+
+          # Copy doc html over to published area
+          cp -r ../docs/_build/html/ docs/
+          touch docs/.nojekyll
+
+          # Push published files
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add --all docs/
+          git commit -m "CI: Generated and published docs from ${SRC_REPO}, Commit: ${SRC_BRANCH_SHA}"
+          git pull_request
