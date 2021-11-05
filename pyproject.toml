@@ -12,6 +12,9 @@ include = [
     "examples/**",
     "tests/**"
 ]
+exclude = [
+    "build/**",
+]
 
 reportUnknownMemberType = "none"
 reportImportCycles = "none"
