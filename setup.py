@@ -49,6 +49,6 @@ setup(
     },
     install_requires=install_requires,
     extras_require=extra_deps,
-    python_requires='>=3.8',
+    python_requires='>=3.7',
     ext_package="yahp",
 )

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional, Union, overload
+from typing import TYPE_CHECKING, List, Optional, Union, overload
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 
 class _InvalidResponseException(ValueError):
