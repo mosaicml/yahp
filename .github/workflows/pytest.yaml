@@ -11,12 +11,15 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        python_version: [3.7, 3.8, 3.9]
+        python_version:
+          - "3.7"
+          - "3.8"
+          - "3.9"
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: {{ matrix.python_version }}
+          python-version: ${{ matrix.python_version }}
       - name: Cache pip
         uses: actions/cache@v2
         with:
