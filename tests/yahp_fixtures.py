@@ -1,3 +1,5 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum

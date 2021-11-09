@@ -1,3 +1,5 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 # pyright: reportUnusedImport=none
 
 # Future functions from typing for compatibility with python 3.7
