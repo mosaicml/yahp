@@ -1,5 +1,4 @@
 # Copyright 2021 MosaicML. All Rights Reserved.
-
 """Type Annotations used by YAHP
 
 Attributes:
