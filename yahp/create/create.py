@@ -429,8 +429,7 @@ def create(
     """
     argparsers: List[argparse.ArgumentParser] = []
     if cli_args is None:
-        cli_args == (data is None and f is None)
-    assert cli_args is not None, "invariant error"
+        cli_args = data is None and f is None
     remaining_cli_args = _get_remaining_cli_args(cli_args)
     try:
         hparams, output_f = _get_hparams(cls=cls,
@@ -536,7 +535,7 @@ def get_argparse(
     cls: Type[THparams],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
-    cli_args: Union[List[str], bool] = True,
+    cli_args: Union[List[str], bool, None] = None,
 ) -> argparse.ArgumentParser:
     """Get an :class:`~argparse.ArgumentParser` containing all CLI arguments.
 
@@ -550,13 +549,17 @@ def get_argparse(
             the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
             Can either be a list of CLI argument,
-            `true` (the default) to load CLI arguments from `sys.argv`,
-            or `false` to not use any CLI arguments.
+            True to load CLI arguments from ``sys.argv``,
+            or False to not use any CLI arguments.
+            Default is to load CLI arguments from ``sys.arg`` only when both `data` and `f`
+            are not specified. Otherwise, CLI arguments are ignored.
 
     Returns:
         argparse.ArgumentParser: An argparser with all CLI arguments, but without any help.
     """
     argparsers: List[argparse.ArgumentParser] = []
+    if cli_args is None:
+        cli_args = data is None and f is None
 
     remaining_cli_args = _get_remaining_cli_args(cli_args)
 

@@ -93,7 +93,7 @@ class Hparams(ABC):
         cls: Type[THparams],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
-        cli_args: Union[List[str], bool] = True,
+        cli_args: Union[List[str], bool, None] = None,
     ) -> THparams:
         """Create a instance of :class:`Hparams`.
 
@@ -105,10 +105,12 @@ class Hparams(ABC):
             data (Optional[Dict[str, JSON]], optional):
                 If specified, uses this dictionary for instantiating
                 the :class:`Hparams`. Cannot be specified with ``f``.
-            cli_args (Union[List[str], bool], optional):
-                CLI argument overrides.
-                If True (the default), load CLI arguments from `sys.argv`.
-                If False, then do not use any CLI arguments.
+            cli_args (Union[List[str], bool], optional): CLI argument overrides.
+                Can either be a list of CLI argument,
+                True to load CLI arguments from ``sys.argv``,
+                or False to not use any CLI arguments.
+                Default is to load CLI arguments from ``sys.arg`` only when both `data` and `f`
+                are not specified. Otherwise, CLI arguments are ignored.
 
         Returns:
             Hparams: An instance of the class.
@@ -120,7 +122,7 @@ class Hparams(ABC):
         cls: Type[THparams],
         f: Union[str, None, TextIO, pathlib.PurePath] = None,
         data: Optional[Dict[str, JSON]] = None,
-        cli_args: Union[List[str], bool] = True,
+        cli_args: Union[List[str], bool, None] = None,
     ) -> argparse.ArgumentParser:
         return get_argparse(cls, data=data, f=f, cli_args=cli_args)
 
