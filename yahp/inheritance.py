@@ -16,6 +16,12 @@ if TYPE_CHECKING:
     from yahp.types import JSON
 
 
+class _OverridenValue:
+
+    def __init__(self, val: JSON):
+        self.val = val
+
+
 def _get_inherits_paths(
     namespace: Dict[str, JSON],
     argument_path: List[str],
@@ -49,12 +55,6 @@ def _data_by_path(
         else:
             raise ValueError("Path must be empty unless if list or dict")
     return namespace
-
-
-class _OverridenValue:
-
-    def __init__(self, val: JSON):
-        self.val = val
 
 
 def _unwrap_overriden_value_dict(data: Dict[str, JSON]):

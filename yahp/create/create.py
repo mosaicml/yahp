@@ -395,34 +395,39 @@ def _add_help(argparsers: Sequence[argparse.ArgumentParser], cli_args: Sequence[
     help_argparser.parse_known_args(args=cli_args)  # Will print help and exit if the "--help" flag is present
 
 
-def _get_remaining_cli_args(cli_args: Union[List[str], bool]) -> List[str]:
-    if cli_args is True:
+def _get_remaining_cli_args(cli_args: Optional[List[str]]) -> List[str]:
+    if cli_args is None:
         return sys.argv[1:]  # remove the program name
-    if cli_args is False:
-        return []
-    return list(cli_args)
+    return cli_args
 
 
 def create(
     cls: Type[THparams],
-    data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
-    cli_args: Union[List[str], bool] = True,
+    data: Optional[Dict[str, JSON]] = None,
+    cli_args: Optional[List[str]] = None,
 ) -> THparams:
     """Create a instance of :class:`~yahp.hparams.Hparams`.
+
+    To create the instance, either pass in the raw dictionary ``data``
+    or a YAML filepath or file-like object with ``f``.
+    All Hparams fields can be overriden with dot notation cli-args.
+    ``cli_args`` by default will load from `sys.argv`, unless specifically passed in
+
 
     Args:
         f (Union[str, None, TextIO, pathlib.PurePath], optional):
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional): 
+        data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
-            the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
-        cli_args (Union[List[str], bool], optional): CLI argument overrides.
+            the :class:`~yahp.hparams.Hparams`.
+            Cannot be specified with ``f``.
+        cli_args (Optional[List[str]], optional): CLI argument overrides.
             Can either be a list of CLI argument,
-            True (the default) to load CLI arguments from ``sys.argv``,
-            or False to not use any CLI arguments.
+            or None (the default) to load CLI arguments from ``sys.argv``
+            to not use any CLI arguments, pass in an empty list
 
     Returns:
         THparams: An instance of :class:`~yahp.hparams.Hparams`.
@@ -430,11 +435,13 @@ def create(
     argparsers: List[argparse.ArgumentParser] = []
     remaining_cli_args = _get_remaining_cli_args(cli_args)
     try:
-        hparams, output_f = _get_hparams(cls=cls,
-                                         data=data,
-                                         f=f,
-                                         remaining_cli_args=remaining_cli_args,
-                                         argparsers=argparsers)
+        hparams, output_f = _get_hparams(
+            cls=cls,
+            data=data,
+            f=f,
+            remaining_cli_args=remaining_cli_args,
+            argparsers=argparsers,
+        )
     except _MissingRequiredFieldException as e:
         _add_help(argparsers, remaining_cli_args)
         raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "

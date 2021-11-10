@@ -44,7 +44,7 @@ class HparamsType:
 
     Args:
         item (type): Type annotation to parse.
-    
+
     Attributes:
         types (List[Type]): The allowed types for this annotation, as a list.
             If the annotation is ``List[X]`` or ``Optional[X]``,
@@ -296,7 +296,7 @@ def is_field_required(f: Field[Any]) -> bool:
     """
     Returns whether a field is required
     (i.e. does not have a default value).
-    
+
     Args:
         f (Field): The field.
     """
@@ -305,7 +305,7 @@ def is_field_required(f: Field[Any]) -> bool:
 
 def get_default_value(f: Field[Any]) -> Any:
     """Returns an instance of a default value for a field.
-    
+
     Args:
         f (Field): The field.
     """
@@ -318,7 +318,7 @@ def get_default_value(f: Field[Any]) -> Any:
 
 def to_bool(x: Any):
     """Converts a value to a boolean
-    
+
     Args:
         x (object): Value to attempt to convert to a bool.
     """
@@ -333,7 +333,7 @@ def to_bool(x: Any):
 
 def is_none_like(x: Any, *, allow_list: bool) -> bool:
     """Returns whether a value is ``None``, ``"none"``, ``[""]``, or ``["none"]``
-    
+
     Args:
         x (object): Value to examine.
         allow_list (bool): Whether to treat ``[""]``, or ``["none"]`` as ``None``.

@@ -56,11 +56,7 @@ class Hparams(ABC):
     hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
 
     @classmethod
-    def validate_keys(cls,
-                      keys: List[str],
-                      *,
-                      allow_missing_keys: bool = False,
-                      allow_extra_keys: bool = False) -> None:
+    def validate_keys(cls, keys: List[str], allow_missing_keys: bool = False, allow_extra_keys: bool = False) -> None:
         """
         Validates that ``keys`` matches the fields of the :class:`Hparams`.
 
@@ -93,7 +89,7 @@ class Hparams(ABC):
     @classmethod
     def create(
         cls: Type[THparams],
-        f: Union[str, None, TextIO, pathlib.PurePath] = None,
+        f: Optional[Union[str, TextIO, pathlib.PurePath]] = None,
         data: Optional[Dict[str, JSON]] = None,
         cli_args: Union[List[str], bool] = True,
     ) -> THparams:
