@@ -1,3 +1,5 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 from enum import Enum
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Type, Union
 

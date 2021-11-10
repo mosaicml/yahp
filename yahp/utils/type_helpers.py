@@ -1,12 +1,15 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 from __future__ import annotations
 
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import Any, Sequence, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Sequence, Tuple, Type, Union
 
 import yahp as hp
 from yahp.utils.iter_helpers import ensure_tuple
+from yahp.utils.typing_future import get_args, get_origin
 
 
 class _JSONDict:  # sentential for representing JSON dictionary types
@@ -289,7 +292,7 @@ class HparamsType:
         return ans
 
 
-def is_field_required(f: Field[Any], /) -> bool:
+def is_field_required(f: Field[Any]) -> bool:
     """
     Returns whether a field is required
     (i.e. does not have a default value).
@@ -300,7 +303,7 @@ def is_field_required(f: Field[Any], /) -> bool:
     return get_default_value(f) == MISSING
 
 
-def get_default_value(f: Field[Any], /) -> Any:
+def get_default_value(f: Field[Any]) -> Any:
     """Returns an instance of a default value for a field.
     
     Args:
@@ -313,7 +316,7 @@ def get_default_value(f: Field[Any], /) -> Any:
     return MISSING
 
 
-def to_bool(x: Any, /):
+def to_bool(x: Any):
     """Converts a value to a boolean
     
     Args:
@@ -328,7 +331,7 @@ def to_bool(x: Any, /):
     raise TypeError(f"Could not parse {x} as bool")
 
 
-def is_none_like(x: Any, /, *, allow_list: bool) -> bool:
+def is_none_like(x: Any, *, allow_list: bool) -> bool:
     """Returns whether a value is ``None``, ``"none"``, ``[""]``, or ``["none"]``
     
     Args:

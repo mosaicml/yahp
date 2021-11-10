@@ -1,3 +1,5 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple, TypeVar, Union
@@ -5,7 +7,7 @@ from typing import Any, Dict, List, Tuple, TypeVar, Union
 T = TypeVar("T")
 
 
-def ensure_tuple(x: Union[T, Tuple[T, ...], List[T], Dict[Any, T]], /) -> Tuple[T, ...]:
+def ensure_tuple(x: Union[T, Tuple[T, ...], List[T], Dict[Any, T]]) -> Tuple[T, ...]:
     """Converts ``x`` to a :class:`tuple`
 
     Args:
