@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import collections.abc
+import logging
 import os
 from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Union, cast
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -116,7 +119,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
     Example:
 
     Given two yaml files -- ``foo.yaml`` and ``bar.yaml``:
-    
+
     ``foo.yaml``:
 
     .. code-block:: yaml
@@ -124,17 +127,17 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
         foo:
             inherits:
                 - bar.yaml
-    
+
     ``bar.yaml``:
 
     .. code-block:: yaml
 
         foo:
             param: val
-            other: 
+            other:
                 whatever: 12
         tomatoes: 11
-    
+
 
     Then this function will return one dictionary with:
 
@@ -160,17 +163,24 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
     with open(abs_path, 'r') as f:
         data: JSON = yaml.full_load(f)
 
+    if data is None:
+        data = {}
+
     assert isinstance(data, dict)
 
     inherit_paths = sorted(_get_inherits_paths(data, []), key=lambda x: len(x[0]))
     for arg_path_parts, yaml_file_s in inherit_paths:
         for new_yaml_path in yaml_file_s:
-            sub_yaml_path = os.path.abspath(os.path.join(file_directory, new_yaml_path))
+            if not os.path.isabs(new_yaml_path):
+                sub_yaml_path = os.path.abspath(os.path.join(file_directory, new_yaml_path))
+            else:
+                sub_yaml_path = new_yaml_path
             sub_yaml_data = load_yaml_with_inheritance(yaml_path=sub_yaml_path)
             try:
                 sub_data = _data_by_path(namespace=sub_yaml_data, argument_path=arg_path_parts)
             except KeyError as e:
-                raise KeyError(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}") from e
+                logger.warn(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}")
+                continue
             _recursively_update_leaf_data_items(
                 update_namespace=data,
                 update_data=sub_data,
