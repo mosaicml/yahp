@@ -1,3 +1,5 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 from yahp.utils.iter_helpers import ensure_tuple as ensure_tuple
 from yahp.utils.iter_helpers import extract_only_item_from_dict as extract_only_item_from_dict
 from yahp.utils.type_helpers import HparamsType as HparamsType

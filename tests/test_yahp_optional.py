@@ -1,3 +1,5 @@
+# Copyright 2021 MosaicML. All Rights Reserved.
+
 from tests.yahp_fixtures import OptionalBooleansHparam, OptionalFieldHparam, OptionalHparamsField, YamlInput
 
 
