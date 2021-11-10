@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import argparse
 import collections.abc
+import logging
 import os
-import warnings
 from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Union, cast
 
 import yaml
+
+logger = logging.getLogger(__name__)
+
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -175,7 +178,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
             try:
                 sub_data = _data_by_path(namespace=sub_yaml_data, argument_path=arg_path_parts)
             except KeyError as e:
-                warnings.warn(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}")
+                logger.warn(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}")
                 continue
             _recursively_update_leaf_data_items(
                 update_namespace=data,
