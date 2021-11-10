@@ -38,6 +38,16 @@ filterwarnings = [
     "ignore:ExtraArgumentWarning",
 ]
 
+# Coverage
+[tool.coverage.run]
+parallel = true
+branch = true
+concurrency = ["thread", "multiprocessing"]
+include = [
+    "yahp/*"
+]
+
+
 # Yapf
 [tool.yapf]
 # Align closing bracket with visual indentation.
