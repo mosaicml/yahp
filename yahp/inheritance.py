@@ -10,7 +10,6 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-
 if TYPE_CHECKING:
     from yahp.types import JSON
 
