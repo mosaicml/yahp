@@ -384,7 +384,7 @@ def _create(
     return cls(**kwargs)
 
 
-def _add_help(argparsers: Sequence[argparse.ArgumentParser]) -> None:
+def _add_help(argparsers: Sequence[argparse.ArgumentParser], cli_args: Sequence[str]) -> None:
     """Add an :class:`~argparse.ArgumentParser` that adds help.
 
     Args:
@@ -392,7 +392,7 @@ def _add_help(argparsers: Sequence[argparse.ArgumentParser]) -> None:
             to extend.
     """
     help_argparser = argparse.ArgumentParser(parents=argparsers)
-    help_argparser.parse_known_args()  # Will print help and exit if the "--help" flag is present
+    help_argparser.parse_known_args(args=cli_args)  # Will print help and exit if the "--help" flag is present
 
 
 def _get_remaining_cli_args(cli_args: Union[List[str], bool]) -> List[str]:
@@ -436,16 +436,16 @@ def create(
                                          remaining_cli_args=remaining_cli_args,
                                          argparsers=argparsers)
     except _MissingRequiredFieldException as e:
-        _add_help(argparsers)
+        _add_help(argparsers, remaining_cli_args)
         raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
                          f"{', '.join(e.args)}") from e
-    _add_help(argparsers)
+    _add_help(argparsers, remaining_cli_args)
 
     # Only if successful, warn for extra cli arguments
     # If there is an error, then valid cli args may not have been discovered
     for arg in remaining_cli_args:
         warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
-
+    
     if output_f is not None:
         if output_f == "stdout":
             print(hparams.to_yaml(), file=sys.stdout)
