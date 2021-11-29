@@ -52,6 +52,7 @@ def test_get_helpless_argpars():
     args = ['--default_true', 'false', '--default_false', 'true']
     parser = OptionalBooleansHparam.get_argparse(cli_args=args)
     namespace = parser.parse_args(args)
+    print(namespace)
     assert namespace.default_true == 'false'
     assert namespace.default_false == 'true'
     with pytest.raises(SystemExit):

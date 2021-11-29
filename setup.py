@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 install_requires = [
-    "PyYAML==5.4.1",
+    "PyYAML>=5.4.1",
     "ruamel.yaml==0.17.10",
 ]
 

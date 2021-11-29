@@ -538,9 +538,9 @@ def _get_hparams(
 
 def get_argparse(
     cls: Type[THparams],
-    data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
-    cli_args: Union[List[str], bool] = True,
+    data: Optional[Dict[str, JSON]] = None,
+    cli_args: Optional[List[str]] = None,
 ) -> argparse.ArgumentParser:
     """Get an :class:`~argparse.ArgumentParser` containing all CLI arguments.
 
@@ -549,13 +549,14 @@ def get_argparse(
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional): 
+        data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
-            the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
-        cli_args (Union[List[str], bool], optional): CLI argument overrides.
+            the :class:`~yahp.hparams.Hparams`.
+            Cannot be specified with ``f``.
+        cli_args (Optional[List[str]], optional): CLI argument overrides.
             Can either be a list of CLI argument,
-            `true` (the default) to load CLI arguments from `sys.argv`,
-            or `false` to not use any CLI arguments.
+            or None (the default) to load CLI arguments from ``sys.argv``
+            to not use any CLI arguments, pass in an empty list
 
     Returns:
         argparse.ArgumentParser: An argparser with all CLI arguments, but without any help.
@@ -565,7 +566,13 @@ def get_argparse(
     remaining_cli_args = _get_remaining_cli_args(cli_args)
 
     try:
-        _get_hparams(cls=cls, data=data, f=f, remaining_cli_args=remaining_cli_args, argparsers=argparsers)
+        _get_hparams(
+            cls=cls,
+            data=data,
+            f=f,
+            remaining_cli_args=remaining_cli_args,
+            argparsers=argparsers,
+        )
     except _MissingRequiredFieldException:
         pass
     helpless_parent_argparse = argparse.ArgumentParser(add_help=False, parents=argparsers)
