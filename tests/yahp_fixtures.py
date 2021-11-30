@@ -559,3 +559,37 @@ class KitchenSinkHparams(hp.Hparams):
 @pytest.fixture
 def kitchen_sink_hparams():
     return KitchenSinkHparams
+
+
+@dataclass
+class OptionalRequiredChildHparam(hp.Hparams):
+    required_field: int = hp.required(doc="required field")
+
+
+@dataclass
+class OptionalRequiredParentHparam(hp.Hparams):
+    optional_child: Optional[OptionalRequiredChildHparam] = hp.optional(doc="optional subhparam", default=None)
+
+
+@pytest.fixture
+def optional_required_missing_optional_yaml_input(hparams_tempdir) -> YamlInput:
+    data = {}
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_required_missing_optional.yaml")
+
+
+@pytest.fixture
+def optional_required_missing_required_yaml_input(hparams_tempdir) -> YamlInput:
+    data = {"optional_child": {}}
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_required_missing_required.yaml")
+
+
+@pytest.fixture
+def optional_required_yaml_input(hparams_tempdir) -> YamlInput:
+    data = {"optional_child": {"required_field": 5}}
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_required.yaml")
