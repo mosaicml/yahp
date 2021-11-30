@@ -332,7 +332,7 @@ def to_bool(x: Any):
 
 
 def is_none_like(x: Any, *, allow_list: bool) -> bool:
-    """Returns whether a value is ``None``, ``"none"``, ``[""]``, or ``["none"]``
+    """Returns whether a value is ``None``, ``"none"``, ``[""]``, ``["none"]``, or has been marked as a missing field.
     
     Args:
         x (object): Value to examine.
@@ -341,6 +341,8 @@ def is_none_like(x: Any, *, allow_list: bool) -> bool:
     if x is None:
         return True
     if isinstance(x, str) and x.lower() in ["", "none"]:
+        return True
+    if x == MISSING:
         return True
     if allow_list and isinstance(x, (tuple, list)) and len(x) == 1:
         return is_none_like(x[0], allow_list=allow_list)
