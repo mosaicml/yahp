@@ -574,16 +574,22 @@ class OptionalRequiredParentHparam(hp.Hparams):
 @pytest.fixture
 def optional_required_missing_optional_yaml_input(hparams_tempdir) -> YamlInput:
     data = {}
-    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data=data, filepath="optional_required_missing_optional.yaml")
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_required_missing_optional.yaml")
 
 
 @pytest.fixture
 def optional_required_missing_required_yaml_input(hparams_tempdir) -> YamlInput:
-    data = { "optional_child": {} }
-    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data=data, filepath="optional_required_missing_required.yaml")
+    data = {"optional_child": {}}
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_required_missing_required.yaml")
 
 
 @pytest.fixture
 def optional_required_yaml_input(hparams_tempdir) -> YamlInput:
-    data = { "optional_child": { "required_field": 5 } }
-    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data=data, filepath="optional_required.yaml")
+    data = {"optional_child": {"required_field": 5}}
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
+                                          input_data=data,
+                                          filepath="optional_required.yaml")
