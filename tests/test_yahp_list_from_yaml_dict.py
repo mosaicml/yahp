@@ -1,11 +1,3 @@
-"""Testing needs
-
-    5. Argparse override with list  without registry - F
-    7. Argparse override with list without registry with duplicate - F
-    8. Argparse override with list with registry with duplicate - F
-    10. List object without registry with list yaml - F
-"""
-
 from dataclasses import dataclass
 from typing import List
 
