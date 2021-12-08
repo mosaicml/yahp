@@ -266,7 +266,8 @@ def _create(
                                 raise ValueError(f"Field {full_name} is required and cannot be None.")
                             if isinstance(argparse_or_yaml_value, list):
                                 # Convert from list of single element dictionaries to dict, preserving duplicates
-                                argparse_or_yaml_value = list_to_deduplicated_dict(argparse_or_yaml_value, allow_str=True)
+                                argparse_or_yaml_value = list_to_deduplicated_dict(argparse_or_yaml_value,
+                                                                                   allow_str=True)
 
                             if not isinstance(argparse_or_yaml_value, dict):
                                 raise ValueError(f"Field {full_name} should be a dict")

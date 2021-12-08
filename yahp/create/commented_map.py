@@ -203,8 +203,9 @@ def to_commented_map(
                 output[f.name] = _process_abstract_hparams(cls, path_with_fname, ftype.is_list, options)
             else:
                 if ftype.is_list:
-                    output[f.name] = list_to_deduplicated_dict([{inverted_hparams[type(x)]: x.to_dict()}
-                                                                for x in ensure_tuple(default)])
+                    output[f.name] = list_to_deduplicated_dict([{
+                        inverted_hparams[type(x)]: x.to_dict()
+                    } for x in ensure_tuple(default)])
                 else:
                     output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
         if options.add_docs:
