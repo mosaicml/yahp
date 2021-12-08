@@ -18,7 +18,7 @@ import yahp as hp
 from yahp.create.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
                                   get_hparams_file_from_cli, retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
-from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict
+from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
 
 if TYPE_CHECKING:
@@ -55,27 +55,6 @@ def _get_split_key(key: str, splitter: str = "+") -> Tuple[str, Any]:
         return (splits[0], splits[1])
     else:
         return (splits[0], None)
-
-
-def _one_item_list_to_dict(items: List[Any]) -> Dict[str, Any]:
-    """ Converts a list of 1-item dicts to a dictionary. If the list has strings in it, they are given the value of
-    None. If the list has duplicate keys, they are deduplicated by adding a '+{index}' suffix."""
-
-    new_value = {}
-    counter = {}
-    for item in items:
-        if isinstance(item, str):
-            k, v = item, None
-        else:
-            k, v = extract_only_item_from_dict(item)
-
-        if k in new_value:
-            counter[k] += 1
-            k = f"{k}+{counter[k]}"
-        else:
-            counter[k] = 1
-        new_value[k] = v
-    return new_value
 
 
 logger = logging.getLogger(__name__)
@@ -197,7 +176,7 @@ def _create(
 
                             if isinstance(sub_yaml, list):
                                 _emit_should_be_dict_warning(full_name)
-                                sub_yaml = _one_item_list_to_dict(sub_yaml)
+                                sub_yaml = list_to_deduplicated_dict(sub_yaml)
 
                             if not isinstance(sub_yaml, dict):
                                 raise TypeError(f"{full_name} must be a dict in the yaml")
@@ -286,9 +265,8 @@ def _create(
                             if argparse_or_yaml_value is None:
                                 raise ValueError(f"Field {full_name} is required and cannot be None.")
                             if isinstance(argparse_or_yaml_value, list):
-                                _emit_should_be_dict_warning(full_name)
                                 # Convert from list of single element dictionaries to dict, preserving duplicates
-                                argparse_or_yaml_value = _one_item_list_to_dict(argparse_or_yaml_value)
+                                argparse_or_yaml_value = list_to_deduplicated_dict(argparse_or_yaml_value, allow_str=True)
 
                             if not isinstance(argparse_or_yaml_value, dict):
                                 raise ValueError(f"Field {full_name} should be a dict")
@@ -300,8 +278,8 @@ def _create(
                             if yaml_val is None:
                                 yaml_val = {}
                             if isinstance(yaml_val, list):
-                                # already emitted the warning, no need to do it again
-                                yaml_val = _one_item_list_to_dict(yaml_val)
+                                _emit_should_be_dict_warning(full_name)
+                                yaml_val = list_to_deduplicated_dict(yaml_val)
                             if not isinstance(yaml_val, dict):
                                 raise ValueError(
                                     f"Field {'.'.join(prefix_with_fname)} must be a dict if specified in the yaml")

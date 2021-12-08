@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple, TypeVar, Union
+
+if TYPE_CHECKING:
+    from yahp.types import JSON
 
 T = TypeVar("T")
 
@@ -48,3 +51,38 @@ def extract_only_item_from_dict(val: Dict[K, V]) -> Tuple[K, V]:
     if len(val) != 1:
         raise ValueError(f"dict has {len(val)} keys, expecting 1")
     return list(val.items())[0]
+
+
+def list_to_deduplicated_dict(list_of_dict: List[Union[str, JSON]],
+                              allow_str: bool = False,
+                              separator: str = '+') -> JSON:
+    """Converts a list of single-item dictionaries to a dictionary, deduplicating keys along the way
+
+    Args:
+        list_of_dict (List[Dict[str, Any]]): A list of single-element dictionaries
+        allow_str (bool, optional): If True, list can contain strings, which will be added as keys with None values.
+                                    Defaults to False.
+        separator (str, optional): The separator to use for deduplication. Default '+'.
+
+    Returns:
+        Dict[str, Dict]: Deduplicated dictionary
+    """
+
+    data: JSON = {}
+    counter: Dict[str, int] = {}
+    for item in list_of_dict:
+        if isinstance(item, str) and allow_str:
+            k, v = item, None
+        elif isinstance(item, dict):
+            # item should have only one key-value pair
+            k, v = extract_only_item_from_dict(item)
+        else:
+            raise TypeError(f"Expected list of dictionaries, got {type(item)}")
+        if k in data:
+            # Deduplicate by add '+<counter>'
+            counter[k] += 1
+            k = "".join((k, separator, str(counter[k] - 1)))
+        else:
+            counter[k] = 1
+        data[k] = v
+    return data
