@@ -9,7 +9,8 @@ import pathlib
 import sys
 import warnings
 from dataclasses import MISSING, dataclass, fields
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, get_type_hints
+from typing import (TYPE_CHECKING, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
+                    get_type_hints)
 
 import yaml
 
@@ -41,6 +42,40 @@ class _DeferredCreateCall:
 def _emit_should_be_list_warning(arg_name: str):
     warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a list, not a singular element.")
 
+
+def _emit_should_be_dict_warning(arg_name: str):
+    warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a dict.")
+
+
+def _get_split_key(key: str, splitter: str = "+") -> Tuple[str, Any]:
+    """ Gets the prefix key and any label after the splitter """
+
+    splits = key.split(splitter, 1)
+    if len(splits) > 1:
+        return splits
+    else:
+        return (splits[0], None)
+
+
+def _one_item_list_to_dict(items):
+    """ Converts a list of 1-item dicts to a dictionary. If the list has strings in it, they are given the value of
+    None. If the list has duplicate keys, they are deduplicated by adding a '+{index}' suffix."""
+
+    new_value = {}
+    counter = {}
+    for item in items:
+        if isinstance(item, str):
+            k, v = item, None
+        else:
+            k, v = extract_only_item_from_dict(item)
+
+        if k in new_value:
+            counter[k] += 1
+            k = f"{k}+{counter[k]}"
+        else:
+            counter[k] = 1
+        new_value[k] = v
+    return new_value
 
 logger = logging.getLogger(__name__)
 
@@ -155,15 +190,19 @@ def _create(
                             # list of concrete hparams
                             # concrete lists not added to argparse, so just load the yaml
                             sub_yaml = data.get(f.name)
+                            # yaml should be a dictionary. We'll discard the keys
                             if sub_yaml is None:
-                                sub_yaml = []
-                            if isinstance(sub_yaml, dict):
-                                _emit_should_be_list_warning(full_name)
-                                sub_yaml = [sub_yaml]
-                            if not isinstance(sub_yaml, list):
-                                raise TypeError(f"{full_name} must be a list in the yaml")
+                                sub_yaml = {}
+
+                            if isinstance(sub_yaml, list):
+                                _emit_should_be_dict_warning(full_name)
+                                sub_yaml = _one_item_list_to_dict(sub_yaml)
+
+                            if not isinstance(sub_yaml, dict):
+                                raise TypeError(f"{full_name} must be a dict in the yaml")
+
                             deferred_calls: List[_DeferredCreateCall] = []
-                            for (i, sub_yaml_item) in enumerate(sub_yaml):
+                            for (key, sub_yaml_item) in sub_yaml.items():
                                 if sub_yaml_item is None:
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
@@ -172,7 +211,7 @@ def _create(
                                     _DeferredCreateCall(
                                         hparams_cls=ftype.type,
                                         data=sub_yaml_item,
-                                        prefix=prefix_with_fname + [str(i)],
+                                        prefix=prefix_with_fname + [key],
                                         parser_args=None,
                                     ))
                             deferred_create_calls[f.name] = deferred_calls
@@ -241,67 +280,49 @@ def _create(
                                 continue
 
                             # First get the keys
-                            # Argparse has precidence. If there are keys defined in argparse, use only those
+                            # Argparse has precedence. If there are keys defined in argparse, use only those
                             # These keys will determine what is loaded
                             if argparse_or_yaml_value is None:
                                 raise ValueError(f"Field {full_name} is required and cannot be None.")
-                            if isinstance(argparse_or_yaml_value, dict):
-                                _emit_should_be_list_warning(full_name)
-                                argparse_or_yaml_value = [argparse_or_yaml_value]
-                            if not isinstance(argparse_or_yaml_value, list):
-                                raise ValueError(f"Field {full_name} should be a list")
-                            keys: List[str] = []
-                            for item in argparse_or_yaml_value:
-                                if isinstance(item, str):
-                                    keys.append(item)
-                                else:
-                                    if not isinstance(item, dict):
-                                        raise ValueError(f"Field {full_name} should be a list of dicts in the yaml")
-                                    key, _ = extract_only_item_from_dict(item)
-                                    keys.append(key)
-                                key = argparse_or_yaml_value
+                            if isinstance(argparse_or_yaml_value, list):
+                                _emit_should_be_dict_warning(full_name)
+                                # Convert from list of single element dictionaries to dict, preserving duplicates
+                                argparse_or_yaml_value = _one_item_list_to_dict(argparse_or_yaml_value)
+
+                            if not isinstance(argparse_or_yaml_value, dict):
+                                raise ValueError(f"Field {full_name} should be a dict")
+
+                            keys = list(argparse_or_yaml_value.keys())
 
                             # Now, load the values for these keys
                             yaml_val = data.get(f.name)
                             if yaml_val is None:
-                                yaml_val = []
-                            if isinstance(yaml_val, dict):
+                                yaml_val = {}
+                            if isinstance(yaml_val, list):
                                 # already emitted the warning, no need to do it again
-                                yaml_val = [yaml_val]
-                            if not isinstance(yaml_val, list):
+                                yaml_val = _one_item_list_to_dict(yaml_val)
+                            if not isinstance(yaml_val, dict):
                                 raise ValueError(
-                                    f"Field {'.'.join(prefix_with_fname)} must be a list if specified in the yaml")
+                                    f"Field {'.'.join(prefix_with_fname)} must be a dict if specified in the yaml")
 
-                            # Convert the yaml list to a dict
-                            yaml_dict: Dict[str, Dict[str, JSON]] = {}
-                            for i, yaml_val_entry in enumerate(yaml_val):
-                                if not isinstance(yaml_val_entry, dict):
-                                    raise ValueError(
-                                        f"Field {'.'.join(list(prefix_with_fname) + [str(i)])} must be a dict if specified in the yaml"
-                                    )
-                                k, v = extract_only_item_from_dict(yaml_val_entry)
-                                if not isinstance(v, dict):
-                                    raise ValueError(
-                                        f"Field {'.'.join(list(prefix_with_fname) + [k])} must be a dict if specified in the yaml"
-                                    )
-                                yaml_dict[k] = v
                             deferred_calls: List[_DeferredCreateCall] = []
 
                             for key in keys:
                                 # Use the order of keys
-                                key_yaml = yaml_dict.get(key)
+                                key_yaml = yaml_val.get(key)
                                 if key_yaml is None:
                                     key_yaml = {}
                                 if not isinstance(key_yaml, dict):
                                     raise ValueError(f"Field {'.'.join(prefix_with_fname + [key])}"
                                                      "must be a dict if specified in the yaml")
+                                split_key, _ = _get_split_key(key)
                                 deferred_calls.append(
                                     _DeferredCreateCall(
-                                        hparams_cls=cls.hparams_registry[f.name][key],
+                                        hparams_cls=cls.hparams_registry[f.name][split_key],
                                         prefix=prefix_with_fname + [key],
                                         data=key_yaml,
                                         parser_args=retrieve_args(
-                                            cls=cls.hparams_registry[f.name][key],
+                                            cls=cls.hparams_registry[f.name][split_key],
                                             prefix=prefix_with_fname + [key],
                                             argparse_name_registry=argparse_name_registry,
                                         ),
@@ -416,7 +437,7 @@ def create(
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional): 
+        data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
             the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
@@ -542,7 +563,7 @@ def get_argparse(
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional): 
+        data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
             the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
