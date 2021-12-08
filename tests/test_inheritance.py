@@ -5,7 +5,7 @@ import pathlib
 
 import yaml
 
-from yahp.inheritance import preprocess_yaml_with_inheritance
+from yahp.inheritance import _recursively_update_leaf_data_items, preprocess_yaml_with_inheritance
 
 
 def test_yaml_inheritance(tmpdir: pathlib.Path):
@@ -22,3 +22,24 @@ def test_yaml_inheritance(tmpdir: pathlib.Path):
         actual_output = yaml.full_load(f)
 
     assert actual_output == expected_output
+
+
+def test_empty_dict():
+    orig = {"a": 1, "b": {"c": 2}}
+    target = {"a": 1, "b": {"c": 2}}
+    _recursively_update_leaf_data_items(orig, {}, [])
+    assert orig == target
+
+
+def test_empty_nested_key():
+    orig = {"a": 1, "b": {"c": 2}}
+    target = {"a": 1, "b": {"c": 2}, "foo": {}}
+    _recursively_update_leaf_data_items(orig, {"foo": {}}, [])
+    assert orig == target
+
+
+def test_empty_nested_key_no_overwrite():
+    orig = {"a": 1, "b": {"c": 2}}
+    target = {"a": 1, "b": {"c": 2}}
+    _recursively_update_leaf_data_items(orig, {"b": {}}, [])
+    assert orig == target

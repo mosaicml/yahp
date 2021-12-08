@@ -80,6 +80,10 @@ def _recursively_update_leaf_data_items(
         _recursively_update_leaf_data_items(a, {1:3}, ["b"]) -> {"b":{1:3, 2:2}}
     """
     if isinstance(update_data, collections.abc.Mapping):
+        inner_namespace = update_namespace
+        for key in update_argument_path:
+            if isinstance(inner_namespace, dict):
+                inner_namespace = inner_namespace.setdefault(key, {})
         for key, val in update_data.items():
             _recursively_update_leaf_data_items(
                 update_namespace=update_namespace,
