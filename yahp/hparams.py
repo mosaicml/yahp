@@ -18,6 +18,7 @@ import yaml
 from yahp.create.commented_map import CMOptions, to_commented_map
 from yahp.create.create import create, get_argparse
 from yahp.utils import type_helpers
+from yahp.utils.iter_helpers import list_to_deduplicated_dict
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -48,7 +49,7 @@ class Hparams(ABC):
             to the concrete classes that they could be.
 
             See the :ref:`Registry Example<Registry Example>` for a walkthrough on how
-            the registry works. 
+            the registry works.
     """
 
     # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
@@ -167,7 +168,7 @@ class Hparams(ABC):
                             assert isinstance(x, Hparams)
                             field_name = inverted_registry[type(x)]
                             field_list.append({field_name: x.to_dict()})
-                        res[f.name] = field_list
+                        res[f.name] = list_to_deduplicated_dict(field_list)
                     else:
                         field_dict: Dict[str, JSON] = {}
                         field_name = inverted_registry[type(attr)]
@@ -177,7 +178,7 @@ class Hparams(ABC):
                 else:
                     # Specific -- either a list or not
                     if isinstance(attr, list):
-                        res[f.name] = [x.to_dict() for x in attr]
+                        res[f.name] = {str(i): x.to_dict() for i, x in enumerate(attr)}
                     else:
                         assert isinstance(attr, Hparams)
                         res[f.name] = attr.to_dict()
