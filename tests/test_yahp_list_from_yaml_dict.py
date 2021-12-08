@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List, Union
 
 import pytest
 
@@ -28,26 +28,22 @@ class ParentListHPNoRegistry(hp.Hparams):
 
 
 @pytest.fixture
-def baz():
+def baz() -> int:
     return 1
 
 
-@pytest.fixture
-def duplicate():
-    return False
+def get_data(baz: int, bar: bool = False, duplicate: bool = False, as_list: bool = False) -> Union[Dict, List]:
+    """Get a data dictionary
 
+    Args:
+        baz (int): Foo param
+        bar (bool, optional): Include bar? Defaults to False.
+        duplicate (bool, optional): Include foo+1?. Defaults to False.
+        as_list (bool, optional): Return the dictionary as a list. Defaults to False.
 
-@pytest.fixture
-def bar():
-    return True
-
-
-@pytest.fixture(params=(False, True))
-def as_list(request):
-    return request.param
-
-
-def get_data(baz, bar=False, duplicate=False, as_list=False):
+    Returns:
+        [type]: [description]
+    """
     d = {"foo": {"baz": baz}}
     if bar:
         d["bar"] = {"baz": baz}
@@ -58,18 +54,10 @@ def get_data(baz, bar=False, duplicate=False, as_list=False):
     return d
 
 
-def dict_to_list(data):
+def dict_to_list(data: Dict[str, Dict]) -> List[Dict]:
+    """Convert a dictionary to a list of 1-element dictionaries.
+    """
     return [{k: v} for k, v in data.items()]
-
-
-@pytest.fixture
-def parent_list_hp(data):
-    return ParentListHP.create(data={"foos": data})
-
-
-@pytest.fixture
-def parent_list_hp_no_registry(data):
-    return ParentListHPNoRegistry.create(data=data)
 
 
 def test_list_without_registry(baz):
@@ -210,26 +198,6 @@ def test_list_with_registry_cli_override_custom_list(baz):
 
 #@pytest.mark.xfail
 def test_list_with_registry_duplicate_cli_override(baz):
-    data = get_data(baz, bar=True, duplicate=True)
-    cli_args = ["--foos.foo+1.baz", str(baz + 2)]
-    hp = ParentListHP.create(cli_args=cli_args, data={"foos": data})
-    assert isinstance(hp.foos, list)
-    assert len(hp.foos) == 3
-    foo = hp.foos[0]
-    assert isinstance(foo, Foo)
-    assert foo.baz == baz
-
-    bar = hp.foos[1]
-    assert isinstance(bar, Bar)
-    assert bar.baz == baz
-
-    foo1 = hp.foos[2]
-    assert isinstance(foo1, Foo)
-    assert foo1.baz == baz + 2
-
-
-if __name__ == "__main__":
-    baz = 1
     data = get_data(baz, bar=True, duplicate=True)
     cli_args = ["--foos.foo+1.baz", str(baz + 2)]
     hp = ParentListHP.create(cli_args=cli_args, data={"foos": data})
