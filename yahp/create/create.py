@@ -52,12 +52,12 @@ def _get_split_key(key: str, splitter: str = "+") -> Tuple[str, Any]:
 
     splits = key.split(splitter, 1)
     if len(splits) > 1:
-        return splits
+        return (splits[0], splits[1])
     else:
         return (splits[0], None)
 
 
-def _one_item_list_to_dict(items):
+def _one_item_list_to_dict(items: List[Any]) -> Dict[str, Any]:
     """ Converts a list of 1-item dicts to a dictionary. If the list has strings in it, they are given the value of
     None. If the list has duplicate keys, they are deduplicated by adding a '+{index}' suffix."""
 
@@ -76,6 +76,7 @@ def _one_item_list_to_dict(items):
             counter[k] = 1
         new_value[k] = v
     return new_value
+
 
 logger = logging.getLogger(__name__)
 
