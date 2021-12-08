@@ -60,16 +60,6 @@ def dict_to_list(data: Dict[str, Dict]) -> List[Dict]:
     return [{k: v} for k, v in data.items()]
 
 
-@pytest.fixture
-def parent_list_hp(data):
-    return ParentListHP.create(data={"foos": data})
-
-
-@pytest.fixture
-def parent_list_hp_no_registry(data):
-    return ParentListHPNoRegistry.create(data=data)
-
-
 def test_list_without_registry(baz):
     data = get_data(baz)
     hp = ParentListHPNoRegistry.create(data={"foos": data})
