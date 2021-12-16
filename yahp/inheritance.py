@@ -61,16 +61,34 @@ def _unwrap_overriden_value_dict(data: Dict[str, JSON]):
     for key, val in data.items():
         if isinstance(val, collections.abc.Mapping):
             _unwrap_overriden_value_dict(val)
+        elif isinstance(val, list):
+            for ii, item in enumerate(val):
+                if isinstance(item, collections.abc.Mapping):
+                    _unwrap_overriden_value_dict(item)
+                elif isinstance(item, _OverridenValue):
+                    val[ii] = item.val
         elif isinstance(val, _OverridenValue):
             data[key] = val.val
+
+
+def list_setdefault(data: List, key: str, default: Dict) -> Dict:
+    for item in data:
+        assert isinstance(item, dict), "List must be a list of single-item dictionaries"
+        assert len(item) == 1, "List must be a list of single-item dictionaries"
+        k, v = next(iter(item.items()))
+        if k == key:
+            return v  # Found it, return the value
+
+    # Key wasn't found, set to default and append
+    data.append({key: default})
+    return default
 
 
 def _recursively_update_leaf_data_items(
     update_namespace: Dict[str, JSON],
     update_data: JSON,
-    update_argument_path: List[str],
 ):
-    """
+    """ Recursive function to update leaf data items in ``update_namespace`` with the data in ``update_data``.
     This function exists to ensure that overrides don't overwrite dictionaries with other keyed values
     i.e. a["b"] = {1:1, 2:2}
     a.update({"b":{1:3}}) -> a = {"b":{1:3}} and 2:2 is removed
@@ -79,40 +97,48 @@ def _recursively_update_leaf_data_items(
         a = {"b":{1:1, 2:2}}
         _recursively_update_leaf_data_items(a, {1:3}, ["b"]) -> {"b":{1:3, 2:2}}
     """
-    if isinstance(update_data, collections.abc.Mapping):
-        inner_namespace = update_namespace
-        for key in update_argument_path:
-            if isinstance(inner_namespace, dict):
-                inner_namespace = inner_namespace.setdefault(key, {})
-        for key, val in update_data.items():
-            _recursively_update_leaf_data_items(
-                update_namespace=update_namespace,
-                update_data=val,
-                update_argument_path=update_argument_path + [key],
-            )
-    else:
-        # Must be a leaf
-        inner_namespace = update_namespace
-        new_inner: Dict[str, JSON] = {}
-        if len(update_argument_path) <= 1:
-            new_inner = inner_namespace
+    for key, val in update_data.items():
+        if isinstance(val, collections.abc.Mapping):
+            # Must refer to a sub-Hparams
+            if isinstance(update_namespace, collections.abc.Mapping):
+                # A dictionary of sub-Hparams
+                _recursively_update_leaf_data_items(
+                    update_namespace=update_namespace.setdefault(key, {}),
+                    update_data=val,
+                )
+            elif isinstance(update_namespace, list):
+                # A list of sub-Hparams
+                _recursively_update_leaf_data_items(update_namespace=list_setdefault(update_namespace, key, {}),
+                                                    update_data=val)
+            else:
+                raise TypeError("Expected dictionary or list of dictionaries")
+        else:
+            # Must be a leaf
+            if isinstance(update_namespace, dict):
+                update_namespace[key] = _OverridenValue(val)  # type: ignore
+            else:
+                raise TypeError("Expected last branch to be a dictionary")
+            # inner_namespace = update_namespace
+            # new_inner: Dict[str, JSON] = {}
+            # if len(update_argument_path) <= 1:
+            #     new_inner = inner_namespace
 
-        for key in update_argument_path[:-1]:
-            key_element: JSON = inner_namespace.get(key)
-            if key_element is None or not isinstance(key_element, dict):
-                # If the nested item isn't a dict, it will need to be to store leaves
-                key_element = {}
-                inner_namespace[key] = key_element
-            assert isinstance(key_element, dict)
-            inner_namespace = key_element
-            new_inner = key_element
+            # for key in update_argument_path[:-1]:
+            #     key_element: JSON = inner_namespace.get(key)
+            #     if key_element is None or not isinstance(key_element, dict):
+            #         # If the nested item isn't a dict, it will need to be to store leaves
+            #         key_element = {}
+            #         inner_namespace[key] = key_element
+            #     assert isinstance(key_element, dict)
+            #     inner_namespace = key_element
+            #     new_inner = key_element
 
-        new_inner_value = new_inner.get(update_argument_path[-1])
-        if new_inner_value is None or isinstance(
-                new_inner_value,
-                _OverridenValue,
-        ) or (isinstance(new_inner_value, dict) and "inherits" in new_inner_value.keys()):
-            new_inner[update_argument_path[-1]] = _OverridenValue(update_data)  # type: ignore
+            # new_inner_value = new_inner.get(update_argument_path[-1])
+            # if new_inner_value is None or isinstance(
+            #         new_inner_value,
+            #         _OverridenValue,
+            # ) or (isinstance(new_inner_value, dict) and "inherits" in new_inner_value.keys()):
+            #     new_inner[update_argument_path[-1]] = _OverridenValue(update_data)  # type: ignore
 
 
 def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
@@ -185,11 +211,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
             except KeyError as e:
                 logger.warn(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}")
                 continue
-            _recursively_update_leaf_data_items(
-                update_namespace=data,
-                update_data=sub_data,
-                update_argument_path=arg_path_parts,
-            )
+            _recursively_update_leaf_data_items(update_namespace=data, update_data=sub_data)
         inherits_key_dict = _data_by_path(namespace=data, argument_path=arg_path_parts)
         if isinstance(inherits_key_dict, dict) and "inherits" in inherits_key_dict:
             del inherits_key_dict["inherits"]
