@@ -28,21 +28,21 @@ def test_yaml_inheritance(tmpdir: pathlib.Path):
 def test_empty_dict():
     orig = {"a": 1, "b": {"c": 2}}
     target = {"a": 1, "b": {"c": 2}}
-    _recursively_update_leaf_data_items(orig, {}, [])
+    _recursively_update_leaf_data_items(orig, {})
     assert orig == target
 
 
 def test_empty_nested_key():
     orig = {"a": 1, "b": {"c": 2}}
     target = {"a": 1, "b": {"c": 2}, "foo": {}}
-    _recursively_update_leaf_data_items(orig, {"foo": {}}, [])
+    _recursively_update_leaf_data_items(orig, {"foo": {}})
     assert orig == target
 
 
 def test_empty_nested_key_no_overwrite():
     orig = {"a": 1, "b": {"c": 2}}
     target = {"a": 1, "b": {"c": 2}}
-    _recursively_update_leaf_data_items(orig, {"b": {}}, [])
+    _recursively_update_leaf_data_items(orig, {"b": {}})
     assert orig == target
 
 
@@ -70,6 +70,6 @@ def test_not_update_list():
 
 
 if __name__ == "__main__":
-    #test_update_list_of_dicts()
-    test_update_list_of_dicts_nested()
-    test_not_update_list()
+    test_update_list_of_dicts()
+    # test_update_list_of_dicts_nested()
+    # test_not_update_list()

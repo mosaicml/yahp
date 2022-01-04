@@ -118,6 +118,17 @@ def _recursively_update_leaf_data_items(
             # Must be a leaf
             if isinstance(update_namespace, dict):
                 update_namespace[key] = _OverridenValue(val)  # type: ignore
+            elif isinstance(update_namespace, list):
+                found = False
+                for inner in update_namespace:
+                    k, v = next(iter(inner.items()))
+                    if k == key:
+                        inner[key] = val
+                        found = True
+                        break
+                if not found:
+                    update_namespace.append({key: val})
+
             else:
                 raise TypeError("Expected last branch to be a dictionary")
 
