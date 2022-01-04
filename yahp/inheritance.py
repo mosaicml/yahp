@@ -120,27 +120,6 @@ def _recursively_update_leaf_data_items(
                 update_namespace[key] = _OverridenValue(val)  # type: ignore
             else:
                 raise TypeError("Expected last branch to be a dictionary")
-            # inner_namespace = update_namespace
-            # new_inner: Dict[str, JSON] = {}
-            # if len(update_argument_path) <= 1:
-            #     new_inner = inner_namespace
-
-            # for key in update_argument_path[:-1]:
-            #     key_element: JSON = inner_namespace.get(key)
-            #     if key_element is None or not isinstance(key_element, dict):
-            #         # If the nested item isn't a dict, it will need to be to store leaves
-            #         key_element = {}
-            #         inner_namespace[key] = key_element
-            #     assert isinstance(key_element, dict)
-            #     inner_namespace = key_element
-            #     new_inner = key_element
-
-            # new_inner_value = new_inner.get(update_argument_path[-1])
-            # if new_inner_value is None or isinstance(
-            #         new_inner_value,
-            #         _OverridenValue,
-            # ) or (isinstance(new_inner_value, dict) and "inherits" in new_inner_value.keys()):
-            #     new_inner[update_argument_path[-1]] = _OverridenValue(update_data)  # type: ignore
 
 
 def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
