@@ -97,6 +97,8 @@ def _recursively_update_leaf_data_items(
         a = {"b":{1:1, 2:2}}
         _recursively_update_leaf_data_items(a, {1:3}, ["b"]) -> {"b":{1:3, 2:2}}
     """
+    if update_data is None:
+        return
     for key, val in update_data.items():
         if isinstance(val, collections.abc.Mapping):
             # Must refer to a sub-Hparams
