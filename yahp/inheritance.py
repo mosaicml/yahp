@@ -58,7 +58,8 @@ class _OverridenValue:
 
 
 def _unwrap_overriden_value_dict(data: Dict[str, JSON]):
-    for key, val in data.items():
+    items = list(data.items())  # Pre-grab the items since we'll be popping values from the dict if necessary
+    for key, val in items:
         if isinstance(val, collections.abc.Mapping):
             _unwrap_overriden_value_dict(val)
         elif isinstance(val, list):
@@ -68,7 +69,11 @@ def _unwrap_overriden_value_dict(data: Dict[str, JSON]):
                 elif isinstance(item, _OverridenValue):
                     val[ii] = item.val
         elif isinstance(val, _OverridenValue):
-            data[key] = val.val
+            val = val.val
+            if val is None:  # None value removes the key
+                data.pop(key)
+            else:
+                data[key] = val
 
 
 def list_setdefault(data: List, key: str, default: Dict) -> Dict:
@@ -123,12 +128,11 @@ def _recursively_update_leaf_data_items(
                 for inner in update_namespace:
                     k, v = next(iter(inner.items()))
                     if k == key:
-                        inner[key] = val
+                        inner[key] = _OverridenValue(val)
                         found = True
                         break
                 if not found:
-                    update_namespace.append({key: val})
-
+                    update_namespace.append({key: _OverridenValue(val)})
             else:
                 raise TypeError("Expected last branch to be a dictionary")
 
