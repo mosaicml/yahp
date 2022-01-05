@@ -22,6 +22,15 @@ def _get_inherits_paths(
     namespace: Dict[str, JSON],
     argument_path: List[str],
 ) -> List[Tuple[List[str], List[str]]]:
+    """Finds all instances of 'inherits' in the dict `namespace`, along with their nested paths
+
+    Args:
+        namespace (Dict[str, JSON]): Nested dictionary in which to search
+        argument_path (List[str]): List of keys in the nested dict relative to the original namespace
+
+    Returns:
+        List[Tuple[List[str], List[str]]]: List of paths and the files to be inherited from at each of those paths
+    """
     paths: List[Tuple[List[str], List[str]]] = []
     for key, val in namespace.items():
         if key == "inherits":
@@ -80,13 +89,13 @@ class _OverridenValue:
         self.val = val
 
 
-def _unwrap_overriden_value_dict(data: Dict[str, JSON]):
+def _unwrap_overridden_value_dict(data: Dict[str, JSON]):
     for key, val in data.items():
         if isinstance(val, collections.abc.Mapping):
-            _unwrap_overriden_value_dict(val)
+            _unwrap_overridden_value_dict(val)
         elif is_list_of_single_item_dicts(val):
             for item in val:
-                _unwrap_overriden_value_dict(item)
+                _unwrap_overridden_value_dict(item)
         elif isinstance(val, _OverridenValue):
             data[key] = val.val
 
@@ -96,15 +105,6 @@ def _recursively_update_leaf_data_items(
     update_data: JSON,
     update_argument_path: List[str],
 ):
-    """
-    This function exists to ensure that overrides don't overwrite dictionaries with other keyed values
-    i.e. a["b"] = {1:1, 2:2}
-    a.update({"b":{1:3}}) -> a = {"b":{1:3}} and 2:2 is removed
-    Ensures only leaves are updated so behavior becomes a = {"b":{1:3, 2:2}}
-    usage:
-        a = {"b":{1:1, 2:2}}
-        _recursively_update_leaf_data_items(a, {1:3}, ["b"]) -> {"b":{1:3, 2:2}}
-    """
     if isinstance(update_data, collections.abc.Mapping):
         _ensure_path_exists(update_namespace, update_argument_path)
         for key, val in update_data.items():
@@ -218,28 +218,38 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
 
     assert isinstance(data, dict)
 
+    # Get all instances of 'inherits' in the YAML, sorted by depth in the nested dict
     inherit_paths = sorted(_get_inherits_paths(data, []), key=lambda x: len(x[0]))
-    for arg_path_parts, yaml_file_s in inherit_paths:
-        for new_yaml_path in yaml_file_s:
-            if not os.path.isabs(new_yaml_path):
-                sub_yaml_path = os.path.abspath(os.path.join(file_directory, new_yaml_path))
-            else:
-                sub_yaml_path = new_yaml_path
-            sub_yaml_data = load_yaml_with_inheritance(yaml_path=sub_yaml_path)
+
+    for nested_keys, inherit_yamls in inherit_paths:
+        for inherit_yaml in inherit_yamls:
+            if not os.path.isabs(inherit_yaml):
+                # Allow paths relative to the provided YAML
+                inherit_yaml = os.path.abspath(os.path.join(file_directory, inherit_yaml))
+
+            # Recursively load the YAML to inherit from
+            inherit_data_full = load_yaml_with_inheritance(yaml_path=inherit_yaml)
             try:
-                sub_data = _data_by_path(namespace=sub_yaml_data, argument_path=arg_path_parts)
+                # Select out just the portion specified by nested_keys
+                inherit_data = _data_by_path(namespace=inherit_data_full, argument_path=nested_keys)
             except KeyError as e:
-                logger.warn(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}")
+                logger.warn(f"Failed to load item from inherited YAML file: {inherit_yaml}")
                 continue
+
+            # Insert any new keys from inherit_data into data
             _recursively_update_leaf_data_items(
                 update_namespace=data,
-                update_data=sub_data,
-                update_argument_path=arg_path_parts,
+                update_data=inherit_data,
+                update_argument_path=nested_keys,
             )
-        inherits_key_dict = _data_by_path(namespace=data, argument_path=arg_path_parts)
+
+        # Carefully remove the 'inherits' key from the nested data dict
+        inherits_key_dict = _data_by_path(namespace=data, argument_path=nested_keys)
         if isinstance(inherits_key_dict, dict) and "inherits" in inherits_key_dict:
             del inherits_key_dict["inherits"]
-    _unwrap_overriden_value_dict(data)
+
+    # Resolve all newly added values in data
+    _unwrap_overridden_value_dict(data)
     return data
 
 

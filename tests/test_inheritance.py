@@ -1,14 +1,46 @@
 # Copyright 2021 MosaicML. All Rights Reserved.
 
+import copy
 import os
 import pathlib
 
 import pytest
 import yaml
 
-from yahp.inheritance import (_recursively_update_leaf_data_items, _unwrap_overriden_value_dict,
+from yahp.inheritance import (_OverridenValue, _recursively_update_leaf_data_items, _unwrap_overridden_value_dict,
                               preprocess_yaml_with_inheritance)
 
+"""
+TODO:
+Insertion tests
+- Test insert simple type into nested dict
+- Test insert list type into nested dict
+- Test insert nested dict into nested dict
+- Test insert single-item list into nested dict
+- Test insert simple type into single-item list
+- Test insert list type into single-item list
+- Test insert nested dict into single-item list
+- Test insert single-item list into single-item list
+
+Does not overwrite
+- Test that simple types do not overwrite
+- Test that list types do not overwrite
+- Test that nested dicts do not overwrite
+- Test that single-item lists do not overwrite
+
+Empty checks
+- Test empty update into nested dict
+- Test empty update into single-item list
+- Test update into empty nested dict
+- Test update into None
+
+YAML checks
+- Test absolute path inheritance
+- Test relative path inheritance
+- Test sub-level inheritance
+- Test second order inheritance
+- Test inheritance order matters
+"""
 
 # Breaks because I removed nested inherits
 # @pytest.mark.xfail
@@ -30,32 +62,162 @@ def test_yaml_inheritance(tmpdir: pathlib.Path):
 
 def check_update_equal(orig, target, update):
     _recursively_update_leaf_data_items(orig, update, [])
-    _unwrap_overriden_value_dict(orig)
+    _unwrap_overridden_value_dict(orig)
     assert orig == target, f"{orig} != {target}"
 
 
 def check_update_not_equal(orig, target, update):
     _recursively_update_leaf_data_items(orig, update, [])
-    _unwrap_overriden_value_dict(orig)
+    _unwrap_overridden_value_dict(orig)
     assert orig != target, f"{orig} == {target}"
 
 
-def test_empty_namespace():
-    orig = {}
-    target = {"a": 1, "b": {"c": 2}}
-    check_update_equal(orig, target, target)
+@pytest.fixture
+def nested_dict():
+    return {"a": {"b": {"c": 1}}}
+
+@pytest.fixture
+def nested_dict_none():
+    return {"a": {"b": {"c": None}}}
+
+@pytest.fixture
+def nested_dict_overridden():
+    return {"a": {"b": {"c": _OverridenValue(1)}}}
+
+@pytest.fixture
+def nested_list():
+    return {"a": [{"b": {"c": 1}}]}
+
+@pytest.fixture
+def simple_update():
+    return {"a": {"d": 'foo'}}
+
+@pytest.fixture
+def list_update():
+    return {"a": {"d": ['foo', 'bar']}}
+
+@pytest.fixture
+def nested_dict_update():
+    return {"a": {"d": {"e": 'foo'}}}
+
+@pytest.fixture
+def nested_list_update():
+    return {"a": {"d": [{"e": 'foo'}]}}
 
 
-def test_empty_dict():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1, "b": {"c": 2}}
-    check_update_equal(orig, target, {})
+# Insertion tests
+## Into nested dict
+def test_insert_simple_nested_dict(nested_dict, simple_update):
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = simple_update["a"]["d"]
+    check_update_equal(nested_dict, target, simple_update)
+
+def test_insert_list_nested_dict(nested_dict, list_update):
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = list_update["a"]["d"]
+    check_update_equal(nested_dict, target, list_update)
+
+def test_insert_nested_dict_nested_dict(nested_dict, nested_dict_update):
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = nested_dict_update["a"]["d"]
+    check_update_equal(nested_dict, target, nested_dict_update)
+
+def test_insert_nested_list_nested_dict(nested_dict, nested_list_update):
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = nested_list_update["a"]["d"]
+    check_update_equal(nested_dict, target, nested_list_update)
+
+## Into nested single-item list
+def test_insert_simple_nested_list(nested_list, simple_update):
+    target = copy.deepcopy(nested_list)
+    target["a"].append({"d": simple_update["a"]["d"]})
+    check_update_equal(nested_list, target, simple_update)
+
+def test_insert_list_nested_list(nested_list, list_update):
+    target = copy.deepcopy(nested_list)
+    target["a"].append({"d": list_update["a"]["d"]})
+    check_update_equal(nested_list, target, list_update)
+
+def test_insert_nested_dict_nested_list(nested_list, nested_dict_update):
+    target = copy.deepcopy(nested_list)
+    target["a"].append({"d": nested_dict_update["a"]["d"]})
+    check_update_equal(nested_list, target, nested_dict_update)
+
+def test_insert_nested_list_nested_list(nested_list, nested_list_update):
+    target = copy.deepcopy(nested_list)
+    target["a"].append({"d": nested_list_update["a"]["d"]})
+    check_update_equal(nested_list, target, nested_list_update)
+
+# Does not overwrite
+def test_no_overwrite_on_conflict_simple(nested_dict, simple_update):
+    target = copy.deepcopy(nested_dict)
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": simple_update["a"]["d"]}}}
+    check_update_equal(nested_dict, target, conflict)
+
+def test_no_overwrite_on_conflict_list(nested_dict, list_update):
+    target = copy.deepcopy(nested_dict)
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": list_update["a"]["d"]}}}
+    check_update_equal(nested_dict, target, conflict)
+
+@pytest.mark.xfail # TODO: Look into why this fails. Is it expected?
+def test_no_overwrite_on_conflict_nested_dict(nested_dict, nested_dict_update):
+    target = copy.deepcopy(nested_dict)
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": nested_dict_update["a"]["d"]}}}
+    check_update_equal(nested_dict, target, conflict)
+
+def test_no_overwrite_on_conflict_nested_list(nested_dict, nested_list_update):
+    target = copy.deepcopy(nested_dict)
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": nested_list_update["a"]["d"]}}}
+    check_update_equal(nested_dict, target, conflict)
+
+def test_no_overwrite_nested_list_on_conflict_simple(nested_list, simple_update):
+    target = copy.deepcopy(nested_list)
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": simple_update["a"]["d"]}}}
+    check_update_equal(nested_list, target, conflict)
+
+## Test overwrite works
+def test_overwrite_none(nested_dict_none, simple_update):
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": simple_update["a"]["d"]}}}
+    target = copy.deepcopy(conflict)
+    check_update_equal(nested_dict_none, target, conflict)
+
+def test_overwrite_overridden(nested_dict_overridden, simple_update):
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": simple_update["a"]["d"]}}}
+    target = copy.deepcopy(conflict)
+    check_update_equal(nested_dict_overridden, target, conflict)
+
+## Test empty args
+def test_empty_namespace(simple_update):
+    target = copy.deepcopy(simple_update)
+    check_update_equal({}, target, simple_update)
+
+def test_empty_nested_namespace(simple_update):
+    target = copy.deepcopy(simple_update)
+    check_update_equal({"a": {}}, target, simple_update)
 
 
-def test_empty_nested_key():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1, "b": {"c": 2}, "foo": {}}
-    check_update_equal(orig, target, {"foo": {}})
+def test_empty_update(nested_dict):
+    target = copy.deepcopy(nested_dict)
+    check_update_equal(nested_dict, target, {})
+
+
+def test_empty_nested_key(nested_dict):
+    target = copy.deepcopy(nested_dict)
+    check_update_equal(nested_dict, target, {"a": {}})
+
+
+def test_empty_nested_key_nested_list(nested_list):
+    target = copy.deepcopy(nested_list)
+    check_update_equal(nested_list, target, {"a": {}})
+
+# def
 
 
 def test_empty_nested_key_no_overwrite():
@@ -114,7 +276,7 @@ def test_overwrite_nested_list_with_nonetype():
     check_update_equal(orig, target, update)
 
 
-# @pytest.mark.xfail
+@pytest.mark.xfail
 def test_update_list_of_dicts():
     orig = {"a": [{"b": 'foo'}, {"c": 'bar'}]}
     target = {"a": [{"b": 'baz'}, {"c": 'bar'}]}
