@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from yahp.inheritance import (_OverridenValue, _recursively_update_leaf_data_items, _unwrap_overridden_value_dict,
-                              preprocess_yaml_with_inheritance)
+                              load_yaml_with_inheritance, preprocess_yaml_with_inheritance)
 
 """
 TODO:
@@ -202,170 +202,41 @@ def test_empty_nested_namespace(simple_update):
     target = copy.deepcopy(simple_update)
     check_update_equal({"a": {}}, target, simple_update)
 
-
 def test_empty_update(nested_dict):
     target = copy.deepcopy(nested_dict)
     check_update_equal(nested_dict, target, {})
-
 
 def test_empty_nested_key(nested_dict):
     target = copy.deepcopy(nested_dict)
     check_update_equal(nested_dict, target, {"a": {}})
 
-
 def test_empty_nested_key_nested_list(nested_list):
     target = copy.deepcopy(nested_list)
     check_update_equal(nested_list, target, {"a": {}})
 
-# def
+## YAML tests
+@pytest.mark.parametrize("absolute", (False, True))
+def test_inheritance_absolute_path(nested_dict, simple_update, tmpdir, absolute):
+    # Write update to inherits file
+    inherits_file = os.path.join(tmpdir, "inherits.yaml")
+    with open(inherits_file, "w") as fh:
+        yaml.dump(simple_update, fh)
 
+    if not absolute:  # Use relative path
+        inherits_file = "inherits.yaml"
+    base = copy.deepcopy(nested_dict)
+    base["a"]["inherits"] = [inherits_file]
 
-def test_empty_nested_key_no_overwrite():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1, "b": {"c": 2}}
-    update = {"b": {}}
-    check_update_equal(orig, target, update)
+    # Write base yaml to file
+    base_file = os.path.join(tmpdir, "base.yaml")
+    with open(base_file, "w") as fh:
+        yaml.dump(base, fh)
 
-
-# TODO: Add overwriting with None
-@pytest.mark.xfail
-def test_overwrite_simple_with_nonetype():
-    orig = {"a": 1, "b": 'foo'}
-    target = {"b": 'foo'}
-    update = {"a": None}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_overwrite_absent_key():
-    orig = {"a": 1, "b": 'foo'}
-    target = {"a": 1, "b": 'foo'}
-    update = {"c": None}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_overwrite_dict_with_nonetype():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1}
-    update = {"b": None}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_overwrite_list_with_nonetype():
-    orig = {"a": {"b": [{"c": [{"d": 'foo'}]}]}}
-    target = {"a": {}}
-    update = {"a": {"b": None}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_overwrite_nested_dict_with_nonetype():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1, "b": {}}
-    update = {"b": {"c": None}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_overwrite_nested_list_with_nonetype():
-    orig = {"a": {"b": [{"c": [{"d": 'foo'}]}]}}
-    target = {"a": {"b": [{}]}}
-    update = {"a": {"b": {"c": None}}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_update_list_of_dicts():
-    orig = {"a": [{"b": 'foo'}, {"c": 'bar'}]}
-    target = {"a": [{"b": 'baz'}, {"c": 'bar'}]}
-    update = {"a": {"b": 'baz'}}
-    check_update_equal(orig, target, update)
-
-
-def test_update_list_of_dicts_nested2():
-    orig = {"a": [{"b": {"c": 'foo'}}]}
-    target = {"a": [{"b": {"c": 'foo'}}, {"d": 'bar'}]}
-    update = {"a": {"d": "bar"}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_update_list_of_dicts_nested():
-    orig = {"a": [{"b": {"c": 'foo'}}, {"d": 'bar'}]}
-    target = {"a": [{"b": {"c": 'baz'}}, {"d": 'bar'}]}
-    update = {"a": {"b": {"c": 'baz'}}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_update_nested_list_of_dicts():
-    orig = {"a": {"b": [{"c": [{"d": 'foo'}]}]}}
-    target = {"a": {"b": [{"c": [{"d": 'bar'}]}]}}
-    update = {"a": {"b": {"c": {"d": 'bar'}}}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_change_data_type_simple():
-    orig = {"a": {"b": 'foo', "c": "bar"}}
-    target = {"a": {"b": 42, "c": "bar"}}
-    update = {"a": {"b": 42}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_change_data_type_dict():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1, "b": "foo"}
-    update = {"b": "foo"}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_change_data_type_list():
-    orig = {"a": {"b": [{"c": [{"d": 'foo'}]}]}}
-    target = {"a": {"b": 'foo'}}
-    update = {"a": {"b": 'foo'}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_change_data_type_list_nested():
-    orig = {"a": {"b": [{"c": [{"d": 'foo'}]}]}}
-    target = {"a": {"b": [{"c": 'foo'}]}}
-    update = {"a": {"b": {"c": 'foo'}}}
-    check_update_equal(orig, target, update)
-
-
-def test_nested_not_equal():
-    orig = {"a": 1, "b": {"c": 2}}
-    target = {"a": 1, "b": {"c": 3}}
-    update = {"b": {"c": 'foo'}}
-    check_update_not_equal(orig, target, update)
-
-
-def test_not_update_list():
-    orig = {"a": [0, 1, 2], "b": "foo"}
-    target = {"a": [3, 1, 2], "b": "foo"}
-    update = {"a": [3]}
-    check_update_not_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_docstring_example():
-    orig = {"b": {1: 1, 2: 2}}
-    target = {"b": {1: 3, 2: 2}}
-    update = {"b": {1: 3}}
-    check_update_equal(orig, target, update)
-
-
-@pytest.mark.xfail
-def test_actual_docstring_example():
-    a = {"b": {1: 1, 2: 2}}
-    _recursively_update_leaf_data_items(a, {1: 3}, ["b"])
-    assert a == {"b": {1: 3, 2: 2}}
+    # Get target
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = simple_update["a"]["d"]
+    output = load_yaml_with_inheritance(base_file)
+    assert output == target
 
 
 if __name__ == "__main__":
