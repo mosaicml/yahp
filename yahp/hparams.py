@@ -357,7 +357,7 @@ class Hparams(ABC):
             value = [value]
             for x in value:
                 if not isinstance(x, ftype.type):
-                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value).__name__}")
+                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x).__name__}")
                 assert isinstance(x, Hparams)
                 x.validate()
 
