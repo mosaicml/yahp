@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from yahp.types import JSON
+    JSON_NAMESPACE = Union[Dict[str, JSON], ListOfSingleItemDict]
 
 
 def _get_inherits_paths(
@@ -83,7 +84,7 @@ def _ensure_path_exists(namespace: JSON, argument_path: Sequence[Union[int, str]
             raise ValueError("Path must be empty unless if list or dict")
 
 
-class _OverridenValue:
+class _OverriddenValue:
 
     def __init__(self, val: JSON):
         self.val = val
@@ -96,7 +97,7 @@ def _unwrap_overridden_value_dict(data: Dict[str, JSON]):
         elif is_list_of_single_item_dicts(val):
             for item in val:
                 _unwrap_overridden_value_dict(item)
-        elif isinstance(val, _OverridenValue):
+        elif isinstance(val, _OverriddenValue):
             data[key] = val.val
 
 
@@ -106,6 +107,7 @@ def _recursively_update_leaf_data_items(
     update_argument_path: List[str],
 ):
     if isinstance(update_data, collections.abc.Mapping):
+        # This is still a branch point
         _ensure_path_exists(update_namespace, update_argument_path)
         for key, val in update_data.items():
             _recursively_update_leaf_data_items(
@@ -116,49 +118,48 @@ def _recursively_update_leaf_data_items(
     else:
         # Must be a leaf
         inner_namespace = update_namespace
-        new_inner: Dict[str, JSON] = {}
-        if len(update_argument_path) <= 1:
-            new_inner = inner_namespace
 
         # Traverse the tree to the final branch
         for key in update_argument_path[:-1]:
-            key_element = None
+            key_element: JSON_NAMESPACE = None
             if isinstance(inner_namespace, collections.abc.Mapping):
                 # Simple dict
-                key_element: JSON = inner_namespace.get(key)
+                key_element = inner_namespace.get(key)
             elif is_list_of_single_item_dicts(inner_namespace):
-                # List of one-item dicts
+                # List of single-item dicts
+                assert isinstance(inner_namespace, list)  # ensure type for pyright
                 inner_namespace = ListOfSingleItemDict(inner_namespace)
                 if key in inner_namespace:
-                    key_element: JSON = inner_namespace[key]
+                    key_element = inner_namespace[key]
             # key_element is None otherwise
 
             # This needs to be a branch, so make it an empty dict
+            # This overrides simple types if the inheritance specifies a branch
             if key_element is None or not (isinstance(key_element, dict) or is_list_of_single_item_dicts(key_element)):
                 key_element = {}
                 inner_namespace[key] = key_element
 
             assert isinstance(key_element, dict) or is_list_of_single_item_dicts(key_element)
-
-            # These two values are shared. Why not just use inner_namespace???
             inner_namespace = key_element
-            new_inner = key_element
 
-        if isinstance(new_inner, collections.abc.Mapping):
-            new_inner_value = new_inner.get(update_argument_path[-1])
+        key = update_argument_path[-1]
+        if isinstance(inner_namespace, collections.abc.Mapping):
+            existing_value = inner_namespace.get(key)
         else:
             # List of single-item dicts
-            new_inner = ListOfSingleItemDict(new_inner)
-            if update_argument_path[-1] in new_inner:
-                new_inner_value = new_inner[update_argument_path[-1]]
+            assert isinstance(inner_namespace, list)
+            inner_namespace = ListOfSingleItemDict(inner_namespace)
+            if key in inner_namespace:
+                existing_value = inner_namespace[key]
             else:
-                new_inner_value = None
+                existing_value = None
 
-        if new_inner_value is None or isinstance(
-                new_inner_value,
-                _OverridenValue,
-        ) or (isinstance(new_inner_value, dict) and "inherits" in new_inner_value.keys()):
-            new_inner[update_argument_path[-1]] = _OverridenValue(update_data)  # type: ignore
+        is_empty = (existing_value is None)  # Empty values should be filled in
+        is_lower_priority = isinstance(existing_value, _OverriddenValue)  # Further inheritance should override previous
+        is_inherits_dict = isinstance(existing_value, dict) and "inherits" in existing_value  # Not sure about this one...
+
+        if is_empty or is_lower_priority or is_inherits_dict:
+            inner_namespace[key] = _OverriddenValue(update_data)  # type: ignore
 
 
 def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:

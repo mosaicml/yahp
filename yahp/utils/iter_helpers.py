@@ -53,13 +53,13 @@ def extract_only_item_from_dict(val: Dict[K, V]) -> Tuple[K, V]:
     return list(val.items())[0]
 
 
-def list_to_deduplicated_dict(list_of_dict: List[Union[str, JSON]],
+def list_to_deduplicated_dict(list_of_dict: List[JSON],
                               allow_str: bool = False,
-                              separator: str = '+') -> JSON:
+                              separator: str = '+') -> Dict[str, JSON]:
     """Converts a list of single-item dictionaries to a dictionary, deduplicating keys along the way
 
     Args:
-        list_of_dict (List[Dict[str, Any]]): A list of single-element dictionaries
+        list_of_dict (List[Dict[str, Any]]): A list of single-item dictionaries
         allow_str (bool, optional): If True, list can contain strings, which will be added as keys with None values.
                                     Defaults to False.
         separator (str, optional): The separator to use for deduplication. Default '+'.
@@ -88,7 +88,15 @@ def list_to_deduplicated_dict(list_of_dict: List[Union[str, JSON]],
     return data
 
 
-def is_list_of_single_item_dicts(obj: List) -> bool:
+def is_list_of_single_item_dicts(obj: JSON) -> bool:
+    """Whether the provided object is a list of single-item dictionaries
+
+    Args:
+        obj (List[Dict]) - Possible list of dictionaries
+
+    Returns:
+        True if ``obj`` is a list of single-item dictionaries
+    """
 
     if isinstance(obj, ListOfSingleItemDict):
         return True
@@ -104,17 +112,26 @@ def is_list_of_single_item_dicts(obj: List) -> bool:
 
 
 class ListOfSingleItemDict(list):
+    """Simple list wrapper for a list of single-item dicts
+
+    This enables string-based gets and sets. If there are duplicate keys in the list,
+    the first one is retrieved/modified.
+    """
 
     def __init__(self, data: List):
         if not is_list_of_single_item_dicts(data):
             raise TypeError("data must be list of single-item dictionaries")
-        self._list = data
-        self._data = cast(Dict, list_to_deduplicated_dict(data))
+        if isinstance(data, ListOfSingleItemDict):
+            self._list = data._list
+            self._data = data._data
+        else:
+            self._list = data
+            self._data = cast(Dict, list_to_deduplicated_dict(data))
 
-    def __contains__(self, key: Union[int, str]) -> bool:
+    def __contains__(self, key: Union[int, str]) -> bool:  # type: ignore
         return key in self._data
 
-    def __getitem__(self, key: Union[int, str]) -> Any:
+    def __getitem__(self, key: Union[int, str]) -> Any:  # type: ignore
         if key in self._data:
             return self._data[key]
         if not isinstance(key, int):

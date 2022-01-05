@@ -7,43 +7,10 @@ import pathlib
 import pytest
 import yaml
 
-from yahp.inheritance import (_OverridenValue, _recursively_update_leaf_data_items, _unwrap_overridden_value_dict,
+from yahp.inheritance import (_OverriddenValue, _recursively_update_leaf_data_items, _unwrap_overridden_value_dict,
                               load_yaml_with_inheritance, preprocess_yaml_with_inheritance)
 
-"""
-TODO:
-Insertion tests
-- Test insert simple type into nested dict
-- Test insert list type into nested dict
-- Test insert nested dict into nested dict
-- Test insert single-item list into nested dict
-- Test insert simple type into single-item list
-- Test insert list type into single-item list
-- Test insert nested dict into single-item list
-- Test insert single-item list into single-item list
 
-Does not overwrite
-- Test that simple types do not overwrite
-- Test that list types do not overwrite
-- Test that nested dicts do not overwrite
-- Test that single-item lists do not overwrite
-
-Empty checks
-- Test empty update into nested dict
-- Test empty update into single-item list
-- Test update into empty nested dict
-- Test update into None
-
-YAML checks
-- Test absolute path inheritance
-- Test relative path inheritance
-- Test sub-level inheritance
-- Test second order inheritance
-- Test inheritance order matters
-"""
-
-# Breaks because I removed nested inherits
-# @pytest.mark.xfail
 def test_yaml_inheritance(tmpdir: pathlib.Path):
     inheritance_folder = os.path.join(os.path.dirname(__file__), "inheritance")
     input_file = os.path.join(inheritance_folder, "main.yaml")
@@ -82,7 +49,11 @@ def nested_dict_none():
 
 @pytest.fixture
 def nested_dict_overridden():
-    return {"a": {"b": {"c": _OverridenValue(1)}}}
+    return {"a": {"b": {"c": _OverriddenValue(1)}}}
+
+@pytest.fixture
+def nested_dict_inherits():
+    return {"a": {"b": {"c": {"inherits": []}}}}
 
 @pytest.fixture
 def nested_list():
@@ -193,6 +164,12 @@ def test_overwrite_overridden(nested_dict_overridden, simple_update):
     target = copy.deepcopy(conflict)
     check_update_equal(nested_dict_overridden, target, conflict)
 
+def test_overwrite_inherits(nested_dict_inherits, simple_update):
+    # Create conflict at a.b.c
+    conflict = {"a": {"b": {"c": simple_update["a"]["d"]}}}
+    target = copy.deepcopy(conflict)
+    check_update_equal(nested_dict_inherits, target, conflict)
+
 ## Test empty args
 def test_empty_namespace(simple_update):
     target = copy.deepcopy(simple_update)
@@ -238,9 +215,87 @@ def test_inheritance_absolute_path(nested_dict, simple_update, tmpdir, absolute)
     output = load_yaml_with_inheritance(base_file)
     assert output == target
 
+def test_inheritance_sublevel(nested_dict, simple_update, tmpdir):
+    # Write update to inherits file
+    inherits_file = os.path.join(tmpdir, "inherits.yaml")
+    with open(inherits_file, "w") as fh:
+        yaml.dump(simple_update, fh)
 
-if __name__ == "__main__":
-    # test_yaml_inheritance("/tmp")
-    test_update_list_of_dicts_nested2()
-    # test_update_list_of_dicts_nested()
-    # test_not_update_list()
+    # Place 'inherits' under a.d
+    base = copy.deepcopy(nested_dict)
+    base["a"]["d"] = {"inherits": [inherits_file]}
+
+    # Write base yaml to file
+    base_file = os.path.join(tmpdir, "base.yaml")
+    with open(base_file, "w") as fh:
+        yaml.dump(base, fh)
+
+    # Get target
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = simple_update["a"]["d"]
+    output = load_yaml_with_inheritance(base_file)
+    assert output == target
+
+def test_inheritance_second_order(nested_dict, simple_update, tmpdir):
+    inherits_file_1 = os.path.join(tmpdir, "inherits1.yaml")
+    inherits_file_2 = os.path.join(tmpdir, "inherits2.yaml")
+
+    # Write second order inherits file
+    with open(inherits_file_2, "w") as fh:
+        yaml.dump(simple_update, fh)
+
+    # Write first order inherits
+    first_order = {"a": {"inherits": [inherits_file_2]}}
+    with open(inherits_file_1, "w") as fh:
+        yaml.dump(first_order, fh)
+
+    # Base references first order
+    base = copy.deepcopy(nested_dict)
+    base["a"]["inherits"] = [inherits_file_1]
+
+    # Write base yaml to file
+    base_file = os.path.join(tmpdir, "base.yaml")
+    with open(base_file, "w") as fh:
+        yaml.dump(base, fh)
+
+    # Get target
+    target = copy.deepcopy(nested_dict)
+    target["a"]["d"] = simple_update["a"]["d"]
+    output = load_yaml_with_inheritance(base_file)
+    assert output == target
+
+@pytest.mark.parametrize("simple_first", (False, True))
+def test_inheritance_sort_order(nested_dict, simple_update, list_update, tmpdir, simple_first):
+    inherits_file_simple = os.path.join(tmpdir, "inherits_simple.yaml")
+    inherits_file_list = os.path.join(tmpdir, "inherits_file_list.yaml")
+
+    # Write simple inherits file
+    with open(inherits_file_simple, "w") as fh:
+        yaml.dump(simple_update, fh)
+
+    # Write list inherits file
+    with open(inherits_file_list, "w") as fh:
+        yaml.dump(list_update, fh)
+
+    base = copy.deepcopy(nested_dict)
+    if simple_first:
+        inherits = [inherits_file_simple, inherits_file_list]
+    else:
+        inherits = [inherits_file_list, inherits_file_simple]
+    base["a"]["inherits"] = inherits
+
+    # Write base yaml to file
+    base_file = os.path.join(tmpdir, "base.yaml")
+    with open(base_file, "w") as fh:
+        yaml.dump(base, fh)
+
+    # Get target
+    target = copy.deepcopy(nested_dict)
+    # Later inherits overwrite earlier
+    if simple_first:
+        target["a"]["d"] = list_update["a"]["d"]
+    else:
+        target["a"]["d"] = simple_update["a"]["d"]
+    output = load_yaml_with_inheritance(base_file)
+    assert output == target
+
