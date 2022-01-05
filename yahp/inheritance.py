@@ -156,7 +156,8 @@ def _recursively_update_leaf_data_items(
 
         is_empty = (existing_value is None)  # Empty values should be filled in
         is_lower_priority = isinstance(existing_value, _OverriddenValue)  # Further inheritance should override previous
-        is_inherits_dict = isinstance(existing_value, dict) and "inherits" in existing_value  # Not sure about this one...
+        is_inherits_dict = isinstance(existing_value,
+                                      dict) and "inherits" in existing_value  # Not sure about this one...
 
         if is_empty or is_lower_priority or is_inherits_dict:
             inner_namespace[key] = _OverriddenValue(update_data)  # type: ignore
