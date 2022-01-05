@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Union, cast
 
 import yaml
 
+from yahp.utils.iter_helpers import ListOfSingleItemDict, is_list_of_single_item_dicts
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -43,12 +45,33 @@ def _data_by_path(
         if isinstance(namespace, dict):
             assert isinstance(key, str)
             namespace = namespace[key]
+        elif is_list_of_single_item_dicts(namespace):  #type: ignore
+            assert isinstance(key, str)
+            namespace = ListOfSingleItemDict(namespace)[key]
         elif isinstance(namespace, list):
             assert isinstance(key, int)
             namespace = namespace[key]
         else:
             raise ValueError("Path must be empty unless if list or dict")
     return namespace
+
+
+def _ensure_path_exists(namespace: JSON, argument_path: Sequence[Union[int, str]]) -> None:
+    for key in argument_path:
+        if isinstance(namespace, dict):
+            assert isinstance(key, str)
+            namespace = namespace.setdefault(key, {})
+        elif is_list_of_single_item_dicts(namespace):  #type: ignore
+            assert isinstance(key, str)
+            namespace = ListOfSingleItemDict(namespace)
+            if key not in namespace:
+                namespace[key] = {}
+            namespace = namespace[key]
+        elif isinstance(namespace, list):
+            assert isinstance(key, int)
+            namespace = namespace[key]  # TODO: try except to verify key in range
+        else:
+            raise ValueError("Path must be empty unless if list or dict")
 
 
 class _OverridenValue:
@@ -61,6 +84,9 @@ def _unwrap_overriden_value_dict(data: Dict[str, JSON]):
     for key, val in data.items():
         if isinstance(val, collections.abc.Mapping):
             _unwrap_overriden_value_dict(val)
+        elif is_list_of_single_item_dicts(val):
+            for item in val:
+                _unwrap_overriden_value_dict(item)
         elif isinstance(val, _OverridenValue):
             data[key] = val.val
 
@@ -80,6 +106,7 @@ def _recursively_update_leaf_data_items(
         _recursively_update_leaf_data_items(a, {1:3}, ["b"]) -> {"b":{1:3, 2:2}}
     """
     if isinstance(update_data, collections.abc.Mapping):
+        _ensure_path_exists(update_namespace, update_argument_path)
         for key, val in update_data.items():
             _recursively_update_leaf_data_items(
                 update_namespace=update_namespace,
@@ -93,17 +120,40 @@ def _recursively_update_leaf_data_items(
         if len(update_argument_path) <= 1:
             new_inner = inner_namespace
 
+        # Traverse the tree to the final branch
         for key in update_argument_path[:-1]:
-            key_element: JSON = inner_namespace.get(key)
-            if key_element is None or not isinstance(key_element, dict):
-                # If the nested item isn't a dict, it will need to be to store leaves
+            key_element = None
+            if isinstance(inner_namespace, collections.abc.Mapping):
+                # Simple dict
+                key_element: JSON = inner_namespace.get(key)
+            elif is_list_of_single_item_dicts(inner_namespace):
+                # List of one-item dicts
+                inner_namespace = ListOfSingleItemDict(inner_namespace)
+                if key in inner_namespace:
+                    key_element: JSON = inner_namespace[key]
+            # key_element is None otherwise
+
+            # This needs to be a branch, so make it an empty dict
+            if key_element is None or not (isinstance(key_element, dict) or is_list_of_single_item_dicts(key_element)):
                 key_element = {}
                 inner_namespace[key] = key_element
-            assert isinstance(key_element, dict)
+
+            assert isinstance(key_element, dict) or is_list_of_single_item_dicts(key_element)
+
+            # These two values are shared. Why not just use inner_namespace???
             inner_namespace = key_element
             new_inner = key_element
 
-        new_inner_value = new_inner.get(update_argument_path[-1])
+        if isinstance(new_inner, collections.abc.Mapping):
+            new_inner_value = new_inner.get(update_argument_path[-1])
+        else:
+            # List of single-item dicts
+            new_inner = ListOfSingleItemDict(new_inner)
+            if update_argument_path[-1] in new_inner:
+                new_inner_value = new_inner[update_argument_path[-1]]
+            else:
+                new_inner_value = None
+
         if new_inner_value is None or isinstance(
                 new_inner_value,
                 _OverridenValue,

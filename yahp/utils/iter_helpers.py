@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Tuple, TypeVar, Union, cast
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -86,3 +86,47 @@ def list_to_deduplicated_dict(list_of_dict: List[Union[str, JSON]],
             counter[k] = 1
         data[k] = v
     return data
+
+
+def is_list_of_single_item_dicts(obj: List) -> bool:
+
+    if isinstance(obj, ListOfSingleItemDict):
+        return True
+
+    if not isinstance(obj, list):
+        return False
+
+    for item in obj:
+        if not (isinstance(item, dict) and len(item) == 1):
+            return False
+
+    return True
+
+
+class ListOfSingleItemDict(list):
+
+    def __init__(self, data: List):
+        if not is_list_of_single_item_dicts(data):
+            raise TypeError("data must be list of single-item dictionaries")
+        self._list = data
+        self._data = cast(Dict, list_to_deduplicated_dict(data))
+
+    def __contains__(self, key: Union[int, str]) -> bool:
+        return key in self._data
+
+    def __getitem__(self, key: Union[int, str]) -> Any:
+        if key in self._data:
+            return self._data[key]
+        if not isinstance(key, int):
+            raise TypeError(f"Index should be of type {int}, not {type(key)}")
+        return self._list.__getitem__(key)
+
+    def __setitem__(self, key, value):
+        for item in self._list:
+            k, _ = extract_only_item_from_dict(item)
+            if k == key:
+                item[k] = value
+                self._data[key] = value
+                return
+        self._list.append({key: value})
+        self._data[key] = value
