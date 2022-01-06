@@ -6,7 +6,7 @@ import argparse
 import collections.abc
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 import yaml
 
@@ -57,7 +57,7 @@ def _data_by_path(
             namespace = namespace[key]
         elif is_list_of_single_item_dicts(namespace):  #type: ignore
             assert isinstance(key, str)
-            namespace = ListOfSingleItemDict(namespace)[key]
+            namespace = ListOfSingleItemDict(namespace)[key] # type: ignore
         elif isinstance(namespace, list):
             assert isinstance(key, int)
             namespace = namespace[key]
@@ -73,13 +73,14 @@ def _ensure_path_exists(namespace: JSON, argument_path: Sequence[Union[int, str]
             namespace = namespace.setdefault(key, {})
         elif is_list_of_single_item_dicts(namespace):  #type: ignore
             assert isinstance(key, str)
-            namespace = ListOfSingleItemDict(namespace)
+            namespace = ListOfSingleItemDict(namespace) # type: ignore
             if key not in namespace:
                 namespace[key] = {}
             namespace = namespace[key]
         elif isinstance(namespace, list):
             assert isinstance(key, int)
-            namespace = namespace[key]  # TODO: try except to verify key in range
+            # TODO: try except to verify key in range
+            namespace = namespace[key] # type: ignore
         else:
             raise ValueError("Path must be empty unless if list or dict")
 
@@ -95,7 +96,7 @@ def _unwrap_overridden_value_dict(data: Dict[str, JSON]):
         if isinstance(val, collections.abc.Mapping):
             _unwrap_overridden_value_dict(val)
         elif is_list_of_single_item_dicts(val):
-            for item in val:
+            for item in val: # type: ignore
                 _unwrap_overridden_value_dict(item)
         elif isinstance(val, _OverriddenValue):
             data[key] = val.val
@@ -121,10 +122,10 @@ def _recursively_update_leaf_data_items(
 
         # Traverse the tree to the final branch
         for key in update_argument_path[:-1]:
-            key_element: JSON_NAMESPACE = None
+            key_element: Optional[ JSON_NAMESPACE ] = None
             if isinstance(inner_namespace, collections.abc.Mapping):
                 # Simple dict
-                key_element = inner_namespace.get(key)
+                key_element = inner_namespace.get(key) # type: ignore
             elif is_list_of_single_item_dicts(inner_namespace):
                 # List of single-item dicts
                 assert isinstance(inner_namespace, list)  # ensure type for pyright
