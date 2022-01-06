@@ -437,7 +437,6 @@ def create(
                                          argparsers=argparsers)
     except _MissingRequiredFieldException as e:
         _add_help(argparsers, remaining_cli_args)
-        print(e.args)
         raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
                          f"{', '.join(e.args)}") from e
     _add_help(argparsers, remaining_cli_args)
