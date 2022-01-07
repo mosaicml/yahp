@@ -340,13 +340,12 @@ def _create(
             # TODO parse args from
             sub_hparams: List[hp.Hparams] = []
             for create_call in ensure_tuple(create_calls):
-                prefix = create_call.prefix
                 if create_call.parser_args is None:
                     parsed_arg_dict = {}
                 else:
                     parser = argparse.ArgumentParser(add_help=False)
                     argparsers.append(parser)
-                    group = parser.add_argument_group(title=".".join(prefix),
+                    group = parser.add_argument_group(title=".".join(create_call.prefix),
                                                       description=create_call.hparams_cls.__name__)
                     for args in create_call.parser_args:
                         for arg in ensure_tuple(args):
@@ -359,7 +358,7 @@ def _create(
                         data=create_call.data,
                         parsed_args=parsed_arg_dict,
                         cli_args=cli_args,
-                        prefix=prefix,
+                        prefix=create_call.prefix,
                         argparse_name_registry=argparse_name_registry,
                         argparsers=argparsers,
                     ))
