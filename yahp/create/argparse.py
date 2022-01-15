@@ -233,7 +233,6 @@ def retrieve_args(
 
         nargs = None
         if not ftype.is_hparams_dataclass:
-            nargs = None
             if ftype.is_list:
                 nargs = "*"
             elif ftype.is_boolean:
@@ -273,7 +272,6 @@ def retrieve_args(
                 # Found in registry
                 registry_entry = cls.hparams_registry[f.name]
                 choices = sorted(list(registry_entry.keys()))
-                nargs = None
                 if ftype.is_list:
                     nargs = "+" if required else "*"
                     required = False

@@ -7,8 +7,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 install_requires = [
-    "PyYAML==5.4.1",
-    "ruamel.yaml==0.17.10",
+    "PyYAML>=5.4.1",
+    "ruamel.yaml>=0.17.10",
 ]
 
 extra_deps = {}
@@ -38,7 +38,7 @@ extra_deps['all'] = set(dep for deps in extra_deps.values() for dep in deps)
 
 setup(
     name="yahp",
-    version="0.0.12",
+    version="0.0.14",
     author="MosaicML",
     author_email="team@mosaicml.com",
     description="Yet Another HyperParameter framework",

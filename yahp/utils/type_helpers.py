@@ -44,7 +44,7 @@ class HparamsType:
 
     Args:
         item (type): Type annotation to parse.
-    
+
     Attributes:
         types (List[Type]): The allowed types for this annotation, as a list.
             If the annotation is ``List[X]`` or ``Optional[X]``,
@@ -298,7 +298,7 @@ def is_field_required(f: Field[Any]) -> bool:
     """
     Returns whether a field is required
     (i.e. does not have a default value).
-    
+
     Args:
         f (Field): The field.
     """
@@ -307,7 +307,7 @@ def is_field_required(f: Field[Any]) -> bool:
 
 def get_default_value(f: Field[Any]) -> Any:
     """Returns an instance of a default value for a field.
-    
+
     Args:
         f (Field): The field.
     """
@@ -320,7 +320,7 @@ def get_default_value(f: Field[Any]) -> Any:
 
 def to_bool(x: Any):
     """Converts a value to a boolean
-    
+
     Args:
         x (object): Value to attempt to convert to a bool.
     """
@@ -334,8 +334,8 @@ def to_bool(x: Any):
 
 
 def is_none_like(x: Any, *, allow_list: bool) -> bool:
-    """Returns whether a value is MISSING, ``None``, ``"none"``, ``[""]``, or ``["none"]``
-    
+    """Returns whether a value is ``None``, ``"none"``, ``[""]``, ``["none"]``, or has been marked as a missing field.
+
     Args:
         x (object): Value to examine.
         allow_list (bool): Whether to treat ``[""]``, or ``["none"]`` as ``None``.
@@ -343,6 +343,8 @@ def is_none_like(x: Any, *, allow_list: bool) -> bool:
     if x is None or x is MISSING:
         return True
     if isinstance(x, str) and x.lower() in ["", "none"]:
+        return True
+    if x == MISSING:
         return True
     if allow_list and isinstance(x, (tuple, list)) and len(x) == 1:
         return is_none_like(x[0], allow_list=allow_list)
