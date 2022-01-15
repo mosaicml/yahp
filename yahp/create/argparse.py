@@ -239,6 +239,7 @@ def retrieve_args(
                 nargs = "?"
             choices = None
             if ftype.is_enum:
+                assert issubclass(ftype.type, Enum)
                 choices = [x.name.lower() for x in ftype.type]
             if ftype.is_boolean and len(ftype.types) == 1:
                 choices = ["true", "false"]

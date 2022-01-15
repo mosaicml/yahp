@@ -7,6 +7,7 @@ import logging
 import os
 import pathlib
 import sys
+import textwrap
 import warnings
 from dataclasses import MISSING, dataclass, fields
 from typing import (TYPE_CHECKING, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
@@ -110,15 +111,16 @@ def _create(
         try:
             ftype = HparamsType(field_types[f.name])
             full_name = ".".join(prefix_with_fname)
+            env_name = full_name.upper().replace(".", "_")  # dots are not (easily) allowed in env variables
             if full_name in parsed_args and parsed_args[full_name] != MISSING:
                 # use CLI args first
                 argparse_or_yaml_value = parsed_args[full_name]
             elif f.name in data:
                 # then use YAML
                 argparse_or_yaml_value = data[f.name]
-            elif full_name.upper() in os.environ:
+            elif env_name in os.environ:
                 # then use environment variables
-                argparse_or_yaml_value = os.environ[full_name.upper()]
+                argparse_or_yaml_value = os.environ[env_name]
             else:
                 # otherwise, set it as MISSING so the default will be used
                 argparse_or_yaml_value = MISSING
@@ -151,6 +153,7 @@ def _create(
                                 sub_yaml = {}
                             if not isinstance(sub_yaml, dict):
                                 raise ValueError(f"{full_name} must be a dict in the yaml")
+                            assert issubclass(ftype.type, hp.Hparams)
                             deferred_create_calls[f.name] = _DeferredCreateCall(
                                 hparams_cls=ftype.type,
                                 data=sub_yaml,
@@ -187,6 +190,7 @@ def _create(
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
                                     raise TypeError(f"{full_name} must be a dict in the yaml")
+                                assert issubclass(ftype.type, hp.Hparams)
                                 deferred_calls.append(
                                     _DeferredCreateCall(
                                         hparams_cls=ftype.type,
@@ -293,8 +297,9 @@ def _create(
                                 if key_yaml is None:
                                     key_yaml = {}
                                 if not isinstance(key_yaml, dict):
-                                    raise ValueError(f"Field {'.'.join(prefix_with_fname + [key])}"
-                                                     "must be a dict if specified in the yaml")
+                                    raise ValueError(
+                                        textwrap.dedent(f"""Field {'.'.join(prefix_with_fname + [key])}
+                                        must be a dict if specified in the yaml"""))
                                 split_key, _ = _get_split_key(key)
                                 deferred_calls.append(
                                     _DeferredCreateCall(
@@ -437,8 +442,10 @@ def create(
                                          argparsers=argparsers)
     except _MissingRequiredFieldException as e:
         _add_help(argparsers, remaining_cli_args)
-        raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
-                         f"{', '.join(e.args)}") from e
+        missing_fields = f"{', '.join(e.args)}"
+        raise ValueError(
+            textwrap.dedent(f"""The following required fields were not included in the yaml nor the CLI arguments:
+            {missing_fields}""")) from e
     _add_help(argparsers, remaining_cli_args)
 
     # Only if successful, warn for extra cli arguments
@@ -498,8 +505,9 @@ def _get_hparams(
 
     if f is not None:
         if data is not None:
-            raise ValueError("Since a hparams file was specified via "
-                             f"{'function arguments' if cli_f is None else 'the CLI'}, `data` must be None.")
+            raise ValueError(
+                textwrap.dedent(f"""Since a hparams file was specified via
+                {'function arguments' if cli_f is None else 'the CLI'}, `data` must be None."""))
         if isinstance(f, pathlib.PurePath):
             f = str(f)
         if isinstance(f, str):

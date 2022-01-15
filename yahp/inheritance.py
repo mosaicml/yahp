@@ -235,7 +235,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
             try:
                 # Select out just the portion specified by nested_keys
                 inherit_data = _data_by_path(namespace=inherit_data_full, argument_path=nested_keys)
-            except KeyError as e:
+            except KeyError:
                 logger.warn(f"Failed to load item from inherited YAML file: {inherit_yaml}")
                 continue
 

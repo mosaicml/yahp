@@ -205,8 +205,9 @@ class Hparams(ABC):
             The initialized object.
         """
         del args, kwargs
-        raise NotImplementedError("Initializing object not supported for this Hparams. "
-                                  "To enable, add initialize_object method.")
+        raise NotImplementedError(
+            textwrap.dedent("""Initializing object not supported for this Hparams.
+            To enable, add initialize_object method."""))
 
     @classmethod
     def dump(
@@ -299,9 +300,9 @@ class Hparams(ABC):
         sub_registry = cls.hparams_registry[field]
         existing_keys = sub_registry.keys()
         if class_key in existing_keys:
-            raise ValueError(f"Field {class_key}.{field} already registered in the {cls.__name__} "
-                             f"registry for class: {sub_registry[field]}. \n"
-                             f"Make sure you register new classes with a unique name")
+            raise ValueError(
+                textwrap.dedent(f"""Field {class_key}.{field} already registered in the {cls.__name__}
+                "registry for class: {sub_registry[field]}. Make sure you register new classes with a unique name"""))
 
         logger.info(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
         sub_registry[class_key] = register_class
