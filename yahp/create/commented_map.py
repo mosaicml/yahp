@@ -181,6 +181,7 @@ def to_commented_map(
             elif ftype.is_list:
                 output[f.name] = CommentedSeq()
                 if ftype.is_enum:
+                    assert issubclass(ftype.type, Enum)
                     # If an enum list, then put all enum options in the list
                     output[f.name].extend([x.name for x in ftype.type])
             else:
@@ -192,6 +193,7 @@ def to_commented_map(
                 output[f.name] = None
             else:
                 if default == MISSING:
+                    assert issubclass(ftype.type, hp.Hparams)
                     output[f.name] = [(to_commented_map(
                         cls=ftype.type,
                         path=path_with_fname,

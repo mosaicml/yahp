@@ -1,5 +1,6 @@
 # Copyright 2021 MosaicML. All Rights Reserved.
 
+import pathlib
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -33,13 +34,13 @@ class EnumStringField(Enum):
 # Helpers
 # -------------------------------------------------
 @pytest.fixture
-def hparams_tempdir(tmp_path):
+def hparams_tempdir(tmp_path: pathlib.Path):
     d = tmp_path / "hparams"
     d.mkdir()
     return d
 
 
-def generate_named_tuple_from_str(hparams_tempdir, input_str: str, filepath: str):
+def generate_named_tuple_from_str(hparams_tempdir: pathlib.Path, input_str: str, filepath: str):
     input_data = yaml.full_load(input_str)
     f = hparams_tempdir / filepath
     f.write_text(input_str)
@@ -47,7 +48,7 @@ def generate_named_tuple_from_str(hparams_tempdir, input_str: str, filepath: str
     return out
 
 
-def generate_named_tuple_from_data(hparams_tempdir, input_data: Dict[str, Any], filepath: str):
+def generate_named_tuple_from_data(hparams_tempdir: pathlib.Path, input_data: Dict[str, Any], filepath: str):
     input_str = yaml.dump(input_data)
     f = hparams_tempdir / filepath
     f.write_text(input_str)
@@ -109,7 +110,7 @@ class PrimitiveHparam(hp.Hparams):
 
 
 @pytest.fixture
-def primitive_yaml_input(hparams_tempdir) -> YamlInput:
+def primitive_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     primitive_hparams_input_str = textwrap.dedent("""
     ---
     intfield: 1
@@ -164,7 +165,7 @@ class NestedHparam(hp.Hparams):
 
 
 @pytest.fixture
-def nested_yaml_input(hparams_tempdir, primitive_yaml_input: YamlInput) -> YamlInput:
+def nested_yaml_input(hparams_tempdir: pathlib.Path, primitive_yaml_input: YamlInput) -> YamlInput:
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data={
@@ -195,7 +196,7 @@ class DoubleNestedHparam(hp.Hparams):
 
 
 @pytest.fixture
-def double_nested_yaml_input(hparams_tempdir, nested_yaml_input: YamlInput) -> YamlInput:
+def double_nested_yaml_input(hparams_tempdir: pathlib.Path, nested_yaml_input: YamlInput) -> YamlInput:
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data={
@@ -235,7 +236,7 @@ class ChoiceOneHparam(ChoiceHparamParent):
 
 
 @pytest.fixture
-def choice_one_yaml_input(hparams_tempdir) -> YamlInput:
+def choice_one_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     input_str = textwrap.dedent("""
     ---
     commonfield: true
@@ -269,7 +270,7 @@ class ChoiceTwoHparam(ChoiceHparamParent):
 
 
 @pytest.fixture
-def choice_two_yaml_input(hparams_tempdir, primitive_yaml_input: YamlInput) -> YamlInput:
+def choice_two_yaml_input(hparams_tempdir: pathlib.Path, primitive_yaml_input: YamlInput) -> YamlInput:
     data = {
         "primitive_hparam": primitive_yaml_input.dict_data,
         "commonfield": False,
@@ -309,7 +310,7 @@ class ChoiceThreeHparam(ChoiceHparamParent):
 
 
 @pytest.fixture
-def choice_three_two_yaml_input(hparams_tempdir, choice_two_yaml_input: YamlInput) -> YamlInput:
+def choice_three_two_yaml_input(hparams_tempdir: pathlib.Path, choice_two_yaml_input: YamlInput) -> YamlInput:
     data = {
         "choice": {
             "two": choice_two_yaml_input.dict_data
@@ -325,7 +326,7 @@ def choice_three_two_yaml_input(hparams_tempdir, choice_two_yaml_input: YamlInpu
 
 
 @pytest.fixture
-def choice_three_one_yaml_input(hparams_tempdir, choice_one_yaml_input: YamlInput) -> YamlInput:
+def choice_three_one_yaml_input(hparams_tempdir: pathlib.Path, choice_one_yaml_input: YamlInput) -> YamlInput:
     data = {
         "choice": {
             "one": choice_one_yaml_input.dict_data
@@ -400,7 +401,7 @@ class OptionalFieldHparam(hp.Hparams):
 
 
 @pytest.fixture
-def optional_field_empty_object_yaml_input(hparams_tempdir) -> YamlInput:
+def optional_field_empty_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     data = {"choice": {"one": {}}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
@@ -408,7 +409,7 @@ def optional_field_empty_object_yaml_input(hparams_tempdir) -> YamlInput:
 
 
 @pytest.fixture
-def optional_field_null_object_yaml_input(hparams_tempdir) -> YamlInput:
+def optional_field_null_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     data = {"choice": {"one": None}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
@@ -429,7 +430,7 @@ class ListHparam(hp.Hparams):
 
 
 @pytest.fixture
-def empty_object_yaml_input(hparams_tempdir) -> YamlInput:
+def empty_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data={}, filepath="empty_object.yaml")
 
 

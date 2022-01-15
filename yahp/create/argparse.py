@@ -231,6 +231,7 @@ def retrieve_args(
                 inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
                 default = inverted_field_registry[type(default)]
 
+        nargs = None
         if not ftype.is_hparams_dataclass:
             nargs = None
             if ftype.is_list:
@@ -239,6 +240,7 @@ def retrieve_args(
                 nargs = "?"
             choices = None
             if ftype.is_enum:
+                assert issubclass(ftype.type, Enum)
                 choices = [x.name.lower() for x in ftype.type]
             if ftype.is_boolean and len(ftype.types) == 1:
                 choices = ["true", "false"]

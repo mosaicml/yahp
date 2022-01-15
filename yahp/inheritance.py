@@ -178,7 +178,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
             sub_yaml_data = load_yaml_with_inheritance(yaml_path=sub_yaml_path)
             try:
                 sub_data = _data_by_path(namespace=sub_yaml_data, argument_path=arg_path_parts)
-            except KeyError as e:
+            except KeyError:
                 logger.warn(f"Failed to load item from inherited sub_yaml: {sub_yaml_path}")
                 continue
             _recursively_update_leaf_data_items(
