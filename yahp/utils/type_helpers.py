@@ -83,7 +83,6 @@ class HparamsType:
             if item is None or item is type(None):
                 return [], True, False
             if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
-                print("HELLO", type(item))
                 raise TypeError(f"item of type ({item}) is not supported.")
             is_optional = False
             is_list = False
