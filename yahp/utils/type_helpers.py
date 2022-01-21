@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
@@ -44,6 +45,7 @@ class HparamsType:
 
     Args:
         item (type): Type annotation to parse.
+        allow_classes (bool): If true, will allow singletons and lists of arbitrary classes.
 
     Attributes:
         types (List[Type]): The allowed types for this annotation, as a list.
@@ -56,7 +58,8 @@ class HparamsType:
         is_list (bool): Whether the annotation is a list.
     """
 
-    def __init__(self, item: Type[Any]) -> None:
+    def __init__(self, item: Type[Any], allow_classes: bool = False) -> None:
+        self.allow_classes = allow_classes
         self.types, self.is_optional, self.is_list = self._extract_type(item)
         if len(self.types) == 0:
             assert self.is_optional, "invariant error"
@@ -80,10 +83,7 @@ class HparamsType:
         origin = get_origin(item)
         if origin is None:
             # item must be simple, like None, int, float, str, Enum, or Hparams
-            if item is None or item is type(None):
-                return [], True, False
-            if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
-                print("HELLO", type(item))
+            if not self._is_valid_singleton(item):
                 raise TypeError(f"item of type ({item}) is not supported.")
             is_optional = False
             is_list = False
@@ -132,7 +132,7 @@ class HparamsType:
         list_origin = get_origin(list_item)
         if list_origin is None:
             # Must be either primitive or hparams
-            if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (hp.Hparams, Enum)):
+            if not self._is_valid_singleton(list_item):
                 raise error
             return [list_item]
         if list_origin is Union:
@@ -142,6 +142,17 @@ class HparamsType:
                 raise error
             return list_args
         raise error
+
+    def _is_valid_singleton(self, item: Type[Any]):
+        if item in _PRIMITIVE_TYPES:
+            return True
+        if safe_issubclass(item, (hp.Hparams, Enum)):
+            return True
+        if not self.allow_classes:
+            return False
+        if inspect.isclass(item):
+            return True
+        return False
 
     @property
     def is_hparams_dataclass(self) -> bool:
