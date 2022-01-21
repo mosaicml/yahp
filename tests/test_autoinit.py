@@ -48,6 +48,7 @@ class SimpleClass:
         inners3: Optional[List[InnerClass]],
         choose: Choose,
         chooses: List[Choose],
+        chooses2: Optional[List[Choose]],
     ):
         self.b = b
         self.x = x
@@ -60,6 +61,7 @@ class SimpleClass:
         self.inners3 = inners3
         self.choose = choose
         self.chooses = chooses
+        self.chooses2 = chooses2
 
 
 @pytest.fixture
@@ -83,19 +85,19 @@ def simple_class_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
                     "int_field": 2
                 }
             },
-            "choose_one": {
+            "choose": {
                 "option_one": {
                     "field_one": 5
                 }
             },
-            "choose_ones": {
-                "option_two": {
-                    "field_two": 6
-                },
+            "chooses": {
                 "option_one": {
-                    "field_one": 7
+                    "field_one": 5
+                },
+                "option_two": {
+                    "field_two": 5
                 }
-            }
+            },
         },
         filepath="simple_class.yaml",
     )

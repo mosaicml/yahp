@@ -56,10 +56,14 @@ def _construct_hparams_class(asset_class: Type) -> Type[hp.Hparams]:
                                                  'doc': 'foo'
                                              })))
         elif hasattr(parsed_field_type.type, 'registry'):
-            registry = getattr(parsed_field_type.type, 'registry')
+            registry = parsed_field_type.type.registry
             hparams_registry[field_name] = {k: _construct_hparams_class(v) for k, v in registry.items()}
-            dummy_dataclass = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(hp.Hparams,))
-            fields.append((field_name, dummy_dataclass,
+            nested_field_type = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(hp.Hparams,))
+            if parsed_field_type.is_list:
+                nested_field_type = List[nested_field_type]
+            if parsed_field_type.is_optional:
+                nested_field_type = Optional[nested_field_type]
+            fields.append((field_name, nested_field_type,
                            dataclasses.field(default=default_value,
                                              metadata={
                                                  'is_nested_class': True,
@@ -97,6 +101,7 @@ def _construct_hparams_class(asset_class: Type) -> Type[hp.Hparams]:
 
     hp_class = dataclasses.make_dataclass(f'{asset_class.__name__}Hparams', fields=fields, bases=(hp.Hparams,))
     hp_class.hparams_registry = hparams_registry
+    hp_class.asset_class = asset_class
 
     return hp_class
 
@@ -112,10 +117,11 @@ def _initialize_asset(asset_class: Type[T], hparams: hp.Hparams) -> T:
             elif parsed_field_type.is_list:
                 assert isinstance(hparam_value, Sequence)
                 args[field.name] = [
-                    _initialize_asset(parsed_field_type.type, hparam_value_item) for hparam_value_item in hparam_value
+                    _initialize_asset(hparam_value_item.asset_class, hparam_value_item)
+                    for hparam_value_item in hparam_value
                 ]
             else:
-                args[field.name] = _initialize_asset(parsed_field_type.type, hparam_value)
+                args[field.name] = _initialize_asset(hparam_value.asset_class, hparam_value)
         else:
             args[field.name] = hparam_value
 
