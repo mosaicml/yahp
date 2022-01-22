@@ -9,6 +9,29 @@ from yahp.utils.type_helpers import HparamsType, is_none_like
 
 T = TypeVar('T')
 
+_REGISTRY_ATTR_NAME = '_yahp_registry'
+
+
+def create_subclass_registry():
+
+    def decorator(cls: Type):
+        setattr(cls, _REGISTRY_ATTR_NAME, {})
+        return cls
+
+    return decorator
+
+
+def register_subclass(supercls: Type, canonical_name: str):
+
+    def decorator(cls: Type):
+        if not hasattr(supercls, _REGISTRY_ATTR_NAME):
+            raise ValueError(f"The YAHP registry of {supercls.__qualname__} has not be initialized.")
+        registry = getattr(supercls, _REGISTRY_ATTR_NAME)
+        registry[canonical_name] = cls
+        return cls
+
+    return decorator
+
 
 def create(
     asset_class: Type[T],
@@ -63,8 +86,8 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
                                                  'doc': 'foo'
                                              })))
         else:
-            if hasattr(parsed_field_type.type, 'registry'):
-                registry = parsed_field_type.type.registry
+            if hasattr(parsed_field_type.type, _REGISTRY_ATTR_NAME):
+                registry = getattr(parsed_field_type.type, _REGISTRY_ATTR_NAME)
                 hparams_registry[field_name] = {k: _construct_hparams_class(v) for k, v in registry.items()}
                 nested_field_type = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(Hparams,))
             else:

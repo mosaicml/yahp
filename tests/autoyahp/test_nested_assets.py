@@ -54,26 +54,23 @@ def test_nested_asset_hparams_file(nested_asset_yaml_input: YamlInput):
     assert o.optional_nested_field == None
 
 
+@hp.create_subclass_registry()
 class ChoiceClass:
     pass
 
 
+@hp.register_subclass(ChoiceClass, "option_one")
 class OptionOneClass(ChoiceClass):
 
     def __init__(self, int_field: int):
         self.int_field = int_field
 
 
+@hp.register_subclass(ChoiceClass, "option_two")
 class OptionTwoClass(ChoiceClass):
 
     def __init__(self, string_field: str):
         self.string_field = string_field
-
-
-ChoiceClass.registry = {
-    "option_one": OptionOneClass,
-    "option_two": OptionTwoClass,
-}
 
 
 class NestedChoiceAssetClass:
