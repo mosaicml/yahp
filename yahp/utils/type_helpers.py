@@ -96,9 +96,11 @@ class HparamsType:
             is_primitive = _is_valid_primitive(*args_without_none)
             is_enum = all(safe_issubclass(arg, Enum) for arg in args_without_none)
             is_hparams = all(safe_issubclass(arg, hp.Hparams) for arg in args_without_none)
+            is_allowed_class = self.allow_classes and len(args_without_none) == 1 and inspect.isclass(
+                args_without_none[0])
             is_list = all(get_origin(arg) is list for arg in args_without_none)
             is_json_dict = all(get_origin(arg) is dict for arg in args_without_none)
-            if is_primitive or is_hparams or is_enum:
+            if is_primitive or is_hparams or is_enum or is_allowed_class:
                 assert is_list is False
                 return args_without_none, is_optional, is_list
             if is_list:

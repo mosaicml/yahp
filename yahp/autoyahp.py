@@ -1,8 +1,7 @@
 import dataclasses
 import inspect
 import pathlib
-from typing import (TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
-                    cast, get_args, get_origin, get_type_hints)
+from typing import Dict, List, Optional, Sequence, TextIO, Type, TypeVar, Union, cast
 
 from yahp.hparams import Hparams
 from yahp.types import JSON
@@ -54,7 +53,8 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
         parsed_field_type = HparamsType(field_type, allow_classes=True)
 
         if parsed_field_type.is_primitive:
-            print(field_type)
+            if parsed_field_type.is_optional and default_value == dataclasses.MISSING:
+                default_value = None
             fields.append((field_name, field_type,
                            dataclasses.field(default=default_value,
                                              metadata={
@@ -62,23 +62,13 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
                                                  'parsed_field_type': parsed_field_type,
                                                  'doc': 'foo'
                                              })))
-        elif hasattr(parsed_field_type.type, 'registry'):
-            registry = parsed_field_type.type.registry
-            hparams_registry[field_name] = {k: _construct_hparams_class(v) for k, v in registry.items()}
-            nested_field_type = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(Hparams,))
-            if parsed_field_type.is_list:
-                nested_field_type = List[nested_field_type]
-            if parsed_field_type.is_optional:
-                nested_field_type = Optional[nested_field_type]
-            fields.append((field_name, nested_field_type,
-                           dataclasses.field(default=default_value,
-                                             metadata={
-                                                 'is_nested_class': True,
-                                                 'parsed_field_type': parsed_field_type,
-                                                 'doc': 'foo'
-                                             })))
         else:
-            nested_field_type = _construct_hparams_class(parsed_field_type.type)
+            if hasattr(parsed_field_type.type, 'registry'):
+                registry = parsed_field_type.type.registry
+                hparams_registry[field_name] = {k: _construct_hparams_class(v) for k, v in registry.items()}
+                nested_field_type = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(Hparams,))
+            else:
+                nested_field_type = _construct_hparams_class(parsed_field_type.type)
             if parsed_field_type.is_list:
                 nested_field_type = List[nested_field_type]
             if parsed_field_type.is_optional:
