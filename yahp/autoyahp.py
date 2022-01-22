@@ -11,6 +11,8 @@ T = TypeVar('T')
 
 _REGISTRY_ATTR_NAME = '_yahp_registry'
 
+_PPV_LIST_ATTR_NAME = '_yahp_ppv_list'
+
 
 def create_subclass_registry():
 
@@ -28,6 +30,21 @@ def register_subclass(supercls: Type, canonical_name: str):
             raise ValueError(f"The YAHP registry of {supercls.__qualname__} has not be initialized.")
         registry = getattr(supercls, _REGISTRY_ATTR_NAME)
         registry[canonical_name] = cls
+
+        ppv_list = getattr(supercls, _PPV_LIST_ATTR_NAME, [])
+        setattr(cls, _PPV_LIST_ATTR_NAME, ppv_list)
+        return cls
+
+    return decorator
+
+
+def mark_parent_provided_value(parameter_name: str):
+
+    def decorator(cls: Type):
+        if not hasattr(cls, _PPV_LIST_ATTR_NAME):
+            setattr(cls, _PPV_LIST_ATTR_NAME, [])
+        ppv_list = getattr(cls, _PPV_LIST_ATTR_NAME)
+        ppv_list.append(parameter_name)
         return cls
 
     return decorator
@@ -52,6 +69,8 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
     signature = inspect.signature(asset_class)
     parameters = signature.parameters.values()
 
+    ppv_list = getattr(asset_class, _PPV_LIST_ATTR_NAME, [])
+
     fields = []
     hparams_registry = {}
 
@@ -59,6 +78,9 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
 
         field_name = parameter.name
         field_type = parameter.annotation
+
+        if field_name in ppv_list:
+            continue
 
         if field_type == inspect.Parameter.empty:
             raise TypeError(
@@ -117,8 +139,6 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
     required_fields = [field for field in fields if field not in optional_fields]
     fields = required_fields + optional_fields
 
-    print(fields)
-
     hp_class = dataclasses.make_dataclass(f'{asset_class.__name__}Hparams', fields=fields, bases=(Hparams,))
     hp_class.hparams_registry = hparams_registry
     hp_class.asset_class = asset_class
@@ -126,23 +146,43 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
     return hp_class
 
 
-def _initialize_asset(asset_class: Type[T], hparams: Hparams) -> T:
-    args = {}
-    for field in dataclasses.fields(hparams):
-        hparam_value = getattr(hparams, field.name)
+def _initialize_asset(asset_class: Type[T], hparams: Hparams, **kwargs) -> T:
+
+    fields = dataclasses.fields(hparams)
+    fields_by_name = {field.name: field for field in fields}
+
+    asset_args = {k: v for k, v in kwargs.items()}
+
+    def _initialize_field(field_name: str):
+        if field_name in asset_args:
+            # Already initialized this field
+            return
+
+        field = fields_by_name[field_name]
+        hparam_value = getattr(hparams, field_name)
         if field.metadata['is_nested_class']:
             parsed_field_type = cast(HparamsType, field.metadata['parsed_field_type'])
+
+            ppv_list = getattr(parsed_field_type.type, _PPV_LIST_ATTR_NAME, [])
+            ppv = {}
+            for ppv_field_name in ppv_list:
+                _initialize_field(ppv_field_name)
+                ppv[ppv_field_name] = asset_args[ppv_field_name]
+
             if parsed_field_type.is_optional and is_none_like(hparam_value, allow_list=parsed_field_type.is_list):
-                args[field.name] = None
+                asset_args[field_name] = None
             elif parsed_field_type.is_list:
                 assert isinstance(hparam_value, Sequence)
-                args[field.name] = [
-                    _initialize_asset(hparam_value_item.asset_class, hparam_value_item)
+                asset_args[field_name] = [
+                    _initialize_asset(hparam_value_item.asset_class, hparam_value_item, **ppv)
                     for hparam_value_item in hparam_value
                 ]
             else:
-                args[field.name] = _initialize_asset(hparam_value.asset_class, hparam_value)
+                asset_args[field_name] = _initialize_asset(hparam_value.asset_class, hparam_value, **ppv)
         else:
-            args[field.name] = hparam_value
+            asset_args[field_name] = hparam_value
 
-    return asset_class(**args)
+    for field in fields:
+        _initialize_field(field.name)
+
+    return asset_class(**asset_args)
