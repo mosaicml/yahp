@@ -1,23 +1,29 @@
 import dataclasses
 import inspect
+import pathlib
 from typing import (TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
                     cast, get_args, get_origin, get_type_hints)
 
-import yahp as hp
+from yahp.hparams import Hparams
 from yahp.types import JSON
 from yahp.utils.type_helpers import HparamsType, is_none_like
 
 T = TypeVar('T')
 
 
-def autoinit(asset_class: Type[T], data: Optional[Dict[str, JSON]]) -> T:
+def create(
+    asset_class: Type[T],
+    data: Optional[Dict[str, JSON]] = None,
+    f: Union[str, TextIO, pathlib.PurePath, None] = None,
+    cli_args: Union[List[str], bool] = True,
+) -> T:
     hp_class = _construct_hparams_class(asset_class)
-    hparams = hp_class.create(data=data)
+    hparams = hp_class.create(data=data, f=f, cli_args=cli_args)
     asset = _initialize_asset(asset_class, hparams)
     return asset
 
 
-def _construct_hparams_class(asset_class: Type) -> Type[hp.Hparams]:
+def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
 
     assert inspect.isclass(asset_class)
 
@@ -48,6 +54,7 @@ def _construct_hparams_class(asset_class: Type) -> Type[hp.Hparams]:
         parsed_field_type = HparamsType(field_type, allow_classes=True)
 
         if parsed_field_type.is_primitive:
+            print(field_type)
             fields.append((field_name, field_type,
                            dataclasses.field(default=default_value,
                                              metadata={
@@ -58,7 +65,7 @@ def _construct_hparams_class(asset_class: Type) -> Type[hp.Hparams]:
         elif hasattr(parsed_field_type.type, 'registry'):
             registry = parsed_field_type.type.registry
             hparams_registry[field_name] = {k: _construct_hparams_class(v) for k, v in registry.items()}
-            nested_field_type = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(hp.Hparams,))
+            nested_field_type = dataclasses.make_dataclass(f'{field_name}Hparams', fields=(), bases=(Hparams,))
             if parsed_field_type.is_list:
                 nested_field_type = List[nested_field_type]
             if parsed_field_type.is_optional:
@@ -99,14 +106,14 @@ def _construct_hparams_class(asset_class: Type) -> Type[hp.Hparams]:
 
     print(fields)
 
-    hp_class = dataclasses.make_dataclass(f'{asset_class.__name__}Hparams', fields=fields, bases=(hp.Hparams,))
+    hp_class = dataclasses.make_dataclass(f'{asset_class.__name__}Hparams', fields=fields, bases=(Hparams,))
     hp_class.hparams_registry = hparams_registry
     hp_class.asset_class = asset_class
 
     return hp_class
 
 
-def _initialize_asset(asset_class: Type[T], hparams: hp.Hparams) -> T:
+def _initialize_asset(asset_class: Type[T], hparams: Hparams) -> T:
     args = {}
     for field in dataclasses.fields(hparams):
         hparam_value = getattr(hparams, field.name)

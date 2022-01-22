@@ -3,8 +3,8 @@ from typing import List, Optional
 
 import pytest
 
+import yahp as hp
 from tests.yahp_fixtures import YamlInput, generate_named_tuple_from_data
-from yahp.autoinit import autoinit
 
 
 class Choose:
@@ -104,7 +104,7 @@ def simple_class_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
 
 
 def test_simple_class_hparams_data(simple_class_yaml_input: YamlInput):
-    o = autoinit(SimpleClass, data=simple_class_yaml_input.dict_data)
+    o = hp.create(SimpleClass, data=simple_class_yaml_input.dict_data)
 
     print(vars(o))
 
