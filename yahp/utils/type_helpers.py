@@ -150,9 +150,7 @@ class HparamsType:
             return True
         if safe_issubclass(item, (hp.Hparams, Enum)):
             return True
-        if not self.allow_classes:
-            return False
-        if inspect.isclass(item):
+        if self.allow_classes and inspect.isclass(item):
             return True
         return False
 

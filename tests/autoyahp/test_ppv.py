@@ -23,8 +23,7 @@ class InnerChoiceClass:
     pass
 
 
-@hp.register_subclass(InnerChoiceClass, 'option_one')
-class OptionOneClass:
+class OptionOneClass(InnerChoiceClass, canonical_name="option_one"):
 
     def __init__(
         self,
@@ -35,8 +34,7 @@ class OptionOneClass:
         self.float_field = float_field
 
 
-@hp.register_subclass(InnerChoiceClass, 'option_two')
-class OptionTwoClass:
+class OptionTwoClass(InnerChoiceClass, canonical_name="option_two"):
 
     def __init__(
         self,

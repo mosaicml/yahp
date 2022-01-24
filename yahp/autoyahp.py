@@ -17,22 +17,24 @@ _PPV_LIST_ATTR_NAME = '_yahp_ppv_list'
 def create_subclass_registry():
 
     def decorator(cls: Type):
+        if hasattr(cls, _REGISTRY_ATTR_NAME):
+            raise ValueError(f"The YAHP registry for {cls.__qualname__} has already been initialized.")
         setattr(cls, _REGISTRY_ATTR_NAME, {})
-        return cls
 
-    return decorator
+        old_init_subclass = cls.__init_subclass__
 
+        @classmethod
+        def new_init_subclass(subcls, canonical_name: str, **kwargs):
+            registry = getattr(cls, _REGISTRY_ATTR_NAME)
+            registry[canonical_name] = subcls
 
-def register_subclass(supercls: Type, canonical_name: str):
+            ppv_list = getattr(cls, _PPV_LIST_ATTR_NAME, [])
+            setattr(subcls, _PPV_LIST_ATTR_NAME, ppv_list)
 
-    def decorator(cls: Type):
-        if not hasattr(supercls, _REGISTRY_ATTR_NAME):
-            raise ValueError(f"The YAHP registry of {supercls.__qualname__} has not be initialized.")
-        registry = getattr(supercls, _REGISTRY_ATTR_NAME)
-        registry[canonical_name] = cls
+            old_init_subclass(**kwargs)
 
-        ppv_list = getattr(supercls, _PPV_LIST_ATTR_NAME, [])
-        setattr(cls, _PPV_LIST_ATTR_NAME, ppv_list)
+        cls.__init_subclass__ = new_init_subclass
+
         return cls
 
     return decorator
@@ -68,6 +70,8 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
 
     signature = inspect.signature(asset_class)
     parameters = signature.parameters.values()
+
+    print(parameters)
 
     ppv_list = getattr(asset_class, _PPV_LIST_ATTR_NAME, [])
 

@@ -59,15 +59,13 @@ class ChoiceClass:
     pass
 
 
-@hp.register_subclass(ChoiceClass, "option_one")
-class OptionOneClass(ChoiceClass):
+class OptionOneClass(ChoiceClass, canonical_name="option_one"):
 
     def __init__(self, int_field: int):
         self.int_field = int_field
 
 
-@hp.register_subclass(ChoiceClass, "option_two")
-class OptionTwoClass(ChoiceClass):
+class OptionTwoClass(ChoiceClass, canonical_name="option_two"):
 
     def __init__(self, string_field: str):
         self.string_field = string_field

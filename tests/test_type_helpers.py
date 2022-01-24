@@ -16,7 +16,6 @@ class TypeHelperFixture(NamedTuple):
 
 
 @pytest.mark.parametrize("fixture", [
-    TypeHelperFixture(t=None, is_optional=True, is_list=False, types=[]),
     TypeHelperFixture(t=Optional[int], is_optional=True, is_list=False, types=[int]),
     TypeHelperFixture(t=List[int], is_optional=False, is_list=True, types=[int]),
     TypeHelperFixture(t=Union[int, str], is_optional=False, is_list=False, types=[int, str]),
