@@ -1,7 +1,7 @@
 import dataclasses
 import inspect
 import pathlib
-from typing import Dict, List, Optional, Sequence, TextIO, Type, TypeVar, Union, cast
+from typing import Dict, List, Optional, Sequence, TextIO, Type, TypeVar, Union, cast, get_type_hints
 
 from yahp.hparams import Hparams
 from yahp.types import JSON
@@ -71,7 +71,9 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
     signature = inspect.signature(asset_class)
     parameters = signature.parameters.values()
 
-    print(parameters)
+    # `get_type_hints` is necessary to resolve annotations at runtime under PEP 563.
+    # See https://www.python.org/dev/peps/pep-0563/#resolving-type-hints-at-runtime.
+    type_hints = get_type_hints(asset_class.__init__)
 
     ppv_list = getattr(asset_class, _PPV_LIST_ATTR_NAME, [])
 
@@ -81,7 +83,8 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
     for parameter in parameters:
 
         field_name = parameter.name
-        field_type = parameter.annotation
+        assert field_name in type_hints
+        field_type = type_hints[field_name]
 
         if field_name in ppv_list:
             continue
