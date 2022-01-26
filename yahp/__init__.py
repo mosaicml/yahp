@@ -3,6 +3,7 @@
 from yahp.autoyahp import create as create
 from yahp.autoyahp import create_subclass_registry as create_subclass_registry
 from yahp.autoyahp import mark_parent_provided_value as mark_parent_provided_value
+from yahp.autoyahp import override_parameter_type as override_parameter_type
 from yahp.field import optional as optional
 from yahp.field import required as required
 from yahp.hparams import Hparams as Hparams

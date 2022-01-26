@@ -13,8 +13,11 @@ _REGISTRY_ATTR_NAME = '_yahp_registry'
 
 _PPV_LIST_ATTR_NAME = '_yahp_ppv_list'
 
+_PARAM_TYPE_OVERRIDE_DICT_ATTR_NAME = '_yahp_param_override_dict'
+
 
 def create_subclass_registry():
+    """Create a registry to track subclasses of this object so they can satisfy parameters of this object's type."""
 
     def decorator(cls: Type):
         if hasattr(cls, _REGISTRY_ATTR_NAME):
@@ -41,12 +44,25 @@ def create_subclass_registry():
 
 
 def mark_parent_provided_value(parameter_name: str):
+    """Mark a parameter as being provided by """
 
     def decorator(cls: Type):
         if not hasattr(cls, _PPV_LIST_ATTR_NAME):
             setattr(cls, _PPV_LIST_ATTR_NAME, [])
         ppv_list = getattr(cls, _PPV_LIST_ATTR_NAME)
         ppv_list.append(parameter_name)
+        return cls
+
+    return decorator
+
+
+def override_parameter_type(parameter_name: str, parameter_type: Type):
+
+    def decorator(cls: Type):
+        if not hasattr(cls, _PARAM_TYPE_OVERRIDE_DICT_ATTR_NAME):
+            setattr(cls, _PARAM_TYPE_OVERRIDE_DICT_ATTR_NAME, {})
+        param_type_override_dict = getattr(cls, _PARAM_TYPE_OVERRIDE_DICT_ATTR_NAME)
+        param_type_override_dict[parameter_name] = parameter_type
         return cls
 
     return decorator
@@ -76,6 +92,7 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
     type_hints = get_type_hints(asset_class.__init__)
 
     ppv_list = getattr(asset_class, _PPV_LIST_ATTR_NAME, [])
+    param_type_override_dict = getattr(asset_class, _PARAM_TYPE_OVERRIDE_DICT_ATTR_NAME, {})
 
     fields = []
     hparams_registry = {}
@@ -85,6 +102,9 @@ def _construct_hparams_class(asset_class: Type) -> Type[Hparams]:
         field_name = parameter.name
         assert field_name in type_hints
         field_type = type_hints[field_name]
+
+        if field_name in param_type_override_dict:
+            field_type = param_type_override_dict[field_name]
 
         if field_name in ppv_list:
             continue
