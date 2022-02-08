@@ -66,7 +66,7 @@ def test_optional_required_hparams_only_child():
 
 
 def test_optional_required_hparams_both():
-    args = ['--optional_child', '5', '--optional_child.required_field', '5']
+    args = ['--optional_child', '_dummy_value', '--optional_child.required_field', '5']
     o = OptionalRequiredParentHparam.create(cli_args=args)
     assert o.optional_child is not None
     assert o.optional_child.required_field == 5
