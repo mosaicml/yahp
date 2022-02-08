@@ -60,8 +60,9 @@ def test_get_helpless_argpars():
 
 def test_optional_required_hparams_only_child():
     args = ['--optional_child.required_field', '5']
-    with pytest.raises(ValueError):
-        o = OptionalRequiredParentHparam.create(cli_args=args)
+    o = OptionalRequiredParentHparam.create(cli_args=args)
+    assert o.optional_child is not None
+    assert o.optional_child.required_field == 5
     
 def test_optional_required_hparams_both():
     args = ['--optional_child', '5', '--optional_child.required_field', '5']
