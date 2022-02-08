@@ -202,7 +202,7 @@ def retrieve_args(
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
 ) -> Sequence[ParserArgument]:
-    # Retreive argparse args for the class. Does NOT recruse.
+    # Retrieve argparse args for the class. Does NOT recurse.
     field_types = get_type_hints(cls)
     ans: List[ParserArgument] = []
     for f in fields(cls):
