@@ -19,6 +19,7 @@ extra_deps["dev"] = {
     'junitparser>=2.1.1',
     'coverage[toml]>=5.5',
     'pytest>=6.2.0',
+    'toml>=0.10.2',
     'yapf>=0.13.0',
     'isort>=5.9.3',
     'bump2version>=1.0.1',
