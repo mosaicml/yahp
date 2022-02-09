@@ -142,8 +142,14 @@ def _create(
                     # potentially none
                     if not ftype.is_list:
                         # concrete, singleton hparams
-                        # potentially none
-                        if ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list):
+                        # potentially none. If cli args specify a child field, implicitly enable optional parent class
+                        is_none = ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list)
+                        if is_none:
+                            for cli_arg in cli_args:
+                                if cli_arg.lstrip('-').startswith(f.name):
+                                    is_none = False
+                                    break
+                        if is_none:
                             # none
                             kwargs[f.name] = None
                         else:
@@ -519,6 +525,7 @@ def _get_hparams(
     if not isinstance(data, dict):
         raise TypeError("`data` must be a dict or None")
 
+    # Parse args based on class cdefinition
     main_args = retrieve_args(cls=cls, prefix=[], argparse_name_registry=argparse_name_registry)
     parser = argparse.ArgumentParser(add_help=False)
     argparsers.append(parser)
