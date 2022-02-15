@@ -187,8 +187,8 @@ def get_commented_map_options_from_cli(
 
 
 def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
-    # Helper to parse CLI input.
-    # Almost like the default of `str`, but handles MISSING and none gracefully
+    # Helper to parse CLI input
+    # Almost like the default of `str`, but handles MISSING and "none" gracefully
     if val == MISSING:
         return val
     assert not isinstance(val, _MISSING_TYPE)
