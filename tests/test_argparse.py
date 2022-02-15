@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.yahp_fixtures import (ListHparam, OptionalBooleansHparam, YamlInput, OptionalRequiredParentHparam)
+from tests.yahp_fixtures import ListHparam, OptionalBooleansHparam, OptionalRequiredParentHparam, YamlInput
 
 
 def test_boolean_overrides_explicit(empty_object_yaml_input: YamlInput):

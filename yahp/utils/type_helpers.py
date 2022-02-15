@@ -200,7 +200,8 @@ class HparamsType:
             if isinstance(val, str):  # if the val is a string, then check for a key match
                 val = val.lower()
                 if val not in enum_map:
-                    raise ValueError(f"'{val}' is not a valid key. Choose on of {', '.join(enum_map.keys())}.")
+                    possible_keys = [str(key) for key in enum_map.keys()]
+                    raise ValueError(f"'{val}' is not a valid key. Choose on of {', '.join(possible_keys)}.")
             return enum_map[val]
         if self.is_hparams_dataclass:
             if isinstance(val, self.type):

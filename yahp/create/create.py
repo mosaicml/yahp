@@ -40,10 +40,6 @@ class _DeferredCreateCall:
     parser_args: Optional[Sequence[ParserArgument]]
 
 
-def _emit_should_be_list_warning(arg_name: str):
-    warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a list, not a singular element.")
-
-
 def _emit_should_be_dict_warning(arg_name: str):
     warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a dict.")
 
@@ -144,7 +140,7 @@ def _create(
                         # concrete, singleton hparams
                         # potentially none. If cli args specify a child field, implicitly enable optional parent class
                         is_none = ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list)
-                        if is_none:
+                        if is_none and cli_args is not None:
                             for cli_arg in cli_args:
                                 if cli_arg.lstrip('-').startswith(f.name):
                                     is_none = False
