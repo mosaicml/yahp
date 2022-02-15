@@ -40,10 +40,6 @@ class _DeferredCreateCall:
     parser_args: Optional[Sequence[ParserArgument]]
 
 
-def _emit_should_be_list_warning(arg_name: str):
-    warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a list, not a singular element.")
-
-
 def _emit_should_be_dict_warning(arg_name: str):
     warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a dict.")
 

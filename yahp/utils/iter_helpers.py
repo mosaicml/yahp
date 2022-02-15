@@ -131,14 +131,14 @@ class ListOfSingleItemDict(list):
     def __contains__(self, key: Union[int, str]) -> bool:  # type: ignore
         return key in self._data
 
-    def __getitem__(self, key: Union[int, str]) -> Any:  # type: ignore
+    def __getitem__(self, key: Union[int, str]) -> Any:
         if key in self._data:
             return self._data[key]
         if not isinstance(key, int):
             raise TypeError(f"Index should be of type {int}, not {type(key)}")
         return self._list.__getitem__(key)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Union[int, str], value: Any):
         for item in self._list:
             k, _ = extract_only_item_from_dict(item)
             if k == key:
