@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import collections.abc
 import logging
 import os
@@ -268,15 +267,3 @@ def preprocess_yaml_with_inheritance(yaml_path: str, output_yaml_path: str) -> N
     data = load_yaml_with_inheritance(yaml_path)
     with open(output_yaml_path, "w+") as f:
         yaml.dump(data, f, explicit_end=False, explicit_start=False, indent=2, default_flow_style=False)  # type: ignore
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", type=str, help="Input file")
-    parser.add_argument("output_file", type=str, help="Output file")
-    args = parser.parse_args()
-    preprocess_yaml_with_inheritance(args.input_file, args.output_file)
-
-
-if __name__ == "__main__":
-    main()
