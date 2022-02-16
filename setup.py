@@ -2,22 +2,14 @@
 
 import setuptools
 from setuptools import setup
-# import os
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
-
-
 
 install_requires = [
     "PyYAML>=5.4.1",
     "ruamel.yaml>=0.17.10",
 ]
-
-# if os.environ.get('CONDA_BUILD', '0') != '1':
-#     # If not in a conda build, then include this requirement
-#     # Conda does not handle packages with a dot in the name properly
-#     install_requires.append("ruamel.yaml>=0.17.10")
 
 extra_deps = {}
 
@@ -53,11 +45,14 @@ setup(
     description="Yet Another HyperParameter framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mosaicml/hparams",
+    url="https://github.com/mosaicml/yahp",
     packages=setuptools.find_packages(exclude=("tests",)),
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
+    package_data={
+        'yahp': ['py.typed'],
+    },
     install_requires=install_requires,
     extras_require=extra_deps,
     python_requires='>=3.7',

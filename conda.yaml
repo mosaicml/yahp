@@ -4,8 +4,7 @@ package:
 
 source:
   git_url: https://github.com/mosaicml/yahp.git
-  # TODO should be v0.0.14
-  git_rev: ravi/conda
+  git_rev: v0.0.14
   git_depth: 1
 
 channels:
