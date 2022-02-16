@@ -2,7 +2,7 @@
 
 import setuptools
 from setuptools import setup
-import os
+# import os
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -11,12 +11,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 install_requires = [
     "PyYAML>=5.4.1",
+    "ruamel.yaml>=0.17.10",
 ]
 
-if os.environ.get('CONDA_BUILD', '0') != '1':
-    # If not in a conda build, then include this requirement
-    # Conda does not handle packages with a dot in the name properly
-    install_requires.append("ruamel.yaml>=0.17.10")
+# if os.environ.get('CONDA_BUILD', '0') != '1':
+#     # If not in a conda build, then include this requirement
+#     # Conda does not handle packages with a dot in the name properly
+#     install_requires.append("ruamel.yaml>=0.17.10")
 
 extra_deps = {}
 

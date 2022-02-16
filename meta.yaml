@@ -32,11 +32,12 @@ test:
   files:
     - "**/yahp/**"
     - "**/tests/**"
+    - "**/pyproject.toml"
   imports:
     - yahp
     - tests
   commands:
-    - pytest $SRC_DIR
+    - pytest
 
 about:
   home: https://github.com/mosaicml/yahp
