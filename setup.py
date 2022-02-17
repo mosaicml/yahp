@@ -45,13 +45,13 @@ setup(
     description="Yet Another HyperParameter framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mosaicml/hparams",
+    url="https://github.com/mosaicml/yahp",
     packages=setuptools.find_packages(exclude=("tests",)),
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
-    entry_points={
-        'console_scripts': ['yahp-inherits = yahp.inheritance:main',],
+    package_data={
+        'yahp': ['py.typed'],
     },
     install_requires=install_requires,
     extras_require=extra_deps,
