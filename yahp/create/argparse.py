@@ -218,9 +218,9 @@ def retrieve_args(
         if required:
             helptext = f'(required): {helptext}'
         if default != MISSING:
-            if default is None or safe_issubclass(default, (int, float, str, Enum)):
+            if default is None or safe_issubclass(type(default), (int, float, str, Enum)):
                 helptext = f"{helptext} (Default: {default})."
-            elif safe_issubclass(default, hp.Hparams):
+            elif safe_issubclass(type(default), hp.Hparams):
                 helptext = f"{helptext} (Default: {type(default).__name__})."
 
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
