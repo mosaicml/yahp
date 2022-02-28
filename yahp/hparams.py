@@ -18,6 +18,7 @@ import yaml
 from yahp.create.commented_map import CMOptions, to_commented_map
 from yahp.create.create import create, get_argparse
 from yahp.utils import type_helpers
+from yahp.utils.iter_helpers import list_to_deduplicated_dict
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -48,7 +49,7 @@ class Hparams(ABC):
             to the concrete classes that they could be.
 
             See the :ref:`Registry Example<Registry Example>` for a walkthrough on how
-            the registry works. 
+            the registry works.
     """
 
     # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
@@ -167,7 +168,7 @@ class Hparams(ABC):
                             assert isinstance(x, Hparams)
                             field_name = inverted_registry[type(x)]
                             field_list.append({field_name: x.to_dict()})
-                        res[f.name] = field_list
+                        res[f.name] = list_to_deduplicated_dict(field_list)
                     else:
                         field_dict: Dict[str, JSON] = {}
                         field_name = inverted_registry[type(attr)]
@@ -177,7 +178,7 @@ class Hparams(ABC):
                 else:
                     # Specific -- either a list or not
                     if isinstance(attr, list):
-                        res[f.name] = [x.to_dict() for x in attr]
+                        res[f.name] = {str(i): x.to_dict() for i, x in enumerate(attr)}
                     else:
                         assert isinstance(attr, Hparams)
                         res[f.name] = attr.to_dict()
@@ -204,8 +205,9 @@ class Hparams(ABC):
             The initialized object.
         """
         del args, kwargs
-        raise NotImplementedError("Initializing object not supported for this Hparams. "
-                                  "To enable, add initialize_object method.")
+        raise NotImplementedError(
+            textwrap.dedent("""Initializing object not supported for this Hparams.
+            To enable, add initialize_object method."""))
 
     @classmethod
     def dump(
@@ -298,9 +300,9 @@ class Hparams(ABC):
         sub_registry = cls.hparams_registry[field]
         existing_keys = sub_registry.keys()
         if class_key in existing_keys:
-            raise ValueError(f"Field {class_key}.{field} already registered in the {cls.__name__} "
-                             f"registry for class: {sub_registry[field]}. \n"
-                             f"Make sure you register new classes with a unique name")
+            raise ValueError(
+                textwrap.dedent(f"""Field {class_key}.{field} already registered in the {cls.__name__}
+                "registry for class: {sub_registry[field]}. Make sure you register new classes with a unique name"""))
 
         logger.info(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
         sub_registry[class_key] = register_class
@@ -356,7 +358,7 @@ class Hparams(ABC):
             value = [value]
             for x in value:
                 if not isinstance(x, ftype.type):
-                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value).__name__}")
+                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x).__name__}")
                 assert isinstance(x, Hparams)
                 x.validate()
 

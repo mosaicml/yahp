@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.yahp_fixtures import ListHparam, OptionalBooleansHparam, YamlInput
+from tests.yahp_fixtures import ListHparam, OptionalBooleansHparam, OptionalRequiredParentHparam, YamlInput
 
 
 def test_boolean_overrides_explicit(empty_object_yaml_input: YamlInput):
@@ -56,3 +56,17 @@ def test_get_helpless_argpars():
     assert namespace.default_false == 'true'
     with pytest.raises(SystemExit):
         parser.parse_args("--help")
+
+
+def test_optional_required_hparams_only_child():
+    args = ['--optional_child.required_field', '5']
+    o = OptionalRequiredParentHparam.create(cli_args=args)
+    assert o.optional_child is not None
+    assert o.optional_child.required_field == 5
+
+
+def test_optional_required_hparams_both():
+    args = ['--optional_child', '_dummy_value', '--optional_child.required_field', '5']
+    o = OptionalRequiredParentHparam.create(cli_args=args)
+    assert o.optional_child is not None
+    assert o.optional_child.required_field == 5

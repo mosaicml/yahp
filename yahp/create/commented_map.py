@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List, NamedTuple, Optional, Type, get_type_hin
 
 import yahp as hp
 from yahp.utils.interactive import query_with_options
-from yahp.utils.iter_helpers import ensure_tuple
+from yahp.utils.iter_helpers import ensure_tuple, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 
 if TYPE_CHECKING:
@@ -105,23 +105,14 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
     # filter possible_sub_hparams to those in possible_keys
     possible_sub_hparams = {k: v for (k, v) in possible_sub_hparams.items() if k in possible_keys}
 
-    sub_hparams = CommentedSeq() if is_list else CommentedMap()
+    sub_hparams = CommentedMap()
     for sub_key, sub_type in possible_sub_hparams.items():
         sub_map = to_commented_map(
             cls=sub_type,
             path=list(path_with_fname) + [sub_key],
             options=options,
         )
-        if is_list:
-            sub_item = CommentedMap()
-            sub_item[sub_key] = sub_map
-            sub_hparams.append(sub_item)
-            if options.add_docs:
-                _add_commenting(sub_item,
-                                comment_key=sub_key,
-                                eol_comment=sub_type.__name__,
-                                typing_column=options.typing_column)
-            continue
+
         sub_hparams[sub_key] = sub_map
         if options.add_docs:
             _add_commenting(sub_hparams,
@@ -181,6 +172,7 @@ def to_commented_map(
             elif ftype.is_list:
                 output[f.name] = CommentedSeq()
                 if ftype.is_enum:
+                    assert issubclass(ftype.type, Enum)
                     # If an enum list, then put all enum options in the list
                     output[f.name].extend([x.name for x in ftype.type])
             else:
@@ -192,6 +184,7 @@ def to_commented_map(
                 output[f.name] = None
             else:
                 if default == MISSING:
+                    assert issubclass(ftype.type, hp.Hparams)
                     output[f.name] = [(to_commented_map(
                         cls=ftype.type,
                         path=path_with_fname,
@@ -201,6 +194,8 @@ def to_commented_map(
                     output[f.name] = [x.to_dict() for x in ensure_tuple(default)]
                 if not ftype.is_list:
                     output[f.name] = output[f.name][0]
+                else:
+                    output[f.name] = {str(i): item for i, item in enumerate(output[f.name])}
         else:
             inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
             choices = [x.__name__ for x in cls.hparams_registry[f.name].values()]
@@ -210,7 +205,9 @@ def to_commented_map(
                 output[f.name] = _process_abstract_hparams(cls, path_with_fname, ftype.is_list, options)
             else:
                 if ftype.is_list:
-                    output[f.name] = [{inverted_hparams[type(x)]: x.to_dict()} for x in ensure_tuple(default)]
+                    output[f.name] = list_to_deduplicated_dict([{
+                        inverted_hparams[type(x)]: x.to_dict()
+                    } for x in ensure_tuple(default)])
                 else:
                     output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
         if options.add_docs:

@@ -187,8 +187,8 @@ def get_commented_map_options_from_cli(
 
 
 def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
-    # Helper to parse CLI input.
-    # Almost like the default of `str`, but handles MISSING and none gracefully
+    # Helper to parse CLI input
+    # Almost like the default of `str`, but handles MISSING and "none" gracefully
     if val == MISSING:
         return val
     assert not isinstance(val, _MISSING_TYPE)
@@ -202,7 +202,7 @@ def retrieve_args(
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
 ) -> Sequence[ParserArgument]:
-    # Retreive argparse args for the class. Does NOT recruse.
+    # Retrieve argparse args for the class. Does NOT recurse.
     field_types = get_type_hints(cls)
     ans: List[ParserArgument] = []
     for f in fields(cls):
@@ -239,6 +239,7 @@ def retrieve_args(
                 nargs = "?"
             choices = None
             if ftype.is_enum:
+                assert issubclass(ftype.type, Enum)
                 choices = [x.name.lower() for x in ftype.type]
             if ftype.is_boolean and len(ftype.types) == 1:
                 choices = ["true", "false"]

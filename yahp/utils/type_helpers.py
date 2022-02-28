@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import Any, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Sequence, Tuple, Type, Union, cast
 
 import yahp as hp
 from yahp.utils.iter_helpers import ensure_tuple
@@ -44,7 +44,7 @@ class HparamsType:
 
     Args:
         item (type): Type annotation to parse.
-    
+
     Attributes:
         types (List[Type]): The allowed types for this annotation, as a list.
             If the annotation is ``List[X]`` or ``Optional[X]``,
@@ -83,13 +83,12 @@ class HparamsType:
             if item is None or item is type(None):
                 return [], True, False
             if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
-                print("HELLO", type(item))
                 raise TypeError(f"item of type ({item}) is not supported.")
             is_optional = False
             is_list = False
             return [item], is_optional, is_list
         if origin is Union:
-            args = get_args(item)
+            args = cast(Sequence[Any], get_args(item))
             is_optional = type(None) in args
             args_without_none = tuple(arg for arg in args if arg not in (None, type(None)))
             # all args in the union must be subclasses of one of the following subsets
@@ -136,7 +135,7 @@ class HparamsType:
                 raise error
             return [list_item]
         if list_origin is Union:
-            list_args = get_args(list_item)
+            list_args = cast(Sequence[Any], get_args(list_item))
             is_primitive = _is_valid_primitive(*list_args)
             if not is_primitive:
                 raise error
@@ -194,11 +193,15 @@ class HparamsType:
                 raise TypeError(f"{field_name} is a list, but wrap_singletons is false")
         if self.is_enum:
             # could be a list of enums too
-            enum_map = {k.name.lower(): k for k in self.type}
+            assert issubclass(self.type, Enum)
+            enum_map: Dict[Union[str, Enum], Enum] = {k.name.lower(): k for k in self.type}
             enum_map.update({k.value: k for k in self.type})
             enum_map.update({k: k for k in self.type})
             if isinstance(val, str):  # if the val is a string, then check for a key match
                 val = val.lower()
+                if val not in enum_map:
+                    possible_keys = [str(key) for key in enum_map.keys()]
+                    raise ValueError(f"'{val}' is not a valid key. Choose on of {', '.join(possible_keys)}.")
             return enum_map[val]
         if self.is_hparams_dataclass:
             if isinstance(val, self.type):
@@ -271,6 +274,7 @@ class HparamsType:
                 ans = self.type.__name__
 
         if self.is_enum:
+            assert issubclass(self.type, Enum)
             enum_values_string = ", ".join([x.name for x in self.type])
             ans = f"{self.type.__name__}{{{enum_values_string}}}"
 
@@ -296,7 +300,7 @@ def is_field_required(f: Field[Any]) -> bool:
     """
     Returns whether a field is required
     (i.e. does not have a default value).
-    
+
     Args:
         f (Field): The field.
     """
@@ -305,7 +309,7 @@ def is_field_required(f: Field[Any]) -> bool:
 
 def get_default_value(f: Field[Any]) -> Any:
     """Returns an instance of a default value for a field.
-    
+
     Args:
         f (Field): The field.
     """
@@ -318,7 +322,7 @@ def get_default_value(f: Field[Any]) -> Any:
 
 def to_bool(x: Any):
     """Converts a value to a boolean
-    
+
     Args:
         x (object): Value to attempt to convert to a bool.
     """
@@ -333,12 +337,12 @@ def to_bool(x: Any):
 
 def is_none_like(x: Any, *, allow_list: bool) -> bool:
     """Returns whether a value is ``None``, ``"none"``, ``[""]``, ``["none"]``, or has been marked as a missing field.
-    
+
     Args:
         x (object): Value to examine.
         allow_list (bool): Whether to treat ``[""]``, or ``["none"]`` as ``None``.
     """
-    if x is None:
+    if x is None or x is MISSING:
         return True
     if isinstance(x, str) and x.lower() in ["", "none"]:
         return True
