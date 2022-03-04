@@ -6,6 +6,8 @@ from setuptools import setup
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+exec(open('yahp/version.py', 'r', encoding='utf-8').read())
+
 install_requires = [
     "PyYAML>=5.4.1",
     "ruamel.yaml>=0.17.10",
@@ -39,7 +41,7 @@ extra_deps['all'] = set(dep for deps in extra_deps.values() for dep in deps)
 
 setup(
     name="yahp",
-    version="0.0.14",
+    version=__version__,
     author="MosaicML",
     author_email="team@mosaicml.com",
     description="Yet Another HyperParameter framework",
@@ -49,6 +51,9 @@ setup(
     packages=setuptools.find_packages(exclude=("tests",)),
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     package_data={
         'yahp': ['py.typed'],
