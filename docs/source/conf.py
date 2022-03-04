@@ -27,16 +27,16 @@ author = 'MosaicML Team'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.extlinks",
-    "sphinx.ext.coverage",
-    "sphinx.ext.napoleon",
+    'sphinx.ext.autodoc',
+    'sphinx.ext.extlinks',
+    'sphinx.ext.coverage',
+    'sphinx.ext.napoleon',
     'sphinxcontrib.katex',
-    "sphinx.ext.viewcode",
-    "sphinxext.opengraph",
-    "sphinx_copybutton",
-    "sphinx_rtd_theme",
-    "myst_parser",
+    'sphinx.ext.viewcode',
+    'sphinxext.opengraph',
+    'sphinx_copybutton',
+    'sphinx_rtd_theme',
+    'myst_parser',
 ]
 
 # Add any paths that contain templates here, relative to this directory.

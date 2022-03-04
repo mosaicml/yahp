@@ -30,7 +30,7 @@ def _to_json_primitive(val: HparamsField) -> JSON:
         return val
     if isinstance(val, list):
         return [_to_json_primitive(x) for x in val]
-    raise TypeError(f"Cannot convert value of type {type(val)} into a JSON primitive")
+    raise TypeError(f'Cannot convert value of type {type(val)} into a JSON primitive')
 
 
 def _add_commenting(
@@ -78,8 +78,8 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
     possible_sub_hparams = hparams.hparams_registry[field_name]
     possible_keys = list(possible_sub_hparams.keys())
     if options.interactive:
-        leave_blank_option = "(Leave Blank)"
-        dump_all_option = "(Dump all)"
+        leave_blank_option = '(Leave Blank)'
+        dump_all_option = '(Dump all)'
         name = f"Field {'.'.join(path_with_fname)}:"
         if is_list:
             interactive_response = query_with_options(
@@ -150,21 +150,21 @@ def to_commented_map(
             continue
         path_with_fname = list(path) + [f.name]
         ftype = HparamsType(field_types[f.name])
-        helptext = f.metadata.get("doc")
-        helptext_suffix = f" Description: {helptext}." if helptext is not None else ""
+        helptext = f.metadata.get('doc')
+        helptext_suffix = f' Description: {helptext}.' if helptext is not None else ''
         required = is_field_required(f)
         default = get_default_value(f)
-        default_suffix = ""
-        optional_prefix = " (Required)"
+        default_suffix = ''
+        optional_prefix = ' (Required)'
         if not required:
-            optional_prefix = " (Optional)"
+            optional_prefix = ' (Optional)'
             if default is None or safe_issubclass(default, (int, float, str, Enum)):
-                default_suffix = f" Defaults to {default}."
+                default_suffix = f' Defaults to {default}.'
             elif safe_issubclass(default, hp.Hparams):
-                default_suffix = f" Defaults to {type(default).__name__}."
+                default_suffix = f' Defaults to {type(default).__name__}.'
             # Don't print the default, it's too big
-        if default == MISSING and "template_default" in f.metadata:
-            default = f.metadata["template_default"]
+        if default == MISSING and 'template_default' in f.metadata:
+            default = f.metadata['template_default']
         choices = []
         if not ftype.is_hparams_dataclass:
             if default != MISSING:
@@ -213,7 +213,7 @@ def to_commented_map(
         if options.add_docs:
             _add_commenting(cm=output,
                             comment_key=f.name,
-                            eol_comment=f"{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}",
+                            eol_comment=f'{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}',
                             typing_column=options.typing_column,
                             choices=choices)
     return output

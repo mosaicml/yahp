@@ -10,4 +10,3 @@ parameters:
     inherits: shaving_bears.yaml
 command: >-
   bash -c "echo 'do stuff'"
-
