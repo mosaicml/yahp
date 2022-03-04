@@ -15,7 +15,7 @@ class TypeHelperFixture(NamedTuple):
     types: Sequence[Type[Any]]
 
 
-@pytest.mark.parametrize("fixture", [
+@pytest.mark.parametrize('fixture', [
     TypeHelperFixture(t=None, is_optional=True, is_list=False, types=[]),
     TypeHelperFixture(t=Optional[int], is_optional=True, is_list=False, types=[int]),
     TypeHelperFixture(t=List[int], is_optional=False, is_list=True, types=[int]),

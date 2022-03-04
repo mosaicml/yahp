@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List, NamedTuple, Optional, Type, get_type_hin
 
 import yahp as hp
 from yahp.utils.interactive import query_with_options
-from yahp.utils.iter_helpers import ensure_tuple
+from yahp.utils.iter_helpers import ensure_tuple, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ def _to_json_primitive(val: HparamsField) -> JSON:
         return val
     if isinstance(val, list):
         return [_to_json_primitive(x) for x in val]
-    raise TypeError(f"Cannot convert value of type {type(val)} into a JSON primitive")
+    raise TypeError(f'Cannot convert value of type {type(val)} into a JSON primitive')
 
 
 def _add_commenting(
@@ -78,8 +78,8 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
     possible_sub_hparams = hparams.hparams_registry[field_name]
     possible_keys = list(possible_sub_hparams.keys())
     if options.interactive:
-        leave_blank_option = "(Leave Blank)"
-        dump_all_option = "(Dump all)"
+        leave_blank_option = '(Leave Blank)'
+        dump_all_option = '(Dump all)'
         name = f"Field {'.'.join(path_with_fname)}:"
         if is_list:
             interactive_response = query_with_options(
@@ -105,23 +105,14 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
     # filter possible_sub_hparams to those in possible_keys
     possible_sub_hparams = {k: v for (k, v) in possible_sub_hparams.items() if k in possible_keys}
 
-    sub_hparams = CommentedSeq() if is_list else CommentedMap()
+    sub_hparams = CommentedMap()
     for sub_key, sub_type in possible_sub_hparams.items():
         sub_map = to_commented_map(
             cls=sub_type,
             path=list(path_with_fname) + [sub_key],
             options=options,
         )
-        if is_list:
-            sub_item = CommentedMap()
-            sub_item[sub_key] = sub_map
-            sub_hparams.append(sub_item)
-            if options.add_docs:
-                _add_commenting(sub_item,
-                                comment_key=sub_key,
-                                eol_comment=sub_type.__name__,
-                                typing_column=options.typing_column)
-            continue
+
         sub_hparams[sub_key] = sub_map
         if options.add_docs:
             _add_commenting(sub_hparams,
@@ -159,21 +150,21 @@ def to_commented_map(
             continue
         path_with_fname = list(path) + [f.name]
         ftype = HparamsType(field_types[f.name])
-        helptext = f.metadata.get("doc")
-        helptext_suffix = f" Description: {helptext}." if helptext is not None else ""
+        helptext = f.metadata.get('doc')
+        helptext_suffix = f' Description: {helptext}.' if helptext is not None else ''
         required = is_field_required(f)
         default = get_default_value(f)
-        default_suffix = ""
-        optional_prefix = " (Required)"
+        default_suffix = ''
+        optional_prefix = ' (Required)'
         if not required:
-            optional_prefix = " (Optional)"
+            optional_prefix = ' (Optional)'
             if default is None or safe_issubclass(default, (int, float, str, Enum)):
-                default_suffix = f" Defaults to {default}."
+                default_suffix = f' Defaults to {default}.'
             elif safe_issubclass(default, hp.Hparams):
-                default_suffix = f" Defaults to {type(default).__name__}."
+                default_suffix = f' Defaults to {type(default).__name__}.'
             # Don't print the default, it's too big
-        if default == MISSING and "template_default" in f.metadata:
-            default = f.metadata["template_default"]
+        if default == MISSING and 'template_default' in f.metadata:
+            default = f.metadata['template_default']
         choices = []
         if not ftype.is_hparams_dataclass:
             if default != MISSING:
@@ -181,6 +172,7 @@ def to_commented_map(
             elif ftype.is_list:
                 output[f.name] = CommentedSeq()
                 if ftype.is_enum:
+                    assert issubclass(ftype.type, Enum)
                     # If an enum list, then put all enum options in the list
                     output[f.name].extend([x.name for x in ftype.type])
             else:
@@ -192,6 +184,7 @@ def to_commented_map(
                 output[f.name] = None
             else:
                 if default == MISSING:
+                    assert issubclass(ftype.type, hp.Hparams)
                     output[f.name] = [(to_commented_map(
                         cls=ftype.type,
                         path=path_with_fname,
@@ -201,6 +194,8 @@ def to_commented_map(
                     output[f.name] = [x.to_dict() for x in ensure_tuple(default)]
                 if not ftype.is_list:
                     output[f.name] = output[f.name][0]
+                else:
+                    output[f.name] = {str(i): item for i, item in enumerate(output[f.name])}
         else:
             inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
             choices = [x.__name__ for x in cls.hparams_registry[f.name].values()]
@@ -210,13 +205,15 @@ def to_commented_map(
                 output[f.name] = _process_abstract_hparams(cls, path_with_fname, ftype.is_list, options)
             else:
                 if ftype.is_list:
-                    output[f.name] = [{inverted_hparams[type(x)]: x.to_dict()} for x in ensure_tuple(default)]
+                    output[f.name] = list_to_deduplicated_dict([{
+                        inverted_hparams[type(x)]: x.to_dict()
+                    } for x in ensure_tuple(default)])
                 else:
                     output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
         if options.add_docs:
             _add_commenting(cm=output,
                             comment_key=f.name,
-                            eol_comment=f"{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}",
+                            eol_comment=f'{str(ftype): >20}{optional_prefix}.{helptext_suffix}{default_suffix}',
                             typing_column=options.typing_column,
                             choices=choices)
     return output

@@ -26,21 +26,21 @@ class ParserArgument:
     short_name: Optional[str] = None
 
     def get_possible_short_names(self) -> List[str]:
-        parts = self.full_name.split(".")
+        parts = self.full_name.split('.')
         ans: List[str] = []
         for i in range(len(parts)):
-            ans.append(".".join(parts[-(i + 1):]))
+            ans.append('.'.join(parts[-(i + 1):]))
         return ans
 
     def __str__(self) -> str:
         return yaml.dump(asdict(self))
 
     def add_to_argparse(self, container: argparse._ActionsContainer) -> None:
-        names = [f"--{self.full_name}"]
+        names = [f'--{self.full_name}']
         if self.short_name is not None and self.short_name != self.full_name:
-            names.insert(0, f"--{self.short_name}")
+            names.insert(0, f'--{self.short_name}')
         # not using argparse choices as they are too strict (e.g. case sensitive)
-        metavar = self.full_name.split(".")[-1].upper()
+        metavar = self.full_name.split('.')[-1].upper()
         if self.choices is not None:
             metavar = f"{{{','.join(self.choices)}}}"
         container.add_argument(
@@ -51,7 +51,7 @@ class ParserArgument:
             default=MISSING,
             type=cli_parse,
             dest=self.full_name,
-            const=True if self.nargs == "?" else None,
+            const=True if self.nargs == '?' else None,
             help=self.helptext,
             metavar=metavar,
         )
@@ -73,7 +73,7 @@ class ArgparseNameRegistry:
         # Add args to the registry
         for arg in args:
             if arg.full_name in self._names:
-                raise ValueError(f"{arg.full_name} is already in the registry")
+                raise ValueError(f'{arg.full_name} is already in the registry')
             self._names.add(arg.full_name)
             for shortname in arg.get_possible_short_names():
                 if shortname not in self._shortnames:
@@ -119,24 +119,24 @@ def get_hparams_file_from_cli(
 ) -> Tuple[Optional[str], Optional[str]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
-    argparse_name_registry.reserve("f", "file", "d", 'dump')
-    parser.add_argument("-f",
-                        "--file",
+    argparse_name_registry.reserve('f', 'file', 'd', 'dump')
+    parser.add_argument('-f',
+                        '--file',
                         type=str,
                         default=None,
                         dest='file',
                         required=False,
-                        help="Load data from this YAML file into the Hparams.")
+                        help='Load data from this YAML file into the Hparams.')
     parser.add_argument(
-        "-d",
-        "--dump",
+        '-d',
+        '--dump',
         type=str,
-        const="stdout",
-        nargs="?",
+        const='stdout',
+        nargs='?',
         default=None,
         required=False,
-        metavar="stdout",
-        help="Dump the resulting Hparams to the specified YAML file (defaults to `stdout`) and exit.",
+        metavar='stdout',
+        help='Dump the resulting Hparams to the specified YAML file (defaults to `stdout`) and exit.',
     )
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
     return parsed_args.file, parsed_args.dump
@@ -151,32 +151,32 @@ def get_commented_map_options_from_cli(
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
 
-    argparse_name_registry.reserve("s", "save_template", "i", "interactive", "c", "concise")
+    argparse_name_registry.reserve('s', 'save_template', 'i', 'interactive', 'c', 'concise')
 
     parser.add_argument(
-        "-s",
-        "--save_template",
+        '-s',
+        '--save_template',
         type=str,
-        const="stdout",
-        nargs="?",
+        const='stdout',
+        nargs='?',
         default=None,
         required=False,
-        metavar="stdout",
-        help="Generate and dump a YAML template to the specified file (defaults to `stdout`) and exit.",
+        metavar='stdout',
+        help='Generate and dump a YAML template to the specified file (defaults to `stdout`) and exit.',
     )
     parser.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
+        '-i',
+        '--interactive',
+        action='store_true',
         default=False,
-        help="Whether to generate the template interactively. Only applicable if `--save_template` is present.",
+        help='Whether to generate the template interactively. Only applicable if `--save_template` is present.',
     )
     parser.add_argument(
-        "-c",
-        "--concise",
-        action="store_true",
+        '-c',
+        '--concise',
+        action='store_true',
         default=False,
-        help="Skip adding documentation to the generated YAML. Only applicable if `--save_template` is present.",
+        help='Skip adding documentation to the generated YAML. Only applicable if `--save_template` is present.',
     )
 
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
@@ -187,12 +187,12 @@ def get_commented_map_options_from_cli(
 
 
 def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
-    # Helper to parse CLI input.
-    # Almost like the default of `str`, but handles MISSING and none gracefully
+    # Helper to parse CLI input
+    # Almost like the default of `str`, but handles MISSING and "none" gracefully
     if val == MISSING:
         return val
     assert not isinstance(val, _MISSING_TYPE)
-    if isinstance(val, str) and val.strip().lower() in ("", "none"):
+    if isinstance(val, str) and val.strip().lower() in ('', 'none'):
         return None
     return val
 
@@ -202,14 +202,14 @@ def retrieve_args(
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
 ) -> Sequence[ParserArgument]:
-    # Retreive argparse args for the class. Does NOT recruse.
+    # Retrieve argparse args for the class. Does NOT recurse.
     field_types = get_type_hints(cls)
     ans: List[ParserArgument] = []
     for f in fields(cls):
         if not f.init:
             continue
         ftype = HparamsType(field_types[f.name])
-        full_name = ".".join(prefix + [f.name])
+        full_name = '.'.join(prefix + [f.name])
         type_name = str(ftype)
         helptext = f"<{type_name}> {f.metadata['doc']}"
 
@@ -218,10 +218,10 @@ def retrieve_args(
         if required:
             helptext = f'(required): {helptext}'
         if default != MISSING:
-            if default is None or safe_issubclass(default, (int, float, str, Enum)):
-                helptext = f"{helptext} (Default: {default})."
-            elif safe_issubclass(default, hp.Hparams):
-                helptext = f"{helptext} (Default: {type(default).__name__})."
+            if default is None or safe_issubclass(type(default), (int, float, str, Enum)):
+                helptext = f'{helptext} (Default: {default}).'
+            elif safe_issubclass(type(default), hp.Hparams):
+                helptext = f'{helptext} (Default: {type(default).__name__}).'
 
         # Assumes that if a field default is supposed to be None it will not appear in the namespace
         if safe_issubclass(type(default), hp.Hparams):
@@ -234,16 +234,17 @@ def retrieve_args(
         nargs = None
         if not ftype.is_hparams_dataclass:
             if ftype.is_list:
-                nargs = "*"
+                nargs = '*'
             elif ftype.is_boolean:
-                nargs = "?"
+                nargs = '?'
             choices = None
             if ftype.is_enum:
+                assert issubclass(ftype.type, Enum)
                 choices = [x.name.lower() for x in ftype.type]
             if ftype.is_boolean and len(ftype.types) == 1:
-                choices = ["true", "false"]
+                choices = ['true', 'false']
             if choices is not None and ftype.is_optional:
-                choices.append("none")
+                choices.append('none')
             arg = ParserArgument(
                 full_name=full_name,
                 nargs=nargs,
@@ -258,7 +259,7 @@ def retrieve_args(
                 if ftype.is_list:
                     # if it's a list of singletons, then print a warning and skip it
                     # Will use the default or yaml-provided value
-                    logger.info("%s cannot be set via CLI arguments", full_name)
+                    logger.info('%s cannot be set via CLI arguments', full_name)
                 elif ftype.is_optional:
                     # add a field to argparse that can be set to none to override the yaml (or default)
                     arg = ParserArgument(
@@ -272,7 +273,7 @@ def retrieve_args(
                 registry_entry = cls.hparams_registry[f.name]
                 choices = sorted(list(registry_entry.keys()))
                 if ftype.is_list:
-                    nargs = "+" if required else "*"
+                    nargs = '+' if required else '*'
                     required = False
                 arg = ParserArgument(
                     full_name=full_name,

@@ -7,9 +7,11 @@ import logging
 import os
 import pathlib
 import sys
+import textwrap
 import warnings
 from dataclasses import MISSING, dataclass, fields
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, get_type_hints
+from typing import (TYPE_CHECKING, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
+                    get_type_hints)
 
 import yaml
 
@@ -17,13 +19,13 @@ import yahp as hp
 from yahp.create.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
                                   get_hparams_file_from_cli, retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
-from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict
+from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
 
 if TYPE_CHECKING:
     from yahp.types import JSON, HparamsField
 
-THparams = TypeVar("THparams", bound="hp.Hparams")
+THparams = TypeVar('THparams', bound='hp.Hparams')
 
 
 class _MissingRequiredFieldException(ValueError):
@@ -38,8 +40,18 @@ class _DeferredCreateCall:
     parser_args: Optional[Sequence[ParserArgument]]
 
 
-def _emit_should_be_list_warning(arg_name: str):
-    warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a list, not a singular element.")
+def _emit_should_be_dict_warning(arg_name: str):
+    warnings.warn(f'MalformedYAMLWarning: {arg_name} should be a dict.')
+
+
+def _get_split_key(key: str, splitter: str = '+') -> Tuple[str, Any]:
+    """ Gets the prefix key and any label after the splitter """
+
+    splits = key.split(splitter, 1)
+    if len(splits) > 1:
+        return (splits[0], splits[1])
+    else:
+        return (splits[0], None)
 
 
 logger = logging.getLogger(__name__)
@@ -94,16 +106,17 @@ def _create(
         prefix_with_fname = list(prefix) + [f.name]
         try:
             ftype = HparamsType(field_types[f.name])
-            full_name = ".".join(prefix_with_fname)
+            full_name = '.'.join(prefix_with_fname)
+            env_name = full_name.upper().replace('.', '_')  # dots are not (easily) allowed in env variables
             if full_name in parsed_args and parsed_args[full_name] != MISSING:
                 # use CLI args first
                 argparse_or_yaml_value = parsed_args[full_name]
             elif f.name in data:
                 # then use YAML
                 argparse_or_yaml_value = data[f.name]
-            elif full_name.upper() in os.environ:
+            elif env_name in os.environ:
                 # then use environment variables
-                argparse_or_yaml_value = os.environ[full_name.upper()]
+                argparse_or_yaml_value = os.environ[env_name]
             else:
                 # otherwise, set it as MISSING so the default will be used
                 argparse_or_yaml_value = MISSING
@@ -125,8 +138,14 @@ def _create(
                     # potentially none
                     if not ftype.is_list:
                         # concrete, singleton hparams
-                        # potentially none
-                        if ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list):
+                        # potentially none. If cli args specify a child field, implicitly enable optional parent class
+                        is_none = ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list)
+                        if is_none and cli_args is not None:
+                            for cli_arg in cli_args:
+                                if cli_arg.lstrip('-').startswith(f.name):
+                                    is_none = False
+                                    break
+                        if is_none:
                             # none
                             kwargs[f.name] = None
                         else:
@@ -135,7 +154,8 @@ def _create(
                             if sub_yaml is None:
                                 sub_yaml = {}
                             if not isinstance(sub_yaml, dict):
-                                raise ValueError(f"{full_name} must be a dict in the yaml")
+                                raise ValueError(f'{full_name} must be a dict in the yaml')
+                            assert issubclass(ftype.type, hp.Hparams)
                             deferred_create_calls[f.name] = _DeferredCreateCall(
                                 hparams_cls=ftype.type,
                                 data=sub_yaml,
@@ -155,24 +175,29 @@ def _create(
                             # list of concrete hparams
                             # concrete lists not added to argparse, so just load the yaml
                             sub_yaml = data.get(f.name)
+                            # yaml should be a dictionary. We'll discard the keys
                             if sub_yaml is None:
-                                sub_yaml = []
-                            if isinstance(sub_yaml, dict):
-                                _emit_should_be_list_warning(full_name)
-                                sub_yaml = [sub_yaml]
-                            if not isinstance(sub_yaml, list):
-                                raise TypeError(f"{full_name} must be a list in the yaml")
+                                sub_yaml = {}
+
+                            if isinstance(sub_yaml, list):
+                                _emit_should_be_dict_warning(full_name)
+                                sub_yaml = list_to_deduplicated_dict(sub_yaml)
+
+                            if not isinstance(sub_yaml, dict):
+                                raise TypeError(f'{full_name} must be a dict in the yaml')
+
                             deferred_calls: List[_DeferredCreateCall] = []
-                            for (i, sub_yaml_item) in enumerate(sub_yaml):
+                            for (key, sub_yaml_item) in sub_yaml.items():
                                 if sub_yaml_item is None:
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
-                                    raise TypeError(f"{full_name} must be a dict in the yaml")
+                                    raise TypeError(f'{full_name} must be a dict in the yaml')
+                                assert issubclass(ftype.type, hp.Hparams)
                                 deferred_calls.append(
                                     _DeferredCreateCall(
                                         hparams_cls=ftype.type,
                                         data=sub_yaml_item,
-                                        prefix=prefix_with_fname + [str(i)],
+                                        prefix=prefix_with_fname + [key],
                                         parser_args=None,
                                     ))
                             deferred_create_calls[f.name] = deferred_calls
@@ -195,17 +220,17 @@ def _create(
                                 # use the hparams default
                                 continue
                             if argparse_or_yaml_value is None:
-                                raise ValueError(f"Field {full_name} is required and cannot be None.")
+                                raise ValueError(f'Field {full_name} is required and cannot be None.')
                             if isinstance(argparse_or_yaml_value, str):
                                 key = argparse_or_yaml_value
                             else:
                                 if not isinstance(argparse_or_yaml_value, dict):
                                     raise ValueError(
-                                        f"Field {full_name} must be a dict with just one key if specified in the yaml")
+                                        f'Field {full_name} must be a dict with just one key if specified in the yaml')
                                 try:
                                     key, _ = extract_only_item_from_dict(argparse_or_yaml_value)
                                 except ValueError as e:
-                                    raise ValueError(f"Field {full_name} " + e.args[0])
+                                    raise ValueError(f'Field {full_name} ' + e.args[0])
                             yaml_val = data.get(f.name)
                             if yaml_val is None:
                                 yaml_val = {}
@@ -241,67 +266,50 @@ def _create(
                                 continue
 
                             # First get the keys
-                            # Argparse has precidence. If there are keys defined in argparse, use only those
+                            # Argparse has precedence. If there are keys defined in argparse, use only those
                             # These keys will determine what is loaded
                             if argparse_or_yaml_value is None:
-                                raise ValueError(f"Field {full_name} is required and cannot be None.")
-                            if isinstance(argparse_or_yaml_value, dict):
-                                _emit_should_be_list_warning(full_name)
-                                argparse_or_yaml_value = [argparse_or_yaml_value]
-                            if not isinstance(argparse_or_yaml_value, list):
-                                raise ValueError(f"Field {full_name} should be a list")
-                            keys: List[str] = []
-                            for item in argparse_or_yaml_value:
-                                if isinstance(item, str):
-                                    keys.append(item)
-                                else:
-                                    if not isinstance(item, dict):
-                                        raise ValueError(f"Field {full_name} should be a list of dicts in the yaml")
-                                    key, _ = extract_only_item_from_dict(item)
-                                    keys.append(key)
-                                key = argparse_or_yaml_value
+                                raise ValueError(f'Field {full_name} is required and cannot be None.')
+                            if isinstance(argparse_or_yaml_value, list):
+                                # Convert from list of single element dictionaries to dict, preserving duplicates
+                                argparse_or_yaml_value = list_to_deduplicated_dict(argparse_or_yaml_value,
+                                                                                   allow_str=True)
+
+                            if not isinstance(argparse_or_yaml_value, dict):
+                                raise ValueError(f'Field {full_name} should be a dict')
+
+                            keys = list(argparse_or_yaml_value.keys())
 
                             # Now, load the values for these keys
                             yaml_val = data.get(f.name)
                             if yaml_val is None:
-                                yaml_val = []
-                            if isinstance(yaml_val, dict):
-                                # already emitted the warning, no need to do it again
-                                yaml_val = [yaml_val]
-                            if not isinstance(yaml_val, list):
+                                yaml_val = {}
+                            if isinstance(yaml_val, list):
+                                _emit_should_be_dict_warning(full_name)
+                                yaml_val = list_to_deduplicated_dict(yaml_val)
+                            if not isinstance(yaml_val, dict):
                                 raise ValueError(
-                                    f"Field {'.'.join(prefix_with_fname)} must be a list if specified in the yaml")
+                                    f"Field {'.'.join(prefix_with_fname)} must be a dict if specified in the yaml")
 
-                            # Convert the yaml list to a dict
-                            yaml_dict: Dict[str, Dict[str, JSON]] = {}
-                            for i, yaml_val_entry in enumerate(yaml_val):
-                                if not isinstance(yaml_val_entry, dict):
-                                    raise ValueError(
-                                        f"Field {'.'.join(list(prefix_with_fname) + [str(i)])} must be a dict if specified in the yaml"
-                                    )
-                                k, v = extract_only_item_from_dict(yaml_val_entry)
-                                if not isinstance(v, dict):
-                                    raise ValueError(
-                                        f"Field {'.'.join(list(prefix_with_fname) + [k])} must be a dict if specified in the yaml"
-                                    )
-                                yaml_dict[k] = v
                             deferred_calls: List[_DeferredCreateCall] = []
 
                             for key in keys:
                                 # Use the order of keys
-                                key_yaml = yaml_dict.get(key)
+                                key_yaml = yaml_val.get(key)
                                 if key_yaml is None:
                                     key_yaml = {}
                                 if not isinstance(key_yaml, dict):
-                                    raise ValueError(f"Field {'.'.join(prefix_with_fname + [key])}"
-                                                     "must be a dict if specified in the yaml")
+                                    raise ValueError(
+                                        textwrap.dedent(f"""Field {'.'.join(prefix_with_fname + [key])}
+                                        must be a dict if specified in the yaml"""))
+                                split_key, _ = _get_split_key(key)
                                 deferred_calls.append(
                                     _DeferredCreateCall(
-                                        hparams_cls=cls.hparams_registry[f.name][key],
+                                        hparams_cls=cls.hparams_registry[f.name][split_key],
                                         prefix=prefix_with_fname + [key],
                                         data=key_yaml,
                                         parser_args=retrieve_args(
-                                            cls=cls.hparams_registry[f.name][key],
+                                            cls=cls.hparams_registry[f.name][split_key],
                                             prefix=prefix_with_fname + [key],
                                             argparse_name_registry=argparse_name_registry,
                                         ),
@@ -339,13 +347,12 @@ def _create(
             # TODO parse args from
             sub_hparams: List[hp.Hparams] = []
             for create_call in ensure_tuple(create_calls):
-                prefix = create_call.prefix
                 if create_call.parser_args is None:
                     parsed_arg_dict = {}
                 else:
                     parser = argparse.ArgumentParser(add_help=False)
                     argparsers.append(parser)
-                    group = parser.add_argument_group(title=".".join(prefix),
+                    group = parser.add_argument_group(title='.'.join(create_call.prefix),
                                                       description=create_call.hparams_cls.__name__)
                     for args in create_call.parser_args:
                         for arg in ensure_tuple(args):
@@ -358,7 +365,7 @@ def _create(
                         data=create_call.data,
                         parsed_args=parsed_arg_dict,
                         cli_args=cli_args,
-                        prefix=prefix,
+                        prefix=create_call.prefix,
                         argparse_name_registry=argparse_name_registry,
                         argparsers=argparsers,
                     ))
@@ -370,7 +377,7 @@ def _create(
     for f in fields(cls):
         if not f.init:
             continue
-        prefix_with_fname = ".".join(list(prefix) + [f.name])
+        prefix_with_fname = '.'.join(list(prefix) + [f.name])
         if f.name not in kwargs:
             if f.default == MISSING and f.default_factory == MISSING:
                 missing_required_fields.append(prefix_with_fname)
@@ -416,7 +423,7 @@ def create(
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional): 
+        data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
             the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
@@ -437,22 +444,24 @@ def create(
                                          argparsers=argparsers)
     except _MissingRequiredFieldException as e:
         _add_help(argparsers, remaining_cli_args)
-        raise ValueError("The following required fields were not included in the yaml nor the CLI arguments: "
-                         f"{', '.join(e.args)}") from e
+        missing_fields = f"{', '.join(e.args)}"
+        raise ValueError(
+            textwrap.dedent(f"""The following required fields were not included in the yaml nor the CLI arguments:
+            {missing_fields}""")) from e
     _add_help(argparsers, remaining_cli_args)
 
     # Only if successful, warn for extra cli arguments
     # If there is an error, then valid cli args may not have been discovered
     for arg in remaining_cli_args:
-        warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
+        warnings.warn(f'ExtraArgumentWarning: {arg} was not used')
 
     if output_f is not None:
-        if output_f == "stdout":
+        if output_f == 'stdout':
             print(hparams.to_yaml(), file=sys.stdout)
-        elif output_f == "stderr":
+        elif output_f == 'stderr':
             print(hparams.to_yaml(), file=sys.stderr)
         else:
-            with open(output_f, "x") as f:
+            with open(output_f, 'x') as f:
                 f.write(hparams.to_yaml())
         sys.exit(0)
 
@@ -475,17 +484,17 @@ def _get_hparams(
     )
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
-        print(f"Generating a template for {cls.__name__}")
-        if output_file == "stdout":
+        print(f'Generating a template for {cls.__name__}')
+        if output_file == 'stdout':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
-        elif output_file == "stderr":
+        elif output_file == 'stderr':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stderr)
         else:
-            with open(output_file, "x") as f:
+            with open(output_file, 'x') as f:
                 cls.dump(add_docs=add_docs, interactive=interactive, output=f)
         # exit so we don't attempt to parse and instantiate if generate template is passed
         print()
-        print("Finished")
+        print('Finished')
         sys.exit(0)
 
     cli_f, output_f = get_hparams_file_from_cli(cli_args=remaining_cli_args,
@@ -493,13 +502,14 @@ def _get_hparams(
                                                 argument_parsers=argparsers)
     if cli_f is not None:
         if f is not None:
-            raise ValueError("File cannot be specified via both function arguments and the CLI")
+            raise ValueError('File cannot be specified via both function arguments and the CLI')
         f = cli_f
 
     if f is not None:
         if data is not None:
-            raise ValueError("Since a hparams file was specified via "
-                             f"{'function arguments' if cli_f is None else 'the CLI'}, `data` must be None.")
+            raise ValueError(
+                textwrap.dedent(f"""Since a hparams file was specified via
+                {'function arguments' if cli_f is None else 'the CLI'}, `data` must be None."""))
         if isinstance(f, pathlib.PurePath):
             f = str(f)
         if isinstance(f, str):
@@ -509,8 +519,9 @@ def _get_hparams(
     if data is None:
         data = {}
     if not isinstance(data, dict):
-        raise TypeError("`data` must be a dict or None")
+        raise TypeError('`data` must be a dict or None')
 
+    # Parse args based on class cdefinition
     main_args = retrieve_args(cls=cls, prefix=[], argparse_name_registry=argparse_name_registry)
     parser = argparse.ArgumentParser(add_help=False)
     argparsers.append(parser)
@@ -542,7 +553,7 @@ def get_argparse(
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional): 
+        data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
             the :class:`~yahp.hparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.

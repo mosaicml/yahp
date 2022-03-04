@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import MISSING, field
-from typing import Any, Callable, overload
+from dataclasses import _MISSING_TYPE, MISSING, field
+from typing import Any, Callable, Union, overload
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def required(doc: str, *, template_default: Any) -> Any:
     ...
 
 
-def required(doc: str, *, template_default=MISSING):
+def required(doc: str, *, template_default: Any = MISSING):
     """
     A required field for a :class:`~yahp.hparams.Hparams`.
 
@@ -47,7 +47,7 @@ def optional(doc: str, *, default_factory: Callable[[], Any]) -> Any:
     ...
 
 
-def optional(doc: str, *, default=MISSING, default_factory=MISSING):
+def optional(doc: str, *, default: Any = MISSING, default_factory: Union[_MISSING_TYPE, Callable[[], Any]] = MISSING):
     """
     An optional field for a :class:`yahp.hparams.Hparams`.
 
@@ -66,7 +66,7 @@ def optional(doc: str, *, default=MISSING, default_factory=MISSING):
             Required if ``default`` is omitted.
     """
     if default == MISSING and default_factory == MISSING:
-        raise ValueError("default or default_factory must be specified")
+        raise ValueError('default or default_factory must be specified')
     return field(  # type: ignore
         metadata={
             'doc': doc,

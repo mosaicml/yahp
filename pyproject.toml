@@ -16,20 +16,36 @@ exclude = [
     "build/**",
 ]
 
-reportUnknownMemberType = "none"
-reportImportCycles = "none"
-reportUnnecessaryIsInstance = "none"
+reportUnnecessaryIsInstance = "warning"
 reportMissingTypeStubs = "none"
 reportIncompatibleMethodOverride = "warning"
-reportIncompatibleVariableOverride = "warning"
+reportIncompatibleVariableOverride = "error"
 reportUnusedImport = "error"
-reportMissingModuleSource = "none"
+reportUnusedClass = "warning"
+reportUnusedFunction = "warning"
+reportUnusedVariable = "error"
+reportDuplicateImport = "error"
+reportWildcardImportFromLibrary = "error"
+reportUntypedFunctionDecorator = "warning"
 reportPrivateImportUsage = "warning"
 reportUndefinedVariable = "error"
-reportMissingImports = "error"
-
-pythonVersion = "3.8"
-pythonPlatform = "Linux"
+strictParameterNoneValue = true
+reportPropertyTypeMismatch = "error"
+reportUntypedNamedTuple = "error"
+reportUnnecessaryCast = "error"
+reportInvalidTypeVarUse = "error"
+reportOverlappingOverload = "error"
+reportUninitializedInstanceVariable = "error"
+reportInvalidStringEscapeSequence = "error"
+reportMissingParameterType = "warning"  # TODO: make this an error
+reportCallInDefaultInitializer = "none"  # TODO: make this an error
+reportUnnecessaryComparison = "warning"
+reportSelfClsParameterName = "error"
+reportImplicitStringConcatenation = "warning"  # TODO: make this an error
+reportInvalidStubStatement = "error"
+reportIncompleteStub = "error"
+reportUnsupportedDunderAll = "error"
+reportUnusedCoroutine = "error"
 
 # Pytest
 [tool.pytest.ini_options]

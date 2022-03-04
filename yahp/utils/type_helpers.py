@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import Any, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Sequence, Tuple, Type, Union, cast
 
 import yahp as hp
 from yahp.utils.iter_helpers import ensure_tuple
@@ -44,7 +44,7 @@ class HparamsType:
 
     Args:
         item (type): Type annotation to parse.
-    
+
     Attributes:
         types (List[Type]): The allowed types for this annotation, as a list.
             If the annotation is ``List[X]`` or ``Optional[X]``,
@@ -59,7 +59,7 @@ class HparamsType:
     def __init__(self, item: Type[Any]) -> None:
         self.types, self.is_optional, self.is_list = self._extract_type(item)
         if len(self.types) == 0:
-            assert self.is_optional, "invariant error"
+            assert self.is_optional, 'invariant error'
 
     def _extract_type(self, item: Type[Any]) -> Tuple[Sequence[Type[Any]], bool, bool]:
         """Extracts the underlying types from a python typing object.
@@ -83,13 +83,12 @@ class HparamsType:
             if item is None or item is type(None):
                 return [], True, False
             if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
-                print("HELLO", type(item))
-                raise TypeError(f"item of type ({item}) is not supported.")
+                raise TypeError(f'item of type ({item}) is not supported.')
             is_optional = False
             is_list = False
             return [item], is_optional, is_list
         if origin is Union:
-            args = get_args(item)
+            args = cast(Sequence[Any], get_args(item))
             is_optional = type(None) in args
             args_without_none = tuple(arg for arg in args if arg not in (None, type(None)))
             # all args in the union must be subclasses of one of the following subsets
@@ -104,14 +103,14 @@ class HparamsType:
             if is_list:
                 # Need to validate that the underlying type of list is either 1) Primitive, 2) Union of primitives
                 #                 assert len(args_without_none) == 1, "should only have one one"
-                assert len(args_without_none) == 1, "if here, should only have 1 non-none argument"
+                assert len(args_without_none) == 1, 'if here, should only have 1 non-none argument'
                 list_arg = args_without_none[0]
                 return self._get_list_type(list_arg), is_optional, is_list
             if is_json_dict:
-                assert is_optional, "if here, then must have been is_optional"
-                assert not is_list, "if here, then must not have been is_list"
+                assert is_optional, 'if here, then must have been is_optional'
+                assert not is_list, 'if here, then must not have been is_list'
                 return [_JSONDict], is_optional, is_list
-            raise TypeError(f"Invalid union type: {item}. Unions must be of primitive types")
+            raise TypeError(f'Invalid union type: {item}. Unions must be of primitive types')
         if origin is list:
             is_optional = False
             is_list = True
@@ -120,15 +119,15 @@ class HparamsType:
             is_optional = False
             is_list = False
             return [_JSONDict], is_optional, is_list
-        raise TypeError(f"Unsupported type: {item}")
+        raise TypeError(f'Unsupported type: {item}')
 
     def _get_list_type(self, list_arg: Type[Any]) -> Sequence[Type[Any]]:
         if get_origin(list_arg) is not list:
-            raise TypeError("list_arg is not a List")
+            raise TypeError('list_arg is not a List')
         list_args = get_args(list_arg)
-        assert len(list_args) == 1, "lists should have exactly one argument"
+        assert len(list_args) == 1, 'lists should have exactly one argument'
         list_item = list_args[0]
-        error = TypeError(f"List of type {list_item} is unsupported. Lists must be of Hparams, Enum, or a valid union.")
+        error = TypeError(f'List of type {list_item} is unsupported. Lists must be of Hparams, Enum, or a valid union.')
         list_origin = get_origin(list_item)
         if list_origin is None:
             # Must be either primitive or hparams
@@ -136,7 +135,7 @@ class HparamsType:
                 raise error
             return [list_item]
         if list_origin is Union:
-            list_args = get_args(list_item)
+            list_args = cast(Sequence[Any], get_args(list_item))
             is_primitive = _is_valid_primitive(*list_args)
             if not is_primitive:
                 raise error
@@ -182,33 +181,37 @@ class HparamsType:
             if is_none_like(val, allow_list=self.is_list):
                 return None
         if not self.is_optional and val is None:
-            raise ValueError(f"{field_name} is None, but a value is required.")
+            raise ValueError(f'{field_name} is None, but a value is required.')
         if self.is_list:
             # If given a list, then return a list of converted values
             if wrap_singletons:
                 return [
-                    self.convert(x, f"{field_name}[{i}]", wrap_singletons=False)
+                    self.convert(x, f'{field_name}[{i}]', wrap_singletons=False)
                     for (i, x) in enumerate(ensure_tuple(val))
                 ]
             elif isinstance(val, (tuple, list)):
-                raise TypeError(f"{field_name} is a list, but wrap_singletons is false")
+                raise TypeError(f'{field_name} is a list, but wrap_singletons is false')
         if self.is_enum:
             # could be a list of enums too
-            enum_map = {k.name.lower(): k for k in self.type}
+            assert issubclass(self.type, Enum)
+            enum_map: Dict[Union[str, Enum], Enum] = {k.name.lower(): k for k in self.type}
             enum_map.update({k.value: k for k in self.type})
             enum_map.update({k: k for k in self.type})
             if isinstance(val, str):  # if the val is a string, then check for a key match
                 val = val.lower()
+                if val not in enum_map:
+                    possible_keys = [str(key) for key in enum_map.keys()]
+                    raise ValueError(f"'{val}' is not a valid key. Choose on of {', '.join(possible_keys)}.")
             return enum_map[val]
         if self.is_hparams_dataclass:
             if isinstance(val, self.type):
                 return val
-            raise RuntimeError("convert() cannot be used with hparam dataclasses")
+            raise RuntimeError('convert() cannot be used with hparam dataclasses')
         if self.is_json_dict:
             if isinstance(val, str):
                 val = json.loads(val)
             if not isinstance(val, dict):
-                raise TypeError(f"{field_name} is not a dictionary")
+                raise TypeError(f'{field_name} is not a dictionary')
             return val
         if self.is_primitive:
             # could be a list of primitives
@@ -220,8 +223,8 @@ class HparamsType:
                     except (TypeError, ValueError):
                         pass
 
-            raise TypeError(f"Unable to convert value {val} for field {field_name} to type {self}")
-        raise RuntimeError(f"Unknown type for field {field_name}")
+            raise TypeError(f'Unable to convert value {val} for field {field_name} to type {self}')
+        raise RuntimeError(f'Unknown type for field {field_name}')
 
     @property
     def is_enum(self) -> bool:
@@ -259,7 +262,7 @@ class HparamsType:
         """
         if len(self.types) != 1:
             # self.types it not 1 in the case of unions
-            raise RuntimeError(".type is not defined for unions")
+            raise RuntimeError('.type is not defined for unions')
         return self.types[0]
 
     def __str__(self) -> str:
@@ -271,24 +274,25 @@ class HparamsType:
                 ans = self.type.__name__
 
         if self.is_enum:
-            enum_values_string = ", ".join([x.name for x in self.type])
-            ans = f"{self.type.__name__}{{{enum_values_string}}}"
+            assert issubclass(self.type, Enum)
+            enum_values_string = ', '.join([x.name for x in self.type])
+            ans = f'{self.type.__name__}{{{enum_values_string}}}'
 
         if self.is_hparams_dataclass:
             ans = self.type.__name__
 
         if self.is_json_dict:
-            ans = "JSON"
+            ans = 'JSON'
 
         if ans is None:
             # always None
-            return "None"
+            return 'None'
 
         if self.is_list:
-            ans = f"List[{ans}]"
+            ans = f'List[{ans}]'
 
         if self.is_optional:
-            ans = f"Optional[{ans}]"
+            ans = f'Optional[{ans}]'
         return ans
 
 
@@ -296,7 +300,7 @@ def is_field_required(f: Field[Any]) -> bool:
     """
     Returns whether a field is required
     (i.e. does not have a default value).
-    
+
     Args:
         f (Field): The field.
     """
@@ -305,7 +309,7 @@ def is_field_required(f: Field[Any]) -> bool:
 
 def get_default_value(f: Field[Any]) -> Any:
     """Returns an instance of a default value for a field.
-    
+
     Args:
         f (Field): The field.
     """
@@ -318,29 +322,29 @@ def get_default_value(f: Field[Any]) -> Any:
 
 def to_bool(x: Any):
     """Converts a value to a boolean
-    
+
     Args:
         x (object): Value to attempt to convert to a bool.
     """
     if isinstance(x, str):
         x = x.lower()
-    if x in ("t", "true", "y", "yes", 1, True):
+    if x in ('t', 'true', 'y', 'yes', 1, True):
         return True
-    if x in ("f", "false", "n", "no", 0, False):
+    if x in ('f', 'false', 'n', 'no', 0, False):
         return False
-    raise TypeError(f"Could not parse {x} as bool")
+    raise TypeError(f'Could not parse {x} as bool')
 
 
 def is_none_like(x: Any, *, allow_list: bool) -> bool:
     """Returns whether a value is ``None``, ``"none"``, ``[""]``, ``["none"]``, or has been marked as a missing field.
-    
+
     Args:
         x (object): Value to examine.
         allow_list (bool): Whether to treat ``[""]``, or ``["none"]`` as ``None``.
     """
-    if x is None:
+    if x is None or x is MISSING:
         return True
-    if isinstance(x, str) and x.lower() in ["", "none"]:
+    if isinstance(x, str) and x.lower() in ['', 'none']:
         return True
     if x == MISSING:
         return True

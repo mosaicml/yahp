@@ -8,4 +8,3 @@ parameters:
     - 0.2
   workers_per_gpu:
     - 12
-

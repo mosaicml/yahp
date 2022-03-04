@@ -23,21 +23,21 @@ def query_yes_no(
         default (bool, optional): Default response. Defaults to True.
 
     Returns:
-        bool: The response. 
+        bool: The response.
     """
     if default is None:
-        prompt = " [y/n] "
+        prompt = ' [y/n] '
     elif default:
-        prompt = " [Y/n] "
+        prompt = ' [Y/n] '
     else:
-        prompt = " [y/N] "
+        prompt = ' [y/N] '
     while True:
         choice = input(question + prompt).lower()
         if default is not None and choice == '':
             return default
-        if "yes".startswith(choice.lower()):
+        if 'yes'.startswith(choice.lower()):
             return True
-        if "no".startswith(choice.lower()):
+        if 'no'.startswith(choice.lower()):
             return False
         print("Please respond with 'yes' or 'no' (or 'y' or 'n').")
 
@@ -56,13 +56,13 @@ def query_with_default(
     Returns:
         str: The response.
     """
-    default_response_pren = f" [{default_response}]" if default_response is not None else ""
+    default_response_pren = f' [{default_response}]' if default_response is not None else ''
     while True:
         try:
-            response = input(f"{name}{default_response_pren}: ")
-            if response.strip() == "":
+            response = input(f'{name}{default_response_pren}: ')
+            if response.strip() == '':
                 if default_response is None:
-                    raise _InvalidResponseException("A response is required.")
+                    raise _InvalidResponseException('A response is required.')
                 response = default_response
             return response
         except _InvalidResponseException as e:
@@ -77,11 +77,11 @@ def _parse_response(response: str, options: List[str]):
         response_val = response
     else:
         if response_num <= 0 or response_num > len(options):
-            raise _InvalidResponseException(f"Value {response_num} is not a valid option")
+            raise _InvalidResponseException(f'Value {response_num} is not a valid option')
         response_val = options[response_num - 1]
     if response_val.lower() in option_lower_to_options:
         return option_lower_to_options[response_val.lower()]
-    raise _InvalidResponseException(f"Value {response_val} is not a valid option")
+    raise _InvalidResponseException(f'Value {response_val} is not a valid option')
 
 
 @overload
@@ -116,26 +116,26 @@ def query_with_options(
     Returns:
         The response, or if ``multiple_ok`` is True, a list of responses.
     """
-    default_response_pren = f" [{default_response}]" if default_response is not None else ""
+    default_response_pren = f' [{default_response}]' if default_response is not None else ''
     while True:
         try:
             print()
             print(name)
             print()
             for count, option in enumerate(options):
-                print(f"{count + 1}): {option}")
+                print(f'{count + 1}): {option}')
             print()
             if multiple_ok:
-                helptext = "Enter a number, value, or comma seperated numbers"
+                helptext = 'Enter a number, value, or comma seperated numbers'
             else:
-                helptext = "Enter a number or value"
-            response = input(f"{helptext}{default_response_pren}: ").strip()
-            if response == "":
+                helptext = 'Enter a number or value'
+            response = input(f'{helptext}{default_response_pren}: ').strip()
+            if response == '':
                 if default_response is None:
-                    raise _InvalidResponseException("A response is required.")
+                    raise _InvalidResponseException('A response is required.')
                 return [default_response] if multiple_ok else default_response
             if multiple_ok:
-                responses = response.split(",")
+                responses = response.split(',')
                 ans: List[str] = []
                 for x in responses:
                     ans.append(_parse_response(x, options))

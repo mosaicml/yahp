@@ -1,0 +1,50 @@
+# Anacodna configuration for yahp
+
+package:
+  name: yahp
+  version: "0.1.0"
+
+source:
+  git_url: https://github.com/mosaicml/yahp.git
+  git_rev: v0.1.0
+  git_depth: 1
+
+channels:
+  - defaults
+  - conda-forge
+
+build:
+  number: 0
+  noarch: python
+  script: python setup.py install --single-version-externally-managed --record=record.txt
+
+requirements:
+  host:
+    - python >=3.7
+  run:
+    - python >=3.7
+    - pyyaml >=5.4.1
+    - ruamel.yaml >=0.17.10
+
+test:
+  requires:
+    - pytest >=7.0.0
+    - pytest-timeout >=1.4.2
+    - toml >=0.10.2
+  files:
+    - "**/yahp/**"
+    - "**/tests/**"
+    - "**/pyproject.toml"
+  imports:
+    - yahp
+    - tests
+  commands:
+    - pytest
+
+about:
+  home: https://www.mosaicml.com
+  license: Apache 2.0
+  license_file: LICENSE
+  summary: "Yet Another HyperParameter Framework"
+  dev_url: https://github.com/mosaicml/yahp
+  doc_url: https://docs.mosaicml.com/projects/yahp/en/stable/
