@@ -26,8 +26,8 @@ class EnumIntField(IntEnum):
 
 
 class EnumStringField(Enum):
-    MOSAIC = "mosaic"
-    PYTORCH_LIGHTNING = "ptl"
+    MOSAIC = 'mosaic'
+    PYTORCH_LIGHTNING = 'ptl'
 
 
 # -------------------------------------------------
@@ -35,7 +35,7 @@ class EnumStringField(Enum):
 # -------------------------------------------------
 @pytest.fixture
 def hparams_tempdir(tmp_path: pathlib.Path):
-    d = tmp_path / "hparams"
+    d = tmp_path / 'hparams'
     d.mkdir()
     return d
 
@@ -69,13 +69,13 @@ class EmptyHparam(hp.Hparams):
 
 @dataclass
 class PrimitiveHparam(hp.Hparams):
-    intfield: int = hp.required(doc="int field")
-    strfield: str = hp.required(doc="str field")
-    floatfield: float = hp.required(doc="float field")
-    boolfield: bool = hp.required(doc="bool field")
-    enumintfield: EnumIntField = hp.required(doc="enum int field")
-    enumstringfield: EnumStringField = hp.required(doc="enum int field")
-    jsonfield: Dict[str, JSON] = hp.required(doc="Required json type")
+    intfield: int = hp.required(doc='int field')
+    strfield: str = hp.required(doc='str field')
+    floatfield: float = hp.required(doc='float field')
+    boolfield: bool = hp.required(doc='bool field')
+    enumintfield: EnumIntField = hp.required(doc='enum int field')
+    enumstringfield: EnumStringField = hp.required(doc='enum int field')
+    jsonfield: Dict[str, JSON] = hp.required(doc='Required json type')
 
     def validate(self):
         assert isinstance(self.intfield, int)
@@ -141,7 +141,7 @@ def primitive_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     return generate_named_tuple_from_str(
         hparams_tempdir=hparams_tempdir,
         input_str=primitive_hparams_input_str,
-        filepath="simple_hparams.yaml",
+        filepath='simple_hparams.yaml',
     )
 
 
@@ -155,8 +155,8 @@ def primitive_hparam(primitive_yaml_input: YamlInput):
 # -------------------------------------------------
 @dataclass
 class NestedHparam(hp.Hparams):
-    primitive_hparam: PrimitiveHparam = hp.required(doc="Primitive Hparams")
-    empty_hparam: EmptyHparam = hp.required(doc="Empty Hparams")
+    primitive_hparam: PrimitiveHparam = hp.required(doc='Primitive Hparams')
+    empty_hparam: EmptyHparam = hp.required(doc='Empty Hparams')
 
     def validate(self):
         assert isinstance(self.primitive_hparam, PrimitiveHparam)
@@ -169,10 +169,10 @@ def nested_yaml_input(hparams_tempdir: pathlib.Path, primitive_yaml_input: YamlI
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data={
-            "primitive_hparam": primitive_yaml_input.dict_data,
-            "empty_hparam": {}
+            'primitive_hparam': primitive_yaml_input.dict_data,
+            'empty_hparam': {}
         },
-        filepath="direct_nested.yaml",
+        filepath='direct_nested.yaml',
     )
 
 
@@ -185,8 +185,8 @@ def nested_hparams(nested_yaml_input: YamlInput) -> NestedHparam:
 
 @dataclass
 class DoubleNestedHparam(hp.Hparams):
-    nested_hparams: NestedHparam = hp.required(doc="Primitive Hparams")
-    random_field: int = hp.required(doc="random int")
+    nested_hparams: NestedHparam = hp.required(doc='Primitive Hparams')
+    random_field: int = hp.required(doc='random int')
 
     def validate(self):
         assert isinstance(self.random_field, int)
@@ -200,10 +200,10 @@ def double_nested_yaml_input(hparams_tempdir: pathlib.Path, nested_yaml_input: Y
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data={
-            "nested_hparams": nested_yaml_input.dict_data,
-            "random_field": 42
+            'nested_hparams': nested_yaml_input.dict_data,
+            'random_field': 42
         },
-        filepath="double_nested.yaml",
+        filepath='double_nested.yaml',
     )
 
 
@@ -219,7 +219,7 @@ def double_nested_hparams(double_nested_yaml_input: YamlInput) -> DoubleNestedHp
 # -------------------------------------------------
 @dataclass
 class ChoiceHparamParent(hp.Hparams):
-    commonfield: bool = hp.required(doc="bool common field")
+    commonfield: bool = hp.required(doc='bool common field')
 
     def validate(self):
         assert isinstance(self.commonfield, bool)
@@ -228,7 +228,7 @@ class ChoiceHparamParent(hp.Hparams):
 
 @dataclass
 class ChoiceOneHparam(ChoiceHparamParent):
-    intfield: int = hp.required(doc="int field")
+    intfield: int = hp.required(doc='int field')
 
     def validate(self):
         assert isinstance(self.intfield, int)
@@ -245,7 +245,7 @@ def choice_one_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     return generate_named_tuple_from_str(
         hparams_tempdir=hparams_tempdir,
         input_str=input_str,
-        filepath="choice_one.yaml",
+        filepath='choice_one.yaml',
     )
 
 
@@ -259,8 +259,8 @@ def choice_one_hparams(choice_one_yaml_input: YamlInput) -> ChoiceOneHparam:
 # Directly nested subhparam
 @dataclass
 class ChoiceTwoHparam(ChoiceHparamParent):
-    primitive_hparam: PrimitiveHparam = hp.required(doc="Primitive Hparams")
-    boolfield: int = hp.required(doc="int field")
+    primitive_hparam: PrimitiveHparam = hp.required(doc='Primitive Hparams')
+    boolfield: int = hp.required(doc='int field')
 
     def validate(self):
         assert isinstance(self.boolfield, bool)
@@ -272,14 +272,14 @@ class ChoiceTwoHparam(ChoiceHparamParent):
 @pytest.fixture
 def choice_two_yaml_input(hparams_tempdir: pathlib.Path, primitive_yaml_input: YamlInput) -> YamlInput:
     data = {
-        "primitive_hparam": primitive_yaml_input.dict_data,
-        "commonfield": False,
-        "boolfield": False,
+        'primitive_hparam': primitive_yaml_input.dict_data,
+        'commonfield': False,
+        'boolfield': False,
     }
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data=data,
-        filepath="choice_two.yaml",
+        filepath='choice_two.yaml',
     )
 
 
@@ -294,14 +294,14 @@ def choice_two_hparams(choice_two_yaml_input: YamlInput) -> ChoiceTwoHparam:
 @dataclass
 class ChoiceThreeHparam(ChoiceHparamParent):
     hparams_registry = {
-        "choice": {
-            "one": ChoiceOneHparam,
-            "two": ChoiceTwoHparam,
+        'choice': {
+            'one': ChoiceOneHparam,
+            'two': ChoiceTwoHparam,
         }
     }
 
-    choice: ChoiceHparamParent = hp.required(doc="choice Hparam field")
-    strfield: str = hp.required(doc="str field")
+    choice: ChoiceHparamParent = hp.required(doc='choice Hparam field')
+    strfield: str = hp.required(doc='str field')
 
     def validate(self):
         assert isinstance(self.strfield, str)
@@ -312,32 +312,32 @@ class ChoiceThreeHparam(ChoiceHparamParent):
 @pytest.fixture
 def choice_three_two_yaml_input(hparams_tempdir: pathlib.Path, choice_two_yaml_input: YamlInput) -> YamlInput:
     data = {
-        "choice": {
-            "two": choice_two_yaml_input.dict_data
+        'choice': {
+            'two': choice_two_yaml_input.dict_data
         },
-        "commonfield": False,
-        "strfield": "tomatoes",
+        'commonfield': False,
+        'strfield': 'tomatoes',
     }
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data=data,
-        filepath="choice_three_two.yaml",
+        filepath='choice_three_two.yaml',
     )
 
 
 @pytest.fixture
 def choice_three_one_yaml_input(hparams_tempdir: pathlib.Path, choice_one_yaml_input: YamlInput) -> YamlInput:
     data = {
-        "choice": {
-            "one": choice_one_yaml_input.dict_data
+        'choice': {
+            'one': choice_one_yaml_input.dict_data
         },
-        "commonfield": True,
-        "strfield": "potatoes",
+        'commonfield': True,
+        'strfield': 'potatoes',
     }
     return generate_named_tuple_from_data(
         hparams_tempdir=hparams_tempdir,
         input_data=data,
-        filepath="choice_three_one.yaml",
+        filepath='choice_three_one.yaml',
     )
 
 
@@ -359,14 +359,14 @@ def choice_three_one_hparam(choice_three_one_yaml_input: YamlInput) -> ChoiceThr
 class ChoiceHparamRoot(hp.Hparams):
 
     hparams_registry = {
-        "choice": {
-            "one": ChoiceOneHparam,
-            "two": ChoiceTwoHparam,
-            "three": ChoiceThreeHparam,
+        'choice': {
+            'one': ChoiceOneHparam,
+            'two': ChoiceTwoHparam,
+            'three': ChoiceThreeHparam,
         }
     }
 
-    choice: ChoiceHparamParent = hp.required(doc="choice Hparam field")
+    choice: ChoiceHparamParent = hp.required(doc='choice Hparam field')
 
     def validate(self):
         assert isinstance(self.choice, ChoiceHparamParent)
@@ -376,7 +376,7 @@ class ChoiceHparamRoot(hp.Hparams):
 
 @dataclass
 class ChoiceOptionalFieldsHparam(hp.Hparams):
-    maybe: int = hp.optional(doc="some optional field", default=0)
+    maybe: int = hp.optional(doc='some optional field', default=0)
 
     def validate(self):
         assert isinstance(self.maybe, int)
@@ -385,14 +385,14 @@ class ChoiceOptionalFieldsHparam(hp.Hparams):
 
 @dataclass
 class OptionalHparamsField(hp.Hparams):
-    optional_hparams: Optional[hp.Hparams] = hp.optional("optional hparams field", default=None)
+    optional_hparams: Optional[hp.Hparams] = hp.optional('optional hparams field', default=None)
 
 
 @dataclass
 class OptionalFieldHparam(hp.Hparams):
-    hparams_registry = {"choice": {"one": ChoiceOptionalFieldsHparam}}
+    hparams_registry = {'choice': {'one': ChoiceOptionalFieldsHparam}}
 
-    choice: ChoiceOptionalFieldsHparam = hp.required(doc="choice Hparam field")
+    choice: ChoiceOptionalFieldsHparam = hp.required(doc='choice Hparam field')
 
     def validate(self):
         assert isinstance(self.choice, ChoiceOptionalFieldsHparam)
@@ -402,36 +402,36 @@ class OptionalFieldHparam(hp.Hparams):
 
 @pytest.fixture
 def optional_field_empty_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
-    data = {"choice": {"one": {}}}
+    data = {'choice': {'one': {}}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
-                                          filepath="optional_field_empty_object.yaml")
+                                          filepath='optional_field_empty_object.yaml')
 
 
 @pytest.fixture
 def optional_field_null_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
-    data = {"choice": {"one": None}}
+    data = {'choice': {'one': None}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
-                                          filepath="optional_field_null_object.yaml")
+                                          filepath='optional_field_null_object.yaml')
 
 
 @dataclass
 class OptionalBooleansHparam(hp.Hparams):
-    default_false: bool = hp.optional(doc="defaults to false", default=False)
-    default_true: bool = hp.optional(doc="defaults to true", default=True)
+    default_false: bool = hp.optional(doc='defaults to false', default=False)
+    default_true: bool = hp.optional(doc='defaults to true', default=True)
 
 
 @dataclass
 class ListHparam(hp.Hparams):
-    list_of_str: List[str] = hp.optional(doc="defaults to empty list", default_factory=list)
-    list_of_int: List[int] = hp.optional(doc="defaults to empty list", default_factory=list)
-    list_of_bool: List[bool] = hp.optional(doc="defaults to empty list", default_factory=list)
+    list_of_str: List[str] = hp.optional(doc='defaults to empty list', default_factory=list)
+    list_of_int: List[int] = hp.optional(doc='defaults to empty list', default_factory=list)
+    list_of_bool: List[bool] = hp.optional(doc='defaults to empty list', default_factory=list)
 
 
 @pytest.fixture
 def empty_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
-    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data={}, filepath="empty_object.yaml")
+    return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir, input_data={}, filepath='empty_object.yaml')
 
 
 class DummyEnum(IntEnum):
@@ -442,118 +442,118 @@ class DummyEnum(IntEnum):
 
 @dataclass
 class FloatToBoolFixture(hp.Hparams):
-    float_field: float = hp.optional(doc="please autoconvert to float", default=1)
+    float_field: float = hp.optional(doc='please autoconvert to float', default=1)
 
 
 @dataclass
 class KitchenSinkHparams(hp.Hparams):
     hparams_registry = {
         fname: {
-            "one": ChoiceOneHparam,
-            "two": ChoiceTwoHparam,
-            "three": ChoiceThreeHparam,
+            'one': ChoiceOneHparam,
+            'two': ChoiceTwoHparam,
+            'three': ChoiceThreeHparam,
         } for fname in [
-            "required_choice",
-            "nullable_required_choice",
-            "optional_choice_default_not_none",
-            "optional_choice_default_none",
-            "required_choice_list",
-            "nullable_required_choice_list",
-            "optional_choice_default_not_none_list",
-            "optional_choice_default_none_list",
+            'required_choice',
+            'nullable_required_choice',
+            'optional_choice_default_not_none',
+            'optional_choice_default_none',
+            'required_choice_list',
+            'nullable_required_choice_list',
+            'optional_choice_default_not_none_list',
+            'optional_choice_default_none_list',
         ]
     }
 
-    required_int_field: int = hp.required("required_int_field")
-    nullable_required_int_field: Optional[int] = hp.required("nullable_required_int_field")
+    required_int_field: int = hp.required('required_int_field')
+    nullable_required_int_field: Optional[int] = hp.required('nullable_required_int_field')
 
-    required_bool_field: bool = hp.required("required_bool_field")
-    nullable_required_bool_field: Optional[bool] = hp.required("nullable_required_bool_field")
+    required_bool_field: bool = hp.required('required_bool_field')
+    nullable_required_bool_field: Optional[bool] = hp.required('nullable_required_bool_field')
 
-    required_enum_field_list: List[DummyEnum] = hp.required("required_enum_field with default")
-    required_enum_field_with_default: DummyEnum = hp.required("required_enum_field", template_default=DummyEnum.GREEN)
-    nullable_required_enum_field: Optional[DummyEnum] = hp.required("nullable_required_enum_field",
+    required_enum_field_list: List[DummyEnum] = hp.required('required_enum_field with default')
+    required_enum_field_with_default: DummyEnum = hp.required('required_enum_field', template_default=DummyEnum.GREEN)
+    nullable_required_enum_field: Optional[DummyEnum] = hp.required('nullable_required_enum_field',
                                                                     template_default=None)
 
-    required_union_bool_str_field: Union[bool, str] = hp.required("required_union_bool_str_field",
-                                                                  template_default="hi")
+    required_union_bool_str_field: Union[bool, str] = hp.required('required_union_bool_str_field',
+                                                                  template_default='hi')
     nullable_required_union_bool_str_field: Optional[Union[bool,
-                                                           str]] = hp.required("nullable_required_union_bool_str_field",
+                                                           str]] = hp.required('nullable_required_union_bool_str_field',
                                                                                template_default=None)
 
-    required_int_list_field: List[int] = hp.required("required_list_int_field", template_default=[2])
-    nullable_required_list_int_field: Optional[List[int]] = hp.required("nullable_required_list_int_field",
+    required_int_list_field: List[int] = hp.required('required_list_int_field', template_default=[2])
+    nullable_required_list_int_field: Optional[List[int]] = hp.required('nullable_required_list_int_field',
                                                                         template_default=[3])
 
     nullable_required_list_union_bool_str_field: Optional[List[Union[bool, str]]] = hp.required(
-        "nullable_required_list_union_bool_str_field")
-    required_list_union_bool_str_field: List[Union[bool, str]] = hp.required("required_list_union_bool_str_field",
-                                                                             template_default=[True, "hello"])
+        'nullable_required_list_union_bool_str_field')
+    required_list_union_bool_str_field: List[Union[bool, str]] = hp.required('required_list_union_bool_str_field',
+                                                                             template_default=[True, 'hello'])
 
-    required_subhparams_field: OptionalBooleansHparam = hp.required("required_subhparams_field",
+    required_subhparams_field: OptionalBooleansHparam = hp.required('required_subhparams_field',
                                                                     template_default=OptionalBooleansHparam(True, True))
     nullable_required_subhparams_field: Optional[OptionalBooleansHparam] = hp.required(
-        "nullable_required_subhparams_field")
+        'nullable_required_subhparams_field')
 
     required_subhparams_field_list: List[OptionalBooleansHparam] = hp.required(
-        "required_subhparams_field", template_default=[OptionalBooleansHparam(True, True)])
+        'required_subhparams_field', template_default=[OptionalBooleansHparam(True, True)])
     nullable_required_subhparams_field_list: Optional[List[OptionalBooleansHparam]] = hp.required(
-        "nullable_required_subhparams_field")
+        'nullable_required_subhparams_field')
 
-    required_choice: ChoiceHparamParent = hp.required(doc="choice Hparam field")
-    nullable_required_choice: Optional[ChoiceHparamParent] = hp.required(doc="choice Hparam field",
+    required_choice: ChoiceHparamParent = hp.required(doc='choice Hparam field')
+    nullable_required_choice: Optional[ChoiceHparamParent] = hp.required(doc='choice Hparam field',
                                                                          template_default=ChoiceOneHparam(True, 0))
 
-    required_choice_list: List[ChoiceHparamParent] = hp.required(doc="choice Hparam field")
+    required_choice_list: List[ChoiceHparamParent] = hp.required(doc='choice Hparam field')
     nullable_required_choice_list: Optional[List[ChoiceHparamParent]] = hp.required(
-        doc="choice Hparam field", template_default=[ChoiceOneHparam(True, 0)])
+        doc='choice Hparam field', template_default=[ChoiceOneHparam(True, 0)])
 
-    optional_float_field_default_1: Optional[float] = hp.optional("optional float field default 1", default=1)
-    optional_float_field_default_none: Optional[float] = hp.optional("optional float field default None", default=None)
+    optional_float_field_default_1: Optional[float] = hp.optional('optional float field default 1', default=1)
+    optional_float_field_default_none: Optional[float] = hp.optional('optional float field default None', default=None)
 
-    optional_bool_field_default_true: Optional[bool] = hp.optional("optional bool field default True", default=True)
-    optional_bool_field_default_none: Optional[bool] = hp.optional("optional bool field default None", default=None)
+    optional_bool_field_default_true: Optional[bool] = hp.optional('optional bool field default True', default=True)
+    optional_bool_field_default_none: Optional[bool] = hp.optional('optional bool field default None', default=None)
 
-    optional_enum_field_default_red: Optional[DummyEnum] = hp.optional("optional enum field default red", default="red")
-    optional_enum_field_default_none: Optional[DummyEnum] = hp.optional("optional enum field default None",
+    optional_enum_field_default_red: Optional[DummyEnum] = hp.optional('optional enum field default red', default='red')
+    optional_enum_field_default_none: Optional[DummyEnum] = hp.optional('optional enum field default None',
                                                                         default=None)
 
     optional_union_bool_str_field_default_true: Optional[Union[bool, str]] = hp.optional(
-        "optional union_bool_str field default True", default=True)
+        'optional union_bool_str field default True', default=True)
     optional_union_bool_str_field_default_hello: Optional[Union[bool, str]] = hp.optional(
-        "optional union_bool_str field default hello", default="hello")
+        'optional union_bool_str field default hello', default='hello')
     optional_union_bool_str_field_default_none: Optional[Union[bool, str]] = hp.optional(
-        "optional union_bool_str field default None", default=None)
+        'optional union_bool_str field default None', default=None)
 
-    optional_list_int_field_default_1: Optional[List[int]] = hp.optional("optional list_int field default 1",
+    optional_list_int_field_default_1: Optional[List[int]] = hp.optional('optional list_int field default 1',
                                                                          default_factory=lambda: [1])
-    optional_list_int_field_default_none: Optional[List[int]] = hp.optional("optional list_int field default None",
+    optional_list_int_field_default_none: Optional[List[int]] = hp.optional('optional list_int field default None',
                                                                             default=None)
 
     optional_list_union_bool_str_field_default_hello: List[Union[bool, str]] = hp.optional(
-        "optional list_union_bool_str field default hello", default_factory=lambda: ["hello"])
+        'optional list_union_bool_str field default hello', default_factory=lambda: ['hello'])
     optional_list_union_bool_str_field_default_none: Optional[List[Union[bool, str]]] = hp.optional(
-        "optional list_union_bool_str field default None", default=None)
+        'optional list_union_bool_str field default None', default=None)
     optional_list_union_bool_str_field_default_true: Optional[List[Union[bool, str]]] = hp.optional(
-        "optional list_union_bool_str field default True", default_factory=lambda: [True])
+        'optional list_union_bool_str field default True', default_factory=lambda: [True])
 
     optional_subhparams_field_default_not_none: OptionalBooleansHparam = hp.optional(
-        "optional subhparams field default not none", default=OptionalBooleansHparam())
+        'optional subhparams field default not none', default=OptionalBooleansHparam())
     optional_subhparams_field_default_none: Optional[OptionalBooleansHparam] = hp.optional(
-        "optional subhparams field default None", default=None)
+        'optional subhparams field default None', default=None)
 
     optional_choice_default_not_none: ChoiceHparamParent = hp.optional(
-        doc="choice Hparam field", default_factory=lambda: ChoiceOneHparam(False, 0))
-    optional_choice_default_none: Optional[ChoiceHparamParent] = hp.optional(doc="choice Hparam field", default=None)
+        doc='choice Hparam field', default_factory=lambda: ChoiceOneHparam(False, 0))
+    optional_choice_default_none: Optional[ChoiceHparamParent] = hp.optional(doc='choice Hparam field', default=None)
 
     optional_subhparams_field_default_not_none_list: List[OptionalBooleansHparam] = hp.optional(
-        "optional subhparams field default not none", default_factory=lambda: [OptionalBooleansHparam()])
+        'optional subhparams field default not none', default_factory=lambda: [OptionalBooleansHparam()])
     optional_subhparams_field_default_none_list: Optional[List[OptionalBooleansHparam]] = hp.optional(
-        "optional subhparams field default None", default=None)
+        'optional subhparams field default None', default=None)
 
     optional_choice_default_not_none_list: List[ChoiceHparamParent] = hp.optional(
-        doc="choice Hparam field", default_factory=lambda: [ChoiceOneHparam(False, 0)])
-    optional_choice_default_none_list: Optional[List[ChoiceHparamParent]] = hp.optional(doc="choice Hparam field",
+        doc='choice Hparam field', default_factory=lambda: [ChoiceOneHparam(False, 0)])
+    optional_choice_default_none_list: Optional[List[ChoiceHparamParent]] = hp.optional(doc='choice Hparam field',
                                                                                         default=None)
 
 
@@ -564,12 +564,12 @@ def kitchen_sink_hparams():
 
 @dataclass
 class OptionalRequiredChildHparam(hp.Hparams):
-    required_field: int = hp.required(doc="required field")
+    required_field: int = hp.required(doc='required field')
 
 
 @dataclass
 class OptionalRequiredParentHparam(hp.Hparams):
-    optional_child: Optional[OptionalRequiredChildHparam] = hp.optional(doc="optional subhparam", default=None)
+    optional_child: Optional[OptionalRequiredChildHparam] = hp.optional(doc='optional subhparam', default=None)
 
 
 @pytest.fixture
@@ -577,20 +577,20 @@ def optional_required_missing_optional_yaml_input(hparams_tempdir) -> YamlInput:
     data = {}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
-                                          filepath="optional_required_missing_optional.yaml")
+                                          filepath='optional_required_missing_optional.yaml')
 
 
 @pytest.fixture
 def optional_required_missing_required_yaml_input(hparams_tempdir) -> YamlInput:
-    data = {"optional_child": {}}
+    data = {'optional_child': {}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
-                                          filepath="optional_required_missing_required.yaml")
+                                          filepath='optional_required_missing_required.yaml')
 
 
 @pytest.fixture
 def optional_required_yaml_input(hparams_tempdir) -> YamlInput:
-    data = {"optional_child": {"required_field": 5}}
+    data = {'optional_child': {'required_field': 5}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
-                                          filepath="optional_required.yaml")
+                                          filepath='optional_required.yaml')

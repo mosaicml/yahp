@@ -66,7 +66,7 @@ def optional(doc: str, *, default: Any = MISSING, default_factory: Union[_MISSIN
             Required if ``default`` is omitted.
     """
     if default == MISSING and default_factory == MISSING:
-        raise ValueError("default or default_factory must be specified")
+        raise ValueError('default or default_factory must be specified')
     return field(  # type: ignore
         metadata={
             'doc': doc,

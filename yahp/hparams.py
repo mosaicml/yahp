@@ -31,8 +31,8 @@ except ImportError as e:
 
 logger = logging.getLogger(__name__)
 
-TDefault = TypeVar("TDefault")
-THparams = TypeVar("THparams", bound="Hparams")
+TDefault = TypeVar('TDefault')
+THparams = TypeVar('THparams', bound='Hparams')
 
 
 @dataclass
@@ -288,12 +288,12 @@ class Hparams(ABC):
         """
         class_fields = [x for x in fields(cls) if x.name == field]
         if len(class_fields) == 0:
-            message = f"Unable to find field: {class_key}.{field} in: {cls.__name__}"
+            message = f'Unable to find field: {class_key}.{field} in: {cls.__name__}'
             logger.warning(message)
             raise ValueError(message)
         if field not in cls.hparams_registry:
-            message = f"Unable to find field: {class_key}.{field} in: {cls.__name__} registry. \n"
-            message += "Is it a choose one or list Hparam?"
+            message = f'Unable to find field: {class_key}.{field} in: {cls.__name__} registry. \n'
+            message += 'Is it a choose one or list Hparam?'
             logger.warning(message)
             raise ValueError(message)
 
@@ -304,7 +304,7 @@ class Hparams(ABC):
                 textwrap.dedent(f"""Field {class_key}.{field} already registered in the {cls.__name__}
                 "registry for class: {sub_registry[field]}. Make sure you register new classes with a unique name"""))
 
-        logger.info(f"Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}")
+        logger.info(f'Successfully registered: {register_class.__name__} for key: {class_key} in {cls.__name__}')
         sub_registry[class_key] = register_class
 
     def validate(self):
@@ -326,18 +326,18 @@ class Hparams(ABC):
                     continue
             if ftype.is_json_dict:
                 if not isinstance(value, dict):
-                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value).__name__}")
+                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
                 continue
             if not ftype.is_hparams_dataclass:
                 if ftype.is_list:
                     if not isinstance(value, list):
-                        raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value).__name__}")
+                        raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
                 else:
                     value = [value]
                 for x in value:
                     if ftype.is_enum:
                         if not isinstance(x, ftype.type):
-                            raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x).__name__}")
+                            raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
                         continue
                     if ftype.is_primitive:
                         is_allowed = False
@@ -346,24 +346,24 @@ class Hparams(ABC):
                                 is_allowed = True
                                 break
                         if not is_allowed:
-                            raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x).__name__}")
+                            raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
                         continue
-                    warnings.warn(f"{ftype} cannot be validated. This is a bug in YAHP. Please submit a bug report.")
+                    warnings.warn(f'{ftype} cannot be validated. This is a bug in YAHP. Please submit a bug report.')
                 continue
             # is hparams
             if ftype.is_list:
                 if not isinstance(value, list):
-                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(value).__name__}")
+                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
                 continue
             value = [value]
             for x in value:
                 if not isinstance(x, ftype.type):
-                    raise TypeError(f"{fname} must be a {ftype}; instead it is of type {type(x).__name__}")
+                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
                 assert isinstance(x, Hparams)
                 x.validate()
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()
-        yaml_str = textwrap.indent(yaml_str, "  ")
-        output = f"{self.__class__.__name__}:\n{yaml_str}"
+        yaml_str = textwrap.indent(yaml_str, '  ')
+        output = f'{self.__class__.__name__}:\n{yaml_str}'
         return output

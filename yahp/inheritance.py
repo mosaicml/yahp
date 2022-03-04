@@ -33,7 +33,7 @@ def _get_inherits_paths(
     """
     paths: List[Tuple[List[str], List[str]]] = []
     for key, val in namespace.items():
-        if key == "inherits":
+        if key == 'inherits':
             if isinstance(val, str):
                 val = [val]
             val = cast(List[str], val)
@@ -61,7 +61,7 @@ def _data_by_path(
             assert isinstance(key, int)
             namespace = namespace[key]
         else:
-            raise ValueError("Path must be empty unless if list or dict")
+            raise ValueError('Path must be empty unless if list or dict')
     return namespace
 
 
@@ -81,7 +81,7 @@ def _ensure_path_exists(namespace: JSON, argument_path: Sequence[Union[int, str]
             # TODO: try except to verify key in range
             namespace = namespace[key]  # type: ignore
         else:
-            raise ValueError("Path must be empty unless if list or dict")
+            raise ValueError('Path must be empty unless if list or dict')
 
 
 class _OverriddenValue:
@@ -157,7 +157,7 @@ def _recursively_update_leaf_data_items(
         is_empty = (existing_value is None)  # Empty values should be filled in
         is_lower_priority = isinstance(existing_value, _OverriddenValue)  # Further inheritance should override previous
         is_inherits_dict = isinstance(existing_value,
-                                      dict) and "inherits" in existing_value  # Not sure about this one...
+                                      dict) and 'inherits' in existing_value  # Not sure about this one...
 
         if is_empty or is_lower_priority or is_inherits_dict:
             inner_namespace[key] = _OverriddenValue(update_data)  # type: ignore
@@ -235,7 +235,7 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
                 # Select out just the portion specified by nested_keys
                 inherit_data = _data_by_path(namespace=inherit_data_full, argument_path=nested_keys)
             except KeyError:
-                logger.warn(f"Failed to load item from inherited YAML file: {inherit_yaml}")
+                logger.warn(f'Failed to load item from inherited YAML file: {inherit_yaml}')
                 continue
 
             # Insert any new keys from inherit_data into data
@@ -247,8 +247,8 @@ def load_yaml_with_inheritance(yaml_path: str) -> Dict[str, JSON]:
 
         # Carefully remove the 'inherits' key from the nested data dict
         inherits_key_dict = _data_by_path(namespace=data, argument_path=nested_keys)
-        if isinstance(inherits_key_dict, dict) and "inherits" in inherits_key_dict:
-            del inherits_key_dict["inherits"]
+        if isinstance(inherits_key_dict, dict) and 'inherits' in inherits_key_dict:
+            del inherits_key_dict['inherits']
 
     # Resolve all newly added values in data
     _unwrap_overridden_value_dict(data)
@@ -265,5 +265,5 @@ def preprocess_yaml_with_inheritance(yaml_path: str, output_yaml_path: str) -> N
         output_yaml_path (str): Filepath to write flattened yaml to.
     """
     data = load_yaml_with_inheritance(yaml_path)
-    with open(output_yaml_path, "w+") as f:
+    with open(output_yaml_path, 'w+') as f:
         yaml.dump(data, f, explicit_end=False, explicit_start=False, indent=2, default_flow_style=False)  # type: ignore

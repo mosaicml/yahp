@@ -3,8 +3,7 @@ parameters:
   instance_types:
     - cota-g1-3080
   instance_folder_structure:
-    inherits: instance2.yaml 
+    inherits: instance2.yaml
   seed: 1
   workers_per_gpu:
     - 8
-
