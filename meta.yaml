@@ -2,11 +2,11 @@
 
 package:
   name: yahp
-  version: "0.0.14"
+  version: "0.1.0"
 
 source:
   git_url: https://github.com/mosaicml/yahp.git
-  git_rev: v0.0.14
+  git_rev: v0.1.0
   git_depth: 1
 
 channels:
