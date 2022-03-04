@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple, TypeVar, Union, cast
 if TYPE_CHECKING:
     from yahp.types import JSON
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 
 def ensure_tuple(x: Union[T, Tuple[T, ...], List[T], Dict[Any, T]]) -> Tuple[T, ...]:
@@ -32,8 +32,8 @@ def ensure_tuple(x: Union[T, Tuple[T, ...], List[T], Dict[Any, T]]) -> Tuple[T, 
     return (x,)
 
 
-K = TypeVar("K")
-V = TypeVar("V")
+K = TypeVar('K')
+V = TypeVar('V')
 
 
 def extract_only_item_from_dict(val: Dict[K, V]) -> Tuple[K, V]:
@@ -49,7 +49,7 @@ def extract_only_item_from_dict(val: Dict[K, V]) -> Tuple[K, V]:
         Tuple[K, V]: The key, value pair of the only item
     """
     if len(val) != 1:
-        raise ValueError(f"dict has {len(val)} keys, expecting 1")
+        raise ValueError(f'dict has {len(val)} keys, expecting 1')
     return list(val.items())[0]
 
 
@@ -77,11 +77,11 @@ def list_to_deduplicated_dict(list_of_dict: List[JSON],
             # item should have only one key-value pair
             k, v = extract_only_item_from_dict(item)
         else:
-            raise TypeError(f"Expected list of dictionaries, got {type(item)}")
+            raise TypeError(f'Expected list of dictionaries, got {type(item)}')
         if k in data:
             # Deduplicate by add '+<counter>'
             counter[k] += 1
-            k = "".join((k, separator, str(counter[k] - 1)))
+            k = ''.join((k, separator, str(counter[k] - 1)))
         else:
             counter[k] = 1
         data[k] = v
@@ -120,7 +120,7 @@ class ListOfSingleItemDict(list):
 
     def __init__(self, data: List):
         if not is_list_of_single_item_dicts(data):
-            raise TypeError("data must be list of single-item dictionaries")
+            raise TypeError('data must be list of single-item dictionaries')
         if isinstance(data, ListOfSingleItemDict):
             self._list = data._list
             self._data = data._data
@@ -135,7 +135,7 @@ class ListOfSingleItemDict(list):
         if key in self._data:
             return self._data[key]
         if not isinstance(key, int):
-            raise TypeError(f"Index should be of type {int}, not {type(key)}")
+            raise TypeError(f'Index should be of type {int}, not {type(key)}')
         return self._list.__getitem__(key)
 
     def __setitem__(self, key: Union[int, str], value: Any):

@@ -25,7 +25,7 @@ from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_req
 if TYPE_CHECKING:
     from yahp.types import JSON, HparamsField
 
-THparams = TypeVar("THparams", bound="hp.Hparams")
+THparams = TypeVar('THparams', bound='hp.Hparams')
 
 
 class _MissingRequiredFieldException(ValueError):
@@ -41,10 +41,10 @@ class _DeferredCreateCall:
 
 
 def _emit_should_be_dict_warning(arg_name: str):
-    warnings.warn(f"MalformedYAMLWarning: {arg_name} should be a dict.")
+    warnings.warn(f'MalformedYAMLWarning: {arg_name} should be a dict.')
 
 
-def _get_split_key(key: str, splitter: str = "+") -> Tuple[str, Any]:
+def _get_split_key(key: str, splitter: str = '+') -> Tuple[str, Any]:
     """ Gets the prefix key and any label after the splitter """
 
     splits = key.split(splitter, 1)
@@ -106,8 +106,8 @@ def _create(
         prefix_with_fname = list(prefix) + [f.name]
         try:
             ftype = HparamsType(field_types[f.name])
-            full_name = ".".join(prefix_with_fname)
-            env_name = full_name.upper().replace(".", "_")  # dots are not (easily) allowed in env variables
+            full_name = '.'.join(prefix_with_fname)
+            env_name = full_name.upper().replace('.', '_')  # dots are not (easily) allowed in env variables
             if full_name in parsed_args and parsed_args[full_name] != MISSING:
                 # use CLI args first
                 argparse_or_yaml_value = parsed_args[full_name]
@@ -154,7 +154,7 @@ def _create(
                             if sub_yaml is None:
                                 sub_yaml = {}
                             if not isinstance(sub_yaml, dict):
-                                raise ValueError(f"{full_name} must be a dict in the yaml")
+                                raise ValueError(f'{full_name} must be a dict in the yaml')
                             assert issubclass(ftype.type, hp.Hparams)
                             deferred_create_calls[f.name] = _DeferredCreateCall(
                                 hparams_cls=ftype.type,
@@ -184,14 +184,14 @@ def _create(
                                 sub_yaml = list_to_deduplicated_dict(sub_yaml)
 
                             if not isinstance(sub_yaml, dict):
-                                raise TypeError(f"{full_name} must be a dict in the yaml")
+                                raise TypeError(f'{full_name} must be a dict in the yaml')
 
                             deferred_calls: List[_DeferredCreateCall] = []
                             for (key, sub_yaml_item) in sub_yaml.items():
                                 if sub_yaml_item is None:
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
-                                    raise TypeError(f"{full_name} must be a dict in the yaml")
+                                    raise TypeError(f'{full_name} must be a dict in the yaml')
                                 assert issubclass(ftype.type, hp.Hparams)
                                 deferred_calls.append(
                                     _DeferredCreateCall(
@@ -220,17 +220,17 @@ def _create(
                                 # use the hparams default
                                 continue
                             if argparse_or_yaml_value is None:
-                                raise ValueError(f"Field {full_name} is required and cannot be None.")
+                                raise ValueError(f'Field {full_name} is required and cannot be None.')
                             if isinstance(argparse_or_yaml_value, str):
                                 key = argparse_or_yaml_value
                             else:
                                 if not isinstance(argparse_or_yaml_value, dict):
                                     raise ValueError(
-                                        f"Field {full_name} must be a dict with just one key if specified in the yaml")
+                                        f'Field {full_name} must be a dict with just one key if specified in the yaml')
                                 try:
                                     key, _ = extract_only_item_from_dict(argparse_or_yaml_value)
                                 except ValueError as e:
-                                    raise ValueError(f"Field {full_name} " + e.args[0])
+                                    raise ValueError(f'Field {full_name} ' + e.args[0])
                             yaml_val = data.get(f.name)
                             if yaml_val is None:
                                 yaml_val = {}
@@ -269,14 +269,14 @@ def _create(
                             # Argparse has precedence. If there are keys defined in argparse, use only those
                             # These keys will determine what is loaded
                             if argparse_or_yaml_value is None:
-                                raise ValueError(f"Field {full_name} is required and cannot be None.")
+                                raise ValueError(f'Field {full_name} is required and cannot be None.')
                             if isinstance(argparse_or_yaml_value, list):
                                 # Convert from list of single element dictionaries to dict, preserving duplicates
                                 argparse_or_yaml_value = list_to_deduplicated_dict(argparse_or_yaml_value,
                                                                                    allow_str=True)
 
                             if not isinstance(argparse_or_yaml_value, dict):
-                                raise ValueError(f"Field {full_name} should be a dict")
+                                raise ValueError(f'Field {full_name} should be a dict')
 
                             keys = list(argparse_or_yaml_value.keys())
 
@@ -352,7 +352,7 @@ def _create(
                 else:
                     parser = argparse.ArgumentParser(add_help=False)
                     argparsers.append(parser)
-                    group = parser.add_argument_group(title=".".join(create_call.prefix),
+                    group = parser.add_argument_group(title='.'.join(create_call.prefix),
                                                       description=create_call.hparams_cls.__name__)
                     for args in create_call.parser_args:
                         for arg in ensure_tuple(args):
@@ -377,7 +377,7 @@ def _create(
     for f in fields(cls):
         if not f.init:
             continue
-        prefix_with_fname = ".".join(list(prefix) + [f.name])
+        prefix_with_fname = '.'.join(list(prefix) + [f.name])
         if f.name not in kwargs:
             if f.default == MISSING and f.default_factory == MISSING:
                 missing_required_fields.append(prefix_with_fname)
@@ -453,15 +453,15 @@ def create(
     # Only if successful, warn for extra cli arguments
     # If there is an error, then valid cli args may not have been discovered
     for arg in remaining_cli_args:
-        warnings.warn(f"ExtraArgumentWarning: {arg} was not used")
+        warnings.warn(f'ExtraArgumentWarning: {arg} was not used')
 
     if output_f is not None:
-        if output_f == "stdout":
+        if output_f == 'stdout':
             print(hparams.to_yaml(), file=sys.stdout)
-        elif output_f == "stderr":
+        elif output_f == 'stderr':
             print(hparams.to_yaml(), file=sys.stderr)
         else:
-            with open(output_f, "x") as f:
+            with open(output_f, 'x') as f:
                 f.write(hparams.to_yaml())
         sys.exit(0)
 
@@ -484,17 +484,17 @@ def _get_hparams(
     )
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
-        print(f"Generating a template for {cls.__name__}")
-        if output_file == "stdout":
+        print(f'Generating a template for {cls.__name__}')
+        if output_file == 'stdout':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
-        elif output_file == "stderr":
+        elif output_file == 'stderr':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stderr)
         else:
-            with open(output_file, "x") as f:
+            with open(output_file, 'x') as f:
                 cls.dump(add_docs=add_docs, interactive=interactive, output=f)
         # exit so we don't attempt to parse and instantiate if generate template is passed
         print()
-        print("Finished")
+        print('Finished')
         sys.exit(0)
 
     cli_f, output_f = get_hparams_file_from_cli(cli_args=remaining_cli_args,
@@ -502,7 +502,7 @@ def _get_hparams(
                                                 argument_parsers=argparsers)
     if cli_f is not None:
         if f is not None:
-            raise ValueError("File cannot be specified via both function arguments and the CLI")
+            raise ValueError('File cannot be specified via both function arguments and the CLI')
         f = cli_f
 
     if f is not None:
@@ -519,7 +519,7 @@ def _get_hparams(
     if data is None:
         data = {}
     if not isinstance(data, dict):
-        raise TypeError("`data` must be a dict or None")
+        raise TypeError('`data` must be a dict or None')
 
     # Parse args based on class cdefinition
     main_args = retrieve_args(cls=cls, prefix=[], argparse_name_registry=argparse_name_registry)

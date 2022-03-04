@@ -8,23 +8,23 @@ import yahp as hp
 
 @dataclass
 class Foo(hp.Hparams):
-    baz: int = hp.required(doc="int")
+    baz: int = hp.required(doc='int')
 
 
 @dataclass
 class Bar(hp.Hparams):
-    baz: int = hp.required(doc="int")
+    baz: int = hp.required(doc='int')
 
 
 @dataclass
 class ParentListHP(hp.Hparams):
-    hparams_registry = {"foos": {"foo": Foo, "bar": Bar}}
-    foos: List[hp.Hparams] = hp.required(doc="All the foos")
+    hparams_registry = {'foos': {'foo': Foo, 'bar': Bar}}
+    foos: List[hp.Hparams] = hp.required(doc='All the foos')
 
 
 @dataclass
 class ParentListHPNoRegistry(hp.Hparams):
-    foos: List[Foo] = hp.required(doc="All the foos")
+    foos: List[Foo] = hp.required(doc='All the foos')
 
 
 @pytest.fixture
@@ -44,11 +44,11 @@ def get_data(baz: int, bar: bool = False, duplicate: bool = False, as_list: bool
     Returns:
         [type]: [description]
     """
-    d = {"foo": {"baz": baz}}
+    d = {'foo': {'baz': baz}}
     if bar:
-        d["bar"] = {"baz": baz}
+        d['bar'] = {'baz': baz}
     if duplicate:
-        d["foo+1"] = {"baz": baz + 1}
+        d['foo+1'] = {'baz': baz + 1}
     if as_list:
         d = dict_to_list(d)
     return d
@@ -62,17 +62,17 @@ def dict_to_list(data: Dict[str, Dict]) -> List[Dict]:
 
 def test_list_without_registry(baz):
     data = get_data(baz)
-    hp = ParentListHPNoRegistry.create(data={"foos": data})
+    hp = ParentListHPNoRegistry.create(data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 1
     assert hp.foos[0].baz == baz
 
 
-@pytest.mark.filterwarnings("ignore:MalformedYAMLWarning")
+@pytest.mark.filterwarnings('ignore:MalformedYAMLWarning')
 def test_list_without_registry_passed_list(baz):
     data = get_data(baz, as_list=True)
-    hp = ParentListHPNoRegistry.create(data={"foos": data})
+    hp = ParentListHPNoRegistry.create(data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 1
@@ -81,7 +81,7 @@ def test_list_without_registry_passed_list(baz):
 
 def test_list_without_registry_duplicate(baz):
     data = get_data(baz, duplicate=True)
-    hp = ParentListHPNoRegistry.create(data={"foos": data})
+    hp = ParentListHPNoRegistry.create(data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
@@ -95,8 +95,8 @@ def test_list_without_registry_duplicate(baz):
 @pytest.mark.xfail
 def test_list_without_registry_cli_override(baz):
     data = get_data(baz)
-    cli_args = ["--foos.foo.baz", str(baz + 2)]
-    hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={"foos": data})
+    cli_args = ['--foos.foo.baz', str(baz + 2)]
+    hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 1
@@ -107,8 +107,8 @@ def test_list_without_registry_cli_override(baz):
 @pytest.mark.xfail
 def test_list_without_registry_duplicate_cli_override(baz):
     data = get_data(baz, duplicate=True)
-    cli_args = ["--foos.foo+1.baz", str(baz + 2)]
-    hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={"foos": data})
+    cli_args = ['--foos.foo+1.baz', str(baz + 2)]
+    hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
@@ -124,7 +124,7 @@ def test_list_without_registry_duplicate_cli_override(baz):
 
 def test_list_with_registry(baz):
     data = get_data(baz, bar=True)
-    hp = ParentListHP.create(data={"foos": data})
+    hp = ParentListHP.create(data={'foos': data})
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
     foo = hp.foos[0]
@@ -136,10 +136,10 @@ def test_list_with_registry(baz):
     assert bar.baz == baz
 
 
-@pytest.mark.filterwarnings("ignore:MalformedYAMLWarning")
+@pytest.mark.filterwarnings('ignore:MalformedYAMLWarning')
 def test_list_with_registry_passed_list(baz):
     data = get_data(baz, bar=True, as_list=True)
-    hp = ParentListHP.create(data={"foos": data})
+    hp = ParentListHP.create(data={'foos': data})
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
     foo = hp.foos[0]
@@ -153,7 +153,7 @@ def test_list_with_registry_passed_list(baz):
 
 def test_list_with_registry_duplicate(baz):
     data = get_data(baz, bar=True, duplicate=True)
-    hp = ParentListHP.create(data={"foos": data})
+    hp = ParentListHP.create(data={'foos': data})
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 3
     foo0 = hp.foos[0]
@@ -171,8 +171,8 @@ def test_list_with_registry_duplicate(baz):
 
 def test_list_with_registry_cli_override(baz):
     data = get_data(baz, bar=True)
-    cli_args = ["--foos.foo.baz", str(baz + 2)]
-    hp = ParentListHP.create(cli_args=cli_args, data={"foos": data})
+    cli_args = ['--foos.foo.baz', str(baz + 2)]
+    hp = ParentListHP.create(cli_args=cli_args, data={'foos': data})
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
     foo = hp.foos[0]
@@ -184,11 +184,11 @@ def test_list_with_registry_cli_override(baz):
     assert bar.baz == baz
 
 
-@pytest.mark.filterwarnings("ignore:MalformedYAMLWarning")
+@pytest.mark.filterwarnings('ignore:MalformedYAMLWarning')
 def test_list_with_registry_cli_override_custom_list(baz):
     data = get_data(baz, bar=True)
-    cli_args = ["--foos", "foo"]
-    hp = ParentListHP.create(cli_args=cli_args, data={"foos": data})
+    cli_args = ['--foos', 'foo']
+    hp = ParentListHP.create(cli_args=cli_args, data={'foos': data})
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 1
     foo = hp.foos[0]
@@ -199,8 +199,8 @@ def test_list_with_registry_cli_override_custom_list(baz):
 #@pytest.mark.xfail
 def test_list_with_registry_duplicate_cli_override(baz):
     data = get_data(baz, bar=True, duplicate=True)
-    cli_args = ["--foos.foo+1.baz", str(baz + 2)]
-    hp = ParentListHP.create(cli_args=cli_args, data={"foos": data})
+    cli_args = ['--foos.foo+1.baz', str(baz + 2)]
+    hp = ParentListHP.create(cli_args=cli_args, data={'foos': data})
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 3
     foo = hp.foos[0]

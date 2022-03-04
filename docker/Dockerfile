@@ -1,4 +1,4 @@
-FROM mosaicml/research:latest 
+FROM mosaicml/research:latest
 
 WORKDIR /workspace
 COPY . ./src/hparams
