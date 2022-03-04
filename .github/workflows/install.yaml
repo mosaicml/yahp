@@ -1,4 +1,4 @@
-name: Composer Pip Install
+name: YAHP Pip Install
 on:
   push:
     branches:
