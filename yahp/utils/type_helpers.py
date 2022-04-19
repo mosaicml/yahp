@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import Any, Dict, Sequence, Tuple, Type, Union, cast
+from typing import Any, Dict, Sequence, Tuple, Type, Union, cast, Optional
 
 import yahp as hp
 from yahp.utils.iter_helpers import ensure_tuple
@@ -57,36 +57,37 @@ class HparamsType:
     """
 
     def __init__(self, item: Type[Any]) -> None:
-        self.types, self.is_optional, self.is_list = self._extract_type(item)
+        self.item = item
+        self.types, self.elem_type, self.is_optional, self.is_list = self._extract_type(item)
         if len(self.types) == 0:
             assert self.is_optional, 'invariant error'
 
-    def _extract_type(self, item: Type[Any]) -> Tuple[Sequence[Type[Any]], bool, bool]:
+    def _extract_type(self, item: Type[Any]) -> Tuple[Sequence[Type[Any]], Optional[Type[Any]], bool, bool]:
         """Extracts the underlying types from a python typing object.
 
         Documentration is best given through examples:
-        >>> _extract_type(bool) == ([bool], False, False)
-        >>> _extract_type(Optional[bool])== ([bool], True, False)
-        >>> _extract_type(List[bool])== ([bool], False, True)
+        >>> _extract_type(bool) == ([bool], None, False, False)
+        >>> _extract_type(Optional[bool])== ([bool], bool, True, False)
+        >>> _extract_type(List[bool])== ([bool], bool, False, True)
         >>> _extract_type(List[Optional[bool]]) raises a TypeError, since Lists of optionals are not allowed by hparams
-        >>> _extract_type(Optional[List[bool]]) == ([bool], True, True)
-        >>> _extract_type(Optional[List[Union[str, int]]]) == ([str, int], True, True)
-        >>> _extract_type(List[Union[str, int]]) == ([str, int], False, True)
-        >>> _extract_type(Union[str, int]) == ([str, int], False, False)
+        >>> _extract_type(Optional[List[bool]]) == ([bool], bool, True, True)
+        >>> _extract_type(Optional[List[Union[str, int]]]) == ([str, int], Union[str, int], True, True)
+        >>> _extract_type(List[Union[str, int]]) == ([str, int], Union[str, int], False, True)
+        >>> _extract_type(Union[str, int]) == ([str, int], None, False, False)
         >>> _extract_type(Union[str, Enum]) raises a TypeError, since Enums cannot appear in non-optional Unions
-        >>> _extract_type(Union[str, NoneType]) == ([str], True, False)
+        >>> _extract_type(Union[str, NoneType]) == ([str], None, True, False)
         >>> _extract_type(Union[str, Dataclass]) raises a TypeError, since Hparam dataclasses cannot appear in non-optional unions
         """
         origin = get_origin(item)
         if origin is None:
             # item must be simple, like None, int, float, str, Enum, or Hparams
             if item is None or item is type(None):
-                return [], True, False
+                return [], None, True, False
             if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
                 raise TypeError(f'item of type ({item}) is not supported.')
             is_optional = False
             is_list = False
-            return [item], is_optional, is_list
+            return [item], None, is_optional, is_list
         if origin is Union:
             args = cast(Sequence[Any], get_args(item))
             is_optional = type(None) in args
@@ -99,26 +100,28 @@ class HparamsType:
             is_json_dict = all(get_origin(arg) is dict for arg in args_without_none)
             if is_primitive or is_hparams or is_enum:
                 assert is_list is False
-                return args_without_none, is_optional, is_list
+                return args_without_none, None, is_optional, is_list
             if is_list:
                 # Need to validate that the underlying type of list is either 1) Primitive, 2) Union of primitives
                 #                 assert len(args_without_none) == 1, "should only have one one"
                 assert len(args_without_none) == 1, 'if here, should only have 1 non-none argument'
                 list_arg = args_without_none[0]
-                return self._get_list_type(list_arg), is_optional, is_list
+                elem_type = get_args(list_arg)[0]
+                return self._get_list_type(list_arg), elem_type, is_optional, is_list
             if is_json_dict:
                 assert is_optional, 'if here, then must have been is_optional'
                 assert not is_list, 'if here, then must not have been is_list'
-                return [_JSONDict], is_optional, is_list
+                return [_JSONDict], None, is_optional, is_list
             raise TypeError(f'Invalid union type: {item}. Unions must be of primitive types')
         if origin is list:
             is_optional = False
             is_list = True
-            return self._get_list_type(item), is_optional, is_list
+            arg = cast(Sequence[Any], get_args(item))[0]
+            return self._get_list_type(item), arg, is_optional, is_list
         if origin is dict:
             is_optional = False
             is_list = False
-            return [_JSONDict], is_optional, is_list
+            return [_JSONDict], None, is_optional, is_list
         raise TypeError(f'Unsupported type: {item}')
 
     def _get_list_type(self, list_arg: Type[Any]) -> Sequence[Type[Any]]:
@@ -133,6 +136,8 @@ class HparamsType:
             # Must be either primitive or hparams
             if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (hp.Hparams, Enum)):
                 raise error
+            return [list_item]
+        if list_origin is list:
             return [list_item]
         if list_origin is Union:
             list_args = cast(Sequence[Any], get_args(list_item))
@@ -185,8 +190,9 @@ class HparamsType:
         if self.is_list:
             # If given a list, then return a list of converted values
             if wrap_singletons:
+                elem_type = HparamsType(self.elem_type)
                 return [
-                    self.convert(x, f'{field_name}[{i}]', wrap_singletons=False)
+                    elem_type.convert(x, f'{field_name}[{i}]')
                     for (i, x) in enumerate(ensure_tuple(val))
                 ]
             elif isinstance(val, (tuple, list)):
@@ -250,6 +256,13 @@ class HparamsType:
         or a list of :class:`bool`.
         """
         return len(self.types) > 0 and all(safe_issubclass(t, bool) for t in self.types)
+
+    @property
+    def is_union(self) -> bool:
+        """
+        Whether the annotation allows for a union of types,
+        """
+        return get_origin(self.item) is Union
 
     @property
     def type(self) -> Type[Any]:
