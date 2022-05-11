@@ -141,7 +141,9 @@ def _create(
                         # potentially none. If cli args specify a child field, implicitly enable optional parent class
                         is_none = ftype.is_optional and is_none_like(argparse_or_yaml_value, allow_list=ftype.is_list)
                         if is_none and cli_args is not None:
-                            for cli_arg in cli_args:
+                            # Likely pyright bug; hence the type ignore below
+                            # Object of type "None" cannot be used as iterable value (reportOptionalIterable)
+                            for cli_arg in cli_args:  # type: ignore
                                 if cli_arg.lstrip('-').startswith(f.name):
                                     is_none = False
                                     break
