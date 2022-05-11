@@ -16,8 +16,8 @@ from typing import (TYPE_CHECKING, Any, Dict, List, Optional, Sequence, TextIO, 
 import yaml
 
 import yahp as hp
-from yahp.create.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
-                                  get_hparams_file_from_cli, retrieve_args)
+from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
+                                         get_hparams_file_from_cli, retrieve_args)
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
@@ -412,7 +412,7 @@ def _get_remaining_cli_args(cli_args: Union[List[str], bool]) -> List[str]:
     return list(cli_args)
 
 
-def create(
+def create_from_hparams(
     cls: Type[THparams],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,

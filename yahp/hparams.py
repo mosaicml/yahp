@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, TextIO, Type, TypeV
 
 import yaml
 
-from yahp.create.commented_map import CMOptions, to_commented_map
-from yahp.create.create import create, get_argparse
+from yahp.create_object.commented_map import CMOptions, to_commented_map
+from yahp.create_object.create_from_hparams import create_from_hparams, get_argparse
 from yahp.utils import type_helpers
 from yahp.utils.iter_helpers import list_to_deduplicated_dict
 
@@ -116,7 +116,7 @@ class Hparams(ABC):
         Returns:
             Hparams: An instance of the class.
         """
-        return create(cls, data=data, f=f, cli_args=cli_args)
+        return create_from_hparams(cls, data=data, f=f, cli_args=cli_args)
 
     @classmethod
     def get_argparse(
