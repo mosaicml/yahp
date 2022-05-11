@@ -136,7 +136,7 @@ def auto(constructor: Callable, arg_name: str):
         if param.arg_name == arg_name:
             doc = param.description
     if doc is None:
-        raise ValueError(f'{constructor} does not contain a docstring entry ')
+        raise ValueError(f'{constructor.__name__} does not contain a docstring entry for argument {arg_name}')
 
     if parameter.default == inspect.Parameter.empty:
         return required(doc)
