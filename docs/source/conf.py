@@ -30,6 +30,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.extlinks',
     'sphinx.ext.coverage',
+    'sphinx.ext.doctest',
     'sphinx.ext.napoleon',
     'sphinxcontrib.katex',
     'sphinx.ext.viewcode',

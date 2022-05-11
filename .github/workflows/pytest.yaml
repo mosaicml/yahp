@@ -37,3 +37,6 @@ jobs:
       - uses: ./.github/actions/pytest
         with:
           working_directory: ${{ github.workspace }}
+      - uses: ./.github/actions/doctest
+        with:
+          working_directory: ${{ github.workspace }}
