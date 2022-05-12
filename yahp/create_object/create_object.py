@@ -411,7 +411,7 @@ def _create(
         return obj.initialize_object()
     else:
         # Otherwise, return the hparams class
-        return obj
+        return cast(TObject, obj)
 
 
 def _add_help(argparsers: Sequence[argparse.ArgumentParser], cli_args: Sequence[str]) -> None:
