@@ -10,8 +10,8 @@ import sys
 import textwrap
 import warnings
 from dataclasses import MISSING, dataclass, fields
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Sequence, TextIO, Tuple, Type, TypeVar,
-                    Union, cast, get_type_hints, overload)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union,
+                    cast, get_type_hints)
 
 import yaml
 
@@ -56,51 +56,6 @@ def _get_split_key(key: str, splitter: str = '+') -> Tuple[str, Any]:
 
 
 logger = logging.getLogger(__name__)
-
-
-@overload
-def _create(
-    *,
-    constructor: Type[AutoInitializedHparams[TObject]],
-    data: Dict[str, JSON],
-    parsed_args: Dict[str, str],
-    cli_args: Optional[List[str]],
-    prefix: List[str],
-    argparse_name_registry: ArgparseNameRegistry,
-    argparsers: List[argparse.ArgumentParser],
-    allow_autoinitialization: Literal[True],
-) -> TObject:
-    ...
-
-
-@overload
-def _create(
-    *,
-    constructor: Type[THparams],
-    data: Dict[str, JSON],
-    parsed_args: Dict[str, str],
-    cli_args: Optional[List[str]],
-    prefix: List[str],
-    argparse_name_registry: ArgparseNameRegistry,
-    argparsers: List[argparse.ArgumentParser],
-    allow_autoinitialization: bool,
-) -> THparams:
-    ...
-
-
-@overload
-def _create(
-    *,
-    constructor: Callable[..., TObject],
-    data: Dict[str, JSON],
-    parsed_args: Dict[str, str],
-    cli_args: Optional[List[str]],
-    prefix: List[str],
-    argparse_name_registry: ArgparseNameRegistry,
-    argparsers: List[argparse.ArgumentParser],
-    allow_autoinitialization: bool,
-) -> TObject:
-    ...
 
 
 def _create(

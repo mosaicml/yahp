@@ -237,10 +237,6 @@ class HparamsType:
                     possible_keys = [str(key) for key in enum_map.keys()]
                     raise ValueError(f"'{val}' is not a valid key. Choose on of {', '.join(possible_keys)}.")
             return enum_map[val]
-        # if self.is_hparams_dataclass:
-        #     if isinstance(val, self.type):
-        #         return val
-        #     raise RuntimeError('convert() cannot be used with hparam dataclasses')
         if self.is_json_dict:
             if isinstance(val, str):
                 val = json.loads(val)
