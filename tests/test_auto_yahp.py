@@ -171,24 +171,24 @@ class ClassWithMixedHparamsRegistry:
     """Class
 
     Args:
-        cls (AbstractClass): Docstring.
+        item (AbstractClass): Docstring.
     """
 
     hparams_registry = {
-        'cls': {
+        'item': {
             'concrete': ConcreteClass,
             'auto_initialized': generate_hparams_cls(ConcreteClass),
         }
     }
 
-    def __init__(self, cls: AbstractClass) -> None:
-        self.cls = cls
+    def __init__(self, item: AbstractClass) -> None:
+        self.item = item
 
 
 @pytest.mark.parametrize('key', ['concrete', 'auto_initialized'])
 def test_class_with_mixed_hparams_registry(key: str):
-    config: Dict[str, JSON] = {'cls': {key: {'int_arg': 42}}}
+    config: Dict[str, JSON] = {'item': {key: {'int_arg': 42}}}
     instance = hp.create(ClassWithMixedHparamsRegistry, config)
     assert isinstance(instance, ClassWithMixedHparamsRegistry)
-    assert isinstance(instance.cls, ConcreteClass)
-    assert instance.cls.int_arg == 42
+    assert isinstance(instance.item, ConcreteClass)
+    assert instance.item.int_arg == 42
