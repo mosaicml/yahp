@@ -6,11 +6,12 @@ import argparse
 import logging
 from dataclasses import _MISSING_TYPE, MISSING, asdict, dataclass, fields
 from enum import Enum
-from typing import Dict, List, Optional, Sequence, Set, Tuple, Type, Union, get_type_hints
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union, get_type_hints
 
 import yaml
 
 import yahp as hp
+from yahp.create_object.create_object import ensure_hparams_cls
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
 
 logger = logging.getLogger(__name__)
@@ -198,13 +199,17 @@ def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]
 
 
 def retrieve_args(
-    cls: Type[hp.Hparams],
+    constructor: Callable,
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
 ) -> Sequence[ParserArgument]:
     # Retrieve argparse args for the class. Does NOT recurse.
+
+    # Create a dummy hparams class, and then parse from that
+    cls = ensure_hparams_cls(constructor)
     field_types = get_type_hints(cls)
     ans: List[ParserArgument] = []
+
     for f in fields(cls):
         if not f.init:
             continue
@@ -227,12 +232,12 @@ def retrieve_args(
         if safe_issubclass(type(default), hp.Hparams):
             # if the default is hparams, set the argparse default to the hparams registry key
             # for this hparams object
-            if f.name in cls.hparams_registry:
+            if cls.hparams_registry is not None and f.name in cls.hparams_registry:
                 inverted_field_registry = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
                 default = inverted_field_registry[type(default)]
 
         nargs = None
-        if not ftype.is_hparams_dataclass:
+        if ftype.is_primitive or ftype.is_enum or ftype.is_json_dict:
             if ftype.is_list:
                 nargs = '*'
             elif ftype.is_boolean:
@@ -254,7 +259,7 @@ def retrieve_args(
             ans.append(arg)
         else:
             # Split into choose one
-            if f.name not in cls.hparams_registry:
+            if cls.hparams_registry is None or f.name not in cls.hparams_registry:
                 # Defaults to direct nesting if missing from hparams_registry
                 if ftype.is_list:
                     # if it's a list of singletons, then print a warning and skip it
