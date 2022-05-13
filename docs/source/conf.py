@@ -37,7 +37,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinxext.opengraph',
     'sphinx_copybutton',
-    'sphinxarg.ext',
     'sphinx_rtd_theme',
     'myst_parser',
 ]
