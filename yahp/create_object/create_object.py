@@ -661,21 +661,6 @@ def get_argparse(
             help='Additional, non-YAHP argument',
         )
 
-    Then the ``--help`` would include both arguments:
-
-    .. doctest::
-
-        >>> parser.print_help()
-        usage: ...
-        ...
-        options:
-        ...
-          --my_argument MY_ARGUMENT
-                                Additional, non-YAHP argument
-        <BLANKLINE>
-        MyClass:
-          --foo FOO             (required): <int> Foo
-
     The ``--my_argument`` is accessible like normal:
 
     .. doctest::
