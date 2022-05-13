@@ -132,6 +132,7 @@ class UnsupportedType:
         self.filename = filename
 
 
+@pytest.mark.xfail('TextIO differs between python versions so the exception is not reliably raised.')
 def test_unsupported_class_errors():
     with pytest.raises(TypeError, match=(r"Type annotation <class 'typing\.TextIO'> is not supported")):
         hp.create(UnsupportedType, {})

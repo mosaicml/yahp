@@ -34,8 +34,10 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinxcontrib.katex',
     'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
     'sphinxext.opengraph',
     'sphinx_copybutton',
+    'sphinxarg.ext',
     'sphinx_rtd_theme',
     'myst_parser',
 ]
@@ -65,3 +67,11 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
+
+autosectionlabel_prefix_document = True
+autosummary_imported_members = False
+autosectionlabel_maxdepth = 5
+autosummary_generate = True
+
+# html_static_path = ['_static']
+html_title = ' YAHP'

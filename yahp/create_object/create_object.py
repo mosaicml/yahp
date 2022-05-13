@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 TObject = TypeVar('TObject')
 
+__all__ = ['create', 'get_argparse']
+
 
 class _MissingRequiredFieldException(ValueError):
     pass
@@ -39,10 +41,6 @@ class _DeferredCreateCall:
     data: Dict[str, JSON]
     prefix: List[str]
     parser_args: Optional[Sequence[ParserArgument]]
-
-
-def _emit_should_be_dict_warning(arg_name: str):
-    warnings.warn(f'MalformedYAMLWarning: {arg_name} should be a dict.')
 
 
 def _get_split_key(key: str, splitter: str = '+') -> Tuple[str, Any]:
@@ -60,7 +58,7 @@ logger = logging.getLogger(__name__)
 
 def _create(
     *,
-    constructor: Union[Type[THparams], Type[AutoInitializedHparams[TObject]], Callable[..., TObject],],
+    constructor: Union[Type[THparams], Callable[..., TObject]],
     data: Dict[str, JSON],
     parsed_args: Dict[str, str],
     cli_args: Optional[List[str]],
@@ -195,7 +193,6 @@ def _create(
                                 sub_yaml = {}
 
                             if isinstance(sub_yaml, list):
-                                _emit_should_be_dict_warning(full_name)
                                 sub_yaml = list_to_deduplicated_dict(sub_yaml)
 
                             if not isinstance(sub_yaml, dict):
@@ -300,7 +297,6 @@ def _create(
                             if yaml_val is None:
                                 yaml_val = {}
                             if isinstance(yaml_val, list):
-                                _emit_should_be_dict_warning(full_name)
                                 yaml_val = list_to_deduplicated_dict(yaml_val)
                             if not isinstance(yaml_val, dict):
                                 raise ValueError(
@@ -441,6 +437,51 @@ def create(
 ) -> TObject:
     """Create a class or invoke a function with arguments coming from a dictionary, YAML string or file, or the CLI.
 
+    This function is the main entrypoint to YAHP! It will recurse through the configuration -- which can come from
+    CLI args or a JSON dictionary, or YAML file -- to invoke the ``constructor``. For example:
+
+    .. testcode::
+
+        import yahp as hp
+
+        class Foo:
+            '''Foo Docstring
+
+            Args:
+                foo (int): Integer variable.
+            '''
+
+            def __init__(self, foo: int):
+                self.foo = foo
+
+    .. doctest::
+
+        >>> foo_instance = hp.create(Foo, data={'foo': 42})
+        >>> foo_instance.foo
+        42
+
+    The ``constructor`` can also have nested classes:
+
+    .. testcode::
+
+        import yahp as hp
+
+        class Bar:
+            '''MyClass Docstring
+
+            Args:
+                my_nested_class (MyNestedClass): MyNestedClass
+            '''
+
+            def __init__(self, my_nested_class: MyNestedClass):
+                self.my_nested_class = my_nested_class
+
+    .. doctest::
+
+        >>> my_instance = hp.create(MyClass, data={'my_nested_class': {'foo': 42}})
+        >>> my_instance.my_nested_class.foo
+        42
+
     Args:
         constructor (type | callable): Class or function.
 
@@ -453,8 +494,9 @@ def create(
             If specified, load values from a YAML file.
             Can be either a filepath or file-like object.
             Cannot be specified with ``data``.
-        data (Optional[Dict[str, JSON]], optional):
-            f specified, uses this dictionary for instantiating
+        data (Optional[Dict[str, JSON]], optional): Data dictionary.
+
+            If specified, this dictionary will be used for
             the :class:`~yahparams.Hparams`. Cannot be specified with ``f``.
         cli_args (Union[List[str], bool], optional): CLI argument overrides.
             Can either be a list of CLI argument,
@@ -589,18 +631,78 @@ def get_argparse(
 ) -> argparse.ArgumentParser:
     """Get an :class:`~argparse.ArgumentParser` containing all CLI arguments.
 
+    It is usually not necessary to manually parse the CLI args, as :func:`.create` will do that automatically.
+    However, if you have additional CLI arguments, then it is recommended to use this function to get a
+    :class:`~argparse.ArgumentParser` instance to ensure that ``--help`` will show all CLI arguments.
+
+    For example:
+
+    .. testcode::
+
+        import yahp as hp
+
+        class MyClass:
+            '''MyClass Docstring
+
+            Args:
+                foo (int): Foo
+            '''
+
+            def __init__(self, foo: int):
+                self.foo = foo
+
+        # Get the parser
+        parser = hp.get_argparse(MyClass)
+
+        # Add additional arguments
+        parser.add_argument(
+            '--my_argument',
+            type=str,
+            help='Additional, non-YAHP argument',
+        )
+
+    Then the ``--help`` would include both arguments:
+
+    .. doctest::
+
+        >>> parser.print_help()
+        usage: ... [--foo FOO] [--my_argument MY_ARGUMENT]
+        <BLANKLINE>
+        options:
+        ...
+          --my_argument MY_ARGUMENT
+                                Additional, non-YAHP argument
+        <BLANKLINE>
+        MyClass:
+          --foo FOO             (required): <int> Foo
+
+    The ``--my_argument`` is accessible like normal:
+
+    .. doctest::
+
+        >>> cli_args = ['--foo', '42', '--my_argument', 'Hello, world!']
+        >>> args = parser.parse_args(cli_args)
+        >>> args.my_argument
+        'Hello, world!'
+
+    And :func:`.create` would still work, ignoring the custom ``--my_argument``:
+
+    .. doctest::
+
+        >>> my_instance = hp.create(MyClass, cli_args=['--foo', '42'])
+        >>> my_instance.foo
+        42
+
     Args:
         constructor (type | callable): Class or function.
 
-            If a class is provided, an instance of the class will be returned.
-            If a function is provided, the resulting value from the function will be returned.
+            If a subclass of :class:`.Hparams` is provided, then the CLI arguments will match the
+            fields of the hyperameter class.
 
-            The arguments used to construct the class or invoke the function come from ``data``, ``f``,
-            and/or ``cli_args``.
-        f (Union[str, None, TextIO, pathlib.PurePath], optional):
-            If specified, load values from a YAML file.
-            Can be either a filepath or file-like object.
-            Cannot be specified with ``data``.
+            Otherwise, if a generic class or function is provided, then the arguments, default values,
+            and help text come from docstring and constructor (or function) signature.
+        f (str | TextIO | pathlib.Path, optional): If specified, load values from a YAML file.
+            Can be either a filepath or file-like object. Cannot be specified with ``data``.
         data (Optional[Dict[str, JSON]], optional):
             f specified, uses this dictionary for instantiating
             the :class:`~yahparams.Hparams`. Cannot be specified with ``f``.

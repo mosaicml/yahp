@@ -1,21 +1,23 @@
 # Copyright 2021 MosaicML. All Rights Reserved.
 
-from __future__ import annotations
-
 import abc
 import dataclasses
 import inspect
-from typing import Callable, Generic, Type, TypeVar
+from typing import Any, Callable, Type, get_type_hints
 
 import yahp.field
 from yahp.hparams import Hparams
 from yahp.utils.type_helpers import HparamsType
 
-TObject = TypeVar('TObject')
+__all__ = [
+    'AutoInitializedHparams',
+    'generate_hparams_cls',
+    'ensure_hparams_cls',
+]
 
 
 @dataclasses.dataclass
-class AutoInitializedHparams(Hparams, abc.ABC, Generic[TObject]):
+class AutoInitializedHparams(Hparams, abc.ABC):
     """Subclass of :class:`.Hparams` where :meth:`.initialize_object` will be invoked automatically
     when being created from serialized data or the CLI.
 
@@ -23,7 +25,7 @@ class AutoInitializedHparams(Hparams, abc.ABC, Generic[TObject]):
     (other than self), since it will be invoked automatically.
     """
 
-    def initialize_object(self) -> TObject:
+    def initialize_object(self) -> Any:
         return super().initialize_object()
 
 
@@ -43,18 +45,35 @@ def generate_hparams_cls(constructor: Callable, auto_initialize: bool = True) ->
 
     # Extract the fields from the init signature
     field_list = []
+
+    type_hints = get_type_hints(constructor.__init__ if isinstance(constructor, type) else constructor)
     sig = inspect.signature(constructor)
+    parameters = sig.parameters
 
-    for param_name, param in sig.parameters.items():
+    for param_name in parameters:
+        # Using the `type_hints` dictionary to ensure that forward references are resolved
+        param_annotation = type_hints[param_name]
+        assert not isinstance(param_annotation, str), 'type hints must be resolved'
         # Attempt to parse the annotation to ensure it is valid
-        HparamsType(param.annotation)
-        field_list.append((param_name, param.annotation, yahp.field.auto(constructor, param_name)))
+        try:
+            HparamsType(param_annotation)
+        except TypeError as e:
+            raise TypeError(
+                f'Type annotation {param_annotation} for {constructor.__name__}.{param_name} is not supported') from e
 
-    if len(field_list) == 0:
-        # This is pointless to store something in yaml if it takes no arguments
-        # Instead, it's more likely a mistake (e.g. a type annotation helper)
-        # that yahp cannot parse into
-        raise TypeError(f'Type annotation {constructor} is not supported as it takes no arguments')
+        try:
+            auto_field = yahp.field.auto(constructor, param_name)
+        except ValueError as e:
+            raise TypeError(
+                f'Type annotation {param_annotation} for {constructor.__name__}.{param_name} is not supported') from e
+
+        field_list.append((param_name, param_annotation, auto_field))
+
+    # if len(field_list) == 0:
+    #     # This is pointless to store something in yaml if it takes no arguments
+    #     # Instead, it's more likely a mistake (e.g. a type annotation helper)
+    #     # that yahp cannot parse into
+    #     raise TypeError(f'Type annotation {constructor} is not supported as it takes no arguments')
 
     # Build the hparams class dynamically
 
@@ -78,7 +97,16 @@ def generate_hparams_cls(constructor: Callable, auto_initialize: bool = True) ->
 
 
 def ensure_hparams_cls(constructor: Callable) -> Type[Hparams]:
-    """Ensure that ``constructor`` is an hparams class."""
+    """Ensure that ``constructor`` is a :class:`.Hparams` class.
+
+    Args:
+        constructor (Callable): A class, function, or existing :class:`.Hparams` class.
+            If an existing :class:`.Hparams`, it will be returned as-is; otherwise
+            :func:`generate_hparams_cls` will be used to dynamically create a
+            :class:`.Hparams` from the docstring and signature.
+    Returns:
+        Type[Hparams]: A :class:`.Hparams` class.
+    """
     if isinstance(constructor, type) and issubclass(constructor, Hparams):
         return constructor
     else:
