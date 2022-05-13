@@ -448,16 +448,16 @@ def create(
             '''Foo Docstring
 
             Args:
-                foo (int): Integer variable.
+                arg (int): Integer variable.
             '''
 
-            def __init__(self, foo: int):
-                self.foo = foo
+            def __init__(self, arg: int):
+                self.arg = arg
 
     .. doctest::
 
-        >>> foo_instance = hp.create(Foo, data={'foo': 42})
-        >>> foo_instance.foo
+        >>> foo_instance = hp.create(Foo, data={'arg': 42})
+        >>> foo_instance.arg
         42
 
     The ``constructor`` can also have nested classes:
@@ -467,19 +467,19 @@ def create(
         import yahp as hp
 
         class Bar:
-            '''MyClass Docstring
+            '''Bar Docstring
 
             Args:
-                my_nested_class (MyNestedClass): MyNestedClass
+                foo (Foo): Foo class
             '''
 
-            def __init__(self, my_nested_class: MyNestedClass):
-                self.my_nested_class = my_nested_class
+            def __init__(self, foo: Foo):
+                self.foo = foo
 
     .. doctest::
 
-        >>> my_instance = hp.create(MyClass, data={'my_nested_class': {'foo': 42}})
-        >>> my_instance.my_nested_class.foo
+        >>> my_instance = hp.create(Bar, data={'foo': {'arg': 42}})
+        >>> my_instance.foo.arg
         42
 
     Args:
