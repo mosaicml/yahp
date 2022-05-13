@@ -198,7 +198,7 @@ def to_commented_map(
                 output[f.name] = None
             else:
                 if default == MISSING:
-                    assert issubclass(ftype.type, hp.Hparams)
+                    # TODO(ravi): Repsect the allow_recursion flag
                     output[f.name] = [(to_commented_map(
                         constructor=ftype.type,
                         path=path_with_fname,

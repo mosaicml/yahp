@@ -66,6 +66,7 @@ def _create(
     argparse_name_registry: ArgparseNameRegistry,
     argparsers: List[argparse.ArgumentParser],
     allow_autoinitialization: bool,
+    allow_recursion: bool,
 ) -> Union[THparams, TObject]:
     """Helper method to invoke ``constructor``, extracting parameters and sub-classes
     recursively.
@@ -88,6 +89,13 @@ def _create(
         argparsers (List[argparse.ArgumentParser]):
             A list of :class:`~argparse.ArgumentParser` instances,
             which is extended in-place.
+        allow_autoinitialization (bool): Whether to call :meth:~.Hparams.initialize_object` if
+            ``constructor`` is a subclass of :class:`.AutoInitializedHparams` or a non-hparams
+            class
+        allow_recursion (bool): Whether to recurse into sub-types if ``constructor`` is not a
+            a subclass of :class:`.Hparams`. If ``false``, and the signautre of ``constructor``
+            contains a non-primitive class, then a :exc:`TypeError` will be raised.
+            Recursion is always allowed for :class:`.Hparams`.
 
     Returns:
         The result of invoking ``constructor``, or if ``constructor`` is a subclass of AutoInitializedHparams
@@ -112,6 +120,21 @@ def _create(
         prefix_with_fname = list(prefix) + [f.name]
         try:
             ftype = HparamsType(field_types[f.name])
+            if not allow_recursion and not (isinstance(constructor, type) and issubclass(constructor, Hparams)):
+                # If recursion is not allowed and it's not a hparams subclass
+                # validate that ftype is primitive, json, enum, or an hparams subclass
+                # This ensures that YAHP does not recurse through typing hell and generate an obsecure error message
+                # about some super nested class having an unsupported field or missing annotation. Instead, if a user
+                # is passing another class into the constructor, that is an advanced enough usage they should manually
+                # create an Hparams or AutoInitializedHparams dataclass with a custom initialize object
+                if ftype.is_primitive or ftype.is_json_dict or ftype.is_enum or all(
+                        issubclass(x, Hparams) for x in ftype.types):
+                    pass
+                else:
+                    raise TypeError(
+                        (f'Type annotation {ftype} for field {constructor.__name__}.{f.name} is not allowed. '
+                         'For nested non-primitive types, please create a YAHP Hparams dataclass.'))
+
             full_name = '.'.join(prefix_with_fname)
             env_name = full_name.upper().replace('.', '_')  # dots are not (easily) allowed in env variables
             if full_name in parsed_args and parsed_args[full_name] != MISSING:
@@ -342,6 +365,7 @@ def _create(
                     argparse_name_registry=argparse_name_registry,
                     argparsers=argparsers,
                     allow_autoinitialization=True,
+                    allow_recursion=isinstance(constructor, type) and issubclass(constructor, Hparams),
                 ) for deferred_call in ensure_tuple(create_calls)
             ]
             if isinstance(create_calls, list):
@@ -381,6 +405,7 @@ def _create(
                         argparse_name_registry=argparse_name_registry,
                         argparsers=argparsers,
                         allow_autoinitialization=True,
+                        allow_recursion=isinstance(constructor, type) and issubclass(constructor, Hparams),
                     ))
             if isinstance(create_calls, list):
                 kwargs[fname] = sub_hparams
@@ -550,10 +575,6 @@ def _get_hparams(
     remaining_cli_args: List[str],
     argparsers: List[argparse.ArgumentParser],
 ) -> Tuple[Hparams, Optional[str]]:
-    # if the constructor is not hparams, convert it to an hparams class; then run the template
-    # generation
-    cls = ensure_hparams_cls(constructor)
-
     argparse_name_registry = ArgparseNameRegistry()
 
     cm_options = get_commented_map_options_from_cli(
@@ -564,6 +585,7 @@ def _get_hparams(
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
         print(f'Generating a template for {constructor.__name__}')
+        cls = ensure_hparams_cls(constructor)
         if output_file == 'stdout':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
         elif output_file == 'stderr':
@@ -611,7 +633,7 @@ def _get_hparams(
     parsed_arg_dict = vars(parsed_arg_namespace)
 
     hparams = _create(
-        constructor=cls,
+        constructor=constructor,
         data=data,
         cli_args=remaining_cli_args,
         prefix=[],
@@ -619,6 +641,7 @@ def _get_hparams(
         argparse_name_registry=argparse_name_registry,
         argparsers=argparsers,
         allow_autoinitialization=False,  # don't auto-initialize here, as the caller may need the hparams.
+        allow_recursion=True,
     )
     return hparams, output_f
 

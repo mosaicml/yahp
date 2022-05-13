@@ -23,15 +23,25 @@ class PrimitiveClass:
         self.int_arg = int_arg
 
 
-@dataclasses.dataclass
-class PrimitiveClassHparams(hp.Hparams):
-    int_arg: int = hp.auto(PrimitiveClass, 'int_arg')
+class PrimitiveClassWithStringAnnotations:
+    """Class
+
+    Args:
+        int_arg: Docstring
+    """
+
+    def __init__(
+        self,
+        int_arg: 'int',
+    ) -> None:
+        self.int_arg = int_arg
 
 
-def test_primitive_class():
+@pytest.mark.parametrize('cls', [PrimitiveClass, PrimitiveClassWithStringAnnotations])
+def test_primitive_class(cls: Union[Type[PrimitiveClass], Type[PrimitiveClassWithStringAnnotations]]):
     config: Dict[str, JSON] = {'int_arg': 69}
-    instance = hp.create(PrimitiveClass, config)
-    assert isinstance(instance, PrimitiveClass)
+    instance = hp.create(cls, config)
+    assert isinstance(instance, cls)
     assert instance.int_arg == 69
 
 
@@ -73,6 +83,11 @@ class ClassWithNestedNonHparams:
         self.nested_arg = nested_arg
 
 
+@dataclasses.dataclass
+class PrimitiveClassHparams(hp.Hparams):
+    int_arg: int = hp.auto(PrimitiveClass, 'int_arg')
+
+
 class ClassWithNestedHparams:
     """Class
 
@@ -93,6 +108,49 @@ def test_class_with_nested_hparams(cls: Union[Type[ClassWithNestedHparams], Type
     instance = hp.create(cls, config)
     assert isinstance(instance, cls)
     assert instance.nested_arg.int_arg == 42
+
+
+class ClassWithDoubleNestingNonHparams:
+    """Class
+
+    Args:
+        nested_arg: Docstring
+    """
+
+    def __init__(
+        self,
+        nested_arg: ClassWithNestedNonHparams,
+    ) -> None:
+        self.nested_arg = nested_arg
+
+
+def test_class_with_double_nesting_non_hparams_errors():
+    # Double nesting is not allowed -- can create hairy type errors.
+    config: Dict[str, JSON] = {'nested_arg': {'nested_arg': {'int_arg': 42}}}
+    with pytest.raises(TypeError):
+        hp.create(ClassWithDoubleNestingNonHparams, config)
+
+
+class ClassWithDoubleNestingHparams:
+    """Class
+
+    Args:
+        nested_arg: Docstring
+    """
+
+    def __init__(
+        self,
+        nested_arg: ClassWithNestedHparams,
+    ) -> None:
+        self.nested_arg = nested_arg
+
+
+def test_class_with_double_nesting_with_hparams():
+    # Double nesting is not allowed -- can create hairy type errors.
+    config: Dict[str, JSON] = {'nested_arg': {'nested_arg': {'int_arg': 42}}}
+    instance = hp.create(ClassWithDoubleNestingHparams, config)
+    assert isinstance(instance, ClassWithDoubleNestingHparams)
+    assert instance.nested_arg.nested_arg.int_arg == 42
 
 
 class UnionWithSupportedAndUnsupportedType:
@@ -132,9 +190,9 @@ class UnsupportedType:
         self.filename = filename
 
 
-@pytest.mark.xfail(reason='TextIO differs between python versions so the exception is not reliably raised.')
 def test_unsupported_class_errors():
-    with pytest.raises(TypeError, match=(r"Type annotation <class 'typing\.TextIO'> is not supported")):
+    msg = r"Type annotation <class 'typing\.TextIO'> for field UnsupportedType.filename is not supported"
+    with pytest.raises(TypeError, match=msg):
         hp.create(UnsupportedType, {})
 
 
@@ -168,7 +226,8 @@ def test_dataclass_with_abstract_class():
     assert instance.item.int_arg == 42
 
 
-class ClassWithMixedHparamsRegistry:
+@dataclasses.dataclass
+class ClassWithMixedHparamsRegistry(hp.Hparams):
     """Class
 
     Args:
@@ -181,6 +240,8 @@ class ClassWithMixedHparamsRegistry:
             'auto_initialized': generate_hparams_cls(ConcreteClass),
         }
     }
+
+    item: AbstractClass = hp.required('item')
 
     def __init__(self, item: AbstractClass) -> None:
         self.item = item

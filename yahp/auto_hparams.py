@@ -59,13 +59,15 @@ def generate_hparams_cls(constructor: Callable, auto_initialize: bool = True) ->
             HparamsType(param_annotation)
         except TypeError as e:
             raise TypeError(
-                f'Type annotation {param_annotation} for {constructor.__name__}.{param_name} is not supported') from e
+                f'Type annotation {param_annotation} for field {constructor.__name__}.{param_name} is not supported'
+            ) from e
 
         try:
             auto_field = yahp.field.auto(constructor, param_name)
         except ValueError as e:
             raise TypeError(
-                f'Type annotation {param_annotation} for {constructor.__name__}.{param_name} is not supported') from e
+                f'Type annotation {param_annotation} for field {constructor.__name__}.{param_name} is not supported'
+            ) from e
 
         field_list.append((param_name, param_annotation, auto_field))
 
