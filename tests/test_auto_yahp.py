@@ -1,6 +1,6 @@
 import abc
 import dataclasses
-from typing import Dict, TextIO, Type, Union
+from typing import Any, Dict, TextIO, Type, Union
 
 import pytest
 
@@ -254,3 +254,22 @@ def test_class_with_mixed_hparams_registry(key: str):
     assert isinstance(instance, ClassWithMixedHparamsRegistry)
     assert isinstance(instance.item, ConcreteClass)
     assert instance.item.int_arg == 42
+
+
+class ClassWithAny:
+    """Class
+
+    Args:
+        any_arg: Docstring
+    """
+
+    def __init__(self, any_arg: Any) -> None:
+        self.any_arg = any_arg
+
+
+@pytest.mark.parametrize('any_arg', [True, 3.14, 69, 'hello'])
+def test_any_arg(any_arg: Any):
+    config = {'any_arg': any_arg}
+    instance = hp.create(ClassWithAny, config)
+    assert type(instance.any_arg) == type(any_arg)
+    assert instance.any_arg == any_arg

@@ -120,6 +120,23 @@ class HparamsType:
         raise TypeError(f'Type annotation {item} is not supported')
 
     def _get_item_types(self, args: Sequence[Type[Any]]):
+        # Convert any 'Any' types to be a Union[int, str, bool, float]
+        # This is a best-effort solution
+        # TODO(ravi) 'Any' should be treated specially -- it should also support lists and JSON dictionaries
+        args = list(args)
+        if any(arg == Any for arg in args):
+            # remove any
+            args.remove(Any)
+            # Replace it with the supported types
+            if int not in args:
+                args.append(int)
+            if bool not in args:
+                args.append(bool)
+            if float not in args:
+                args.append(float)
+            if str not in args:
+                args.append(str)
+
         if len(args) > 1:
             # Args is a union two or more elements.
             # This function assumes that `None` was already filtered out of args
@@ -242,8 +259,21 @@ class HparamsType:
             return val
         if self.is_primitive:
             # could be a list of primitives
-            for t in (bool, float, int, str):
-                # bool, float, and int are mutually exclusive
+            primitive_types = [bool, float, int, str]
+            # if both int and float are in self.types, then use an int if it is exact;
+            # otherwise, use a float
+            if float in self.types and int in self.types:
+                try:
+                    x_float = float(val)
+                    x_int = int(x_float)
+                except (TypeError, ValueError):
+                    pass
+                else:
+                    if x_float == x_int:
+                        primitive_types.remove(float)
+
+            for t in primitive_types:
+
                 if t in self.types:
                     try:
                         return to_bool(val) if t is bool else t(val)
