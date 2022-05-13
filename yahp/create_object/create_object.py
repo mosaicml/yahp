@@ -478,8 +478,8 @@ def create(
 
     .. doctest::
 
-        >>> my_instance = hp.create(Bar, data={'foo': {'arg': 42}})
-        >>> my_instance.foo.arg
+        >>> bar_instance = hp.create(Bar, data={'foo': {'arg': 42}})
+        >>> bar_instance.foo.arg
         42
 
     Args:
