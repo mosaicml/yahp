@@ -57,8 +57,9 @@ class HparamsType:
 
     def __init__(self, item: Type[Any]) -> None:
         self.types, self.is_optional, self.is_list = self._extract_type(item)
-        if len(self.types) == 0:
-            assert self.is_optional, 'invariant error'
+
+        if len(self.types) == 0 and not self.is_optional:
+            raise TypeError(f'Type annotation {item} is not supported')
 
     def _extract_type(self, item: Type[Any]) -> Tuple[Sequence[Type[Any]], bool, bool]:
         """Extracts the underlying types from a python typing object.
@@ -137,6 +138,11 @@ class HparamsType:
             if str not in args:
                 args.append(str)
 
+        # Remove any types that are from the  `typing`, `typing_extensions`
+        # or `types` module, as type annotations are not real classes that can be parsed into
+        # This is a heuristic to avoid common mistakes, but it is not foolproof
+        args = [arg for arg in args if arg.__module__ not in ('typing', 'typing_extensions', 'types')]
+
         if len(args) > 1:
             # Args is a union two or more elements.
             # This function assumes that `None` was already filtered out of args
@@ -168,13 +174,6 @@ class HparamsType:
                     raise TypeError(f'A union of multiple classes without a primitive or Enum are not supported')
                 # Otherwise, if len(args) > 0, then there was at least one primitive or enum type that YAHP can parse
                 # in to -- e.g. Union[CustomClassA, CustomClassB, str] would be filtered down to [str]
-
-        # Validate that the type is not from the `typing`, `typing_extensions`
-        # or `types` module, as type annotations are not real classes that can be parsed into
-        # This is a heuristic to avoid common mistakes, but it is not foolproof
-        for arg in args:
-            if arg.__module__ in ('typing', 'typing_extensions', 'types'):
-                raise TypeError(f'Type annotation {arg} is not supported')
 
         return args
 
@@ -298,9 +297,9 @@ class HparamsType:
         """
         Whether the annotation allows for a
         :class:`bool`, :class:`int`, :class:`str`, or :class:`float`,
-        or a list of such types.
+        a list of such types, or is always ``None``.
         """
-        return len(self.types) > 0 and all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
+        return all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
 
     @property
     def is_boolean(self) -> bool:
@@ -325,9 +324,9 @@ class HparamsType:
         return self.types[0]
 
     def __str__(self) -> str:
-        ans = None
-
-        if self.is_enum:
+        if len(self.types) == 0:
+            ans = None
+        elif self.is_enum:
             assert issubclass(self.type, Enum)
             enum_values_string = ', '.join([x.name for x in self.type])
             ans = f'{self.type.__name__}{{{enum_values_string}}}'

@@ -1,6 +1,6 @@
 import abc
 import dataclasses
-from typing import Any, Dict, TextIO, Type, Union
+from typing import Any, Dict, Optional, TextIO, Type, Union
 
 import pytest
 
@@ -194,6 +194,29 @@ def test_unsupported_class_errors():
     msg = r"Type annotation <class 'typing\.TextIO'> for field UnsupportedType.filename is not supported"
     with pytest.raises(TypeError, match=msg):
         hp.create(UnsupportedType, {})
+
+
+class UnsupportedTypeWithOptional:
+    """Class
+
+    Args:
+        filename: Docstring
+    """
+
+    def __init__(
+        self,
+        # YAHP cannot create a TextIO object from yaml
+        # but it should still be able to parse this class and set the field to None
+        filename: Optional[TextIO],
+    ) -> None:
+        self.filename = filename
+
+
+def test_unsupported_type_with_optional():
+    config: Dict[str, JSON] = {'filename': None}
+    instance = hp.create(UnsupportedTypeWithOptional, config)
+    assert isinstance(instance, UnsupportedTypeWithOptional)
+    assert instance.filename is None
 
 
 class AbstractClass(abc.ABC):
