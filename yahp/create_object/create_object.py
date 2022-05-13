@@ -666,8 +666,8 @@ def get_argparse(
     .. doctest::
 
         >>> parser.print_help()
-        usage: ... [--foo FOO] [--my_argument MY_ARGUMENT]
-        <BLANKLINE>
+        usage: ...
+        ...
         options:
         ...
           --my_argument MY_ARGUMENT
