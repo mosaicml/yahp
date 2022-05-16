@@ -202,6 +202,11 @@ class HparamsType:
         """Whether it is a JSON Dictionary."""
         return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
 
+    @property
+    def is_recursive(self) -> bool:
+        """Whether the datatype is recursive (i.e is not JSON, a primitive, or an enum)"""
+        return not (self.is_enum or self.is_primitive or self.is_json_dict)
+
     def convert(self, val: Any, field_name: str, *, wrap_singletons: bool = True) -> Any:
         """Attempt to convert an item into a type allowed by the annotation.
 

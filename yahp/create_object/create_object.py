@@ -127,10 +127,7 @@ def _create(
                 # about some super nested class having an unsupported field or missing annotation. Instead, if a user
                 # is passing another class into the constructor, that is an advanced enough usage they should manually
                 # create an Hparams or AutoInitializedHparams dataclass with a custom initialize object
-                if ftype.is_primitive or ftype.is_json_dict or ftype.is_enum or all(
-                        issubclass(x, Hparams) for x in ftype.types):
-                    pass
-                else:
+                if ftype.is_recursive and not all(issubclass(x, Hparams) for x in ftype.types):
                     raise TypeError(
                         (f'Type annotation {ftype} for field {constructor.__name__}.{f.name} is not allowed. '
                          'For nested non-primitive types, please create a YAHP Hparams dataclass.'))
@@ -150,7 +147,7 @@ def _create(
                 # otherwise, set it as MISSING so the default will be used
                 argparse_or_yaml_value = MISSING
 
-            if ftype.is_enum or ftype.is_primitive or ftype.is_json_dict:
+            if not ftype.is_recursive:
                 if argparse_or_yaml_value == MISSING:
                     if not is_field_required(f):
                         # if it's a primitive and there's a default value,

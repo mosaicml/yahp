@@ -180,7 +180,7 @@ def to_commented_map(
 
         # The hparams type could be a primitive, enum, hparams class, custom object, or a list
 
-        if ftype.is_enum or ftype.is_primitive or ftype.is_json_dict:
+        if not ftype.is_recursive:
             if default != MISSING:
                 output[f.name] = _to_json_primitive(default)
             elif ftype.is_list:

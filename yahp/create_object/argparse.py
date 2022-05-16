@@ -237,7 +237,7 @@ def retrieve_args(
                 default = inverted_field_registry[type(default)]
 
         nargs = None
-        if ftype.is_primitive or ftype.is_enum or ftype.is_json_dict:
+        if not ftype.is_recursive:
             if ftype.is_list:
                 nargs = '*'
             elif ftype.is_boolean:
