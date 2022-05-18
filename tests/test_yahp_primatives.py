@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.yahp_fixtures import FloatToBoolFixture, PrimitiveHparam, YamlInput
+from tests.yahp_fixtures import PrimitiveHparam, YamlInput
 
 
 def test_primitive_hparams_create(primitive_yaml_input: YamlInput):
@@ -67,9 +67,3 @@ def test_primitive_hparams_json(primitive_hparam: PrimitiveHparam):
     assert isinstance(primitive_hparam.jsonfield['random_item2'], str)
     assert isinstance(primitive_hparam.jsonfield['random_item3'], bool)
     assert isinstance(primitive_hparam.jsonfield['random_item4'], float)
-
-
-def test_load_and_convert_defaults():
-    hparams = FloatToBoolFixture.create(cli_args=False)
-    assert isinstance(hparams.float_field, float)
-    assert hparams.float_field == 1.0

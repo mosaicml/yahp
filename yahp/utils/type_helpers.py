@@ -7,7 +7,6 @@ from dataclasses import MISSING, Field
 from enum import Enum
 from typing import Any, Dict, Sequence, Tuple, Type, Union, cast
 
-import yahp as hp
 from yahp.utils.iter_helpers import ensure_tuple
 from yahp.utils.typing_future import get_args, get_origin
 
@@ -58,8 +57,9 @@ class HparamsType:
 
     def __init__(self, item: Type[Any]) -> None:
         self.types, self.is_optional, self.is_list = self._extract_type(item)
-        if len(self.types) == 0:
-            assert self.is_optional, 'invariant error'
+
+        if len(self.types) == 0 and not self.is_optional:
+            raise TypeError(f'Type annotation {item} is not supported')
 
     def _extract_type(self, item: Type[Any]) -> Tuple[Sequence[Type[Any]], bool, bool]:
         """Extracts the underlying types from a python typing object.
@@ -78,39 +78,27 @@ class HparamsType:
         >>> _extract_type(Union[str, Dataclass]) raises a TypeError, since Hparam dataclasses cannot appear in non-optional unions
         """
         origin = get_origin(item)
-        if origin is None:
-            # item must be simple, like None, int, float, str, Enum, or Hparams
-            if item is None or item is type(None):
-                return [], True, False
-            if item not in _PRIMITIVE_TYPES and not safe_issubclass(item, (hp.Hparams, Enum)):
-                raise TypeError(f'item of type ({item}) is not supported.')
-            is_optional = False
-            is_list = False
-            return [item], is_optional, is_list
         if origin is Union:
             args = cast(Sequence[Any], get_args(item))
             is_optional = type(None) in args
-            args_without_none = tuple(arg for arg in args if arg not in (None, type(None)))
-            # all args in the union must be subclasses of one of the following subsets
-            is_primitive = _is_valid_primitive(*args_without_none)
-            is_enum = all(safe_issubclass(arg, Enum) for arg in args_without_none)
-            is_hparams = all(safe_issubclass(arg, hp.Hparams) for arg in args_without_none)
-            is_list = all(get_origin(arg) is list for arg in args_without_none)
-            is_json_dict = all(get_origin(arg) is dict for arg in args_without_none)
-            if is_primitive or is_hparams or is_enum:
-                assert is_list is False
-                return args_without_none, is_optional, is_list
+            args = tuple(arg for arg in args if arg not in (None, type(None)))
+            is_list = all(get_origin(arg) is list for arg in args)
             if is_list:
-                # Need to validate that the underlying type of list is either 1) Primitive, 2) Union of primitives
-                #                 assert len(args_without_none) == 1, "should only have one one"
-                assert len(args_without_none) == 1, 'if here, should only have 1 non-none argument'
-                list_arg = args_without_none[0]
+                assert len(args) == 1, 'The list annotation takes just one argument'
+                list_arg = args[0]
                 return self._get_list_type(list_arg), is_optional, is_list
+            is_json_dict = all(get_origin(arg) is dict for arg in args)
             if is_json_dict:
                 assert is_optional, 'if here, then must have been is_optional'
                 assert not is_list, 'if here, then must not have been is_list'
                 return [_JSONDict], is_optional, is_list
-            raise TypeError(f'Invalid union type: {item}. Unions must be of primitive types')
+
+            try:
+                args = self._get_item_types(args)
+            except TypeError as e:
+                raise TypeError(f'Type annotation {item} is not supported') from e
+            return args, is_optional, is_list
+
         if origin is list:
             is_optional = False
             is_list = True
@@ -119,7 +107,69 @@ class HparamsType:
             is_optional = False
             is_list = False
             return [_JSONDict], is_optional, is_list
-        raise TypeError(f'Unsupported type: {item}')
+
+        # the item can be anything
+        if item is None or item is type(None):
+            return [], True, False
+        is_optional = False
+        is_list = False
+        try:
+            item_types = self._get_item_types([item])
+        except TypeError as e:
+            raise TypeError(f'Type annotation {item} is not supported') from e
+        return item_types, is_optional, is_list
+
+    def _get_item_types(self, args: Sequence[Type[Any]]):
+        # Convert any 'Any' types to be a Union[int, str, bool, float]
+        # This is a best-effort solution
+        # TODO(ravi) 'Any' should be treated specially -- it should also support lists and JSON dictionaries
+        args = list(args)
+        if any(arg == Any for arg in args):
+            # remove any
+            args.remove(Any)
+            # Replace it with the supported types
+            if int not in args:
+                args.append(int)
+            if bool not in args:
+                args.append(bool)
+            if float not in args:
+                args.append(float)
+            if str not in args:
+                args.append(str)
+
+        if len(args) > 1:
+            # Args is a union two or more elements.
+            # This function assumes that `None` was already filtered out of args
+            #
+            # YAHP will attempt to parse into any Enum type, then into any primitive type
+            # It will not parse into any custom types that may be specified as part of a union
+            # with a string or enum
+            #
+            # In addition, a union of multiple custom types without a primitive are not supported,
+            # since yahp would not know how to parse it.
+
+            # Determine if there is an Enum. If so, use that, and ignore all other types
+            enum_classes = tuple(arg for arg in args if safe_issubclass(arg, Enum))
+            if len(enum_classes) > 0:
+                if len(enum_classes) > 1:
+                    # Multiple enum types are not supported
+                    raise TypeError(
+                        f'Multiple enum classes ({", ".join(x.__name__ for x in enum_classes)}) are not supported')
+                else:
+                    args = enum_classes
+            else:
+                # Finally, filter out non primitives and non enums.
+                args = tuple(arg for arg in args if _is_valid_primitive(arg))
+
+                # If it's a union of only primitive types, that is allowed
+                if len(args) == 0:
+                    # If all arguments were filtered out, then it was an unsupported Union -- e.g
+                    # Union[CustomClassA, CustomClassB]
+                    raise TypeError(f'A union of multiple classes without a primitive or Enum are not supported')
+                # Otherwise, if len(args) > 0, then there was at least one primitive or enum type that YAHP can parse
+                # in to -- e.g. Union[CustomClassA, CustomClassB, str] would be filtered down to [str]
+
+        return args
 
     def _get_list_type(self, list_arg: Type[Any]) -> Sequence[Type[Any]]:
         if get_origin(list_arg) is not list:
@@ -127,33 +177,29 @@ class HparamsType:
         list_args = get_args(list_arg)
         assert len(list_args) == 1, 'lists should have exactly one argument'
         list_item = list_args[0]
-        error = TypeError(f'List of type {list_item} is unsupported. Lists must be of Hparams, Enum, or a valid union.')
         list_origin = get_origin(list_item)
         if list_origin is None:
-            # Must be either primitive or hparams
-            if list_item not in _PRIMITIVE_TYPES and not safe_issubclass(list_item, (hp.Hparams, Enum)):
-                raise error
+            # This is the singleton case
             return [list_item]
         if list_origin is Union:
             list_args = cast(Sequence[Any], get_args(list_item))
-            is_primitive = _is_valid_primitive(*list_args)
-            if not is_primitive:
-                raise error
-            return list_args
-        raise error
 
-    @property
-    def is_hparams_dataclass(self) -> bool:
-        """
-        Whether it is a subclass of :class:`~yahp.hparams.Hparams`,
-        or a list of :class:`~yahp.hparams.Hparams`.
-        """
-        return len(self.types) > 0 and all(safe_issubclass(t, hp.Hparams) for t in self.types)
+            try:
+                return self._get_item_types(list_args)
+            except TypeError as e:
+                raise TypeError(f'Type annotation {list_arg} is not supported') from e
+
+        raise TypeError(f'Type annotation {list_arg} is not supported')
 
     @property
     def is_json_dict(self) -> bool:
         """Whether it is a JSON Dictionary."""
         return len(self.types) > 0 and all(safe_issubclass(t, _JSONDict) for t in self.types)
+
+    @property
+    def is_recursive(self) -> bool:
+        """Whether the datatype is recursive (i.e is not JSON, a primitive, or an enum)"""
+        return not (self.is_enum or self.is_primitive or self.is_json_dict)
 
     def convert(self, val: Any, field_name: str, *, wrap_singletons: bool = True) -> Any:
         """Attempt to convert an item into a type allowed by the annotation.
@@ -182,6 +228,9 @@ class HparamsType:
                 return None
         if not self.is_optional and val is None:
             raise ValueError(f'{field_name} is None, but a value is required.')
+        if any(isinstance(val, t) for t in self.types):
+            # It is already a valid type
+            return val
         if self.is_list:
             # If given a list, then return a list of converted values
             if wrap_singletons:
@@ -203,10 +252,6 @@ class HparamsType:
                     possible_keys = [str(key) for key in enum_map.keys()]
                     raise ValueError(f"'{val}' is not a valid key. Choose on of {', '.join(possible_keys)}.")
             return enum_map[val]
-        if self.is_hparams_dataclass:
-            if isinstance(val, self.type):
-                return val
-            raise RuntimeError('convert() cannot be used with hparam dataclasses')
         if self.is_json_dict:
             if isinstance(val, str):
                 val = json.loads(val)
@@ -215,8 +260,21 @@ class HparamsType:
             return val
         if self.is_primitive:
             # could be a list of primitives
-            for t in (bool, float, int, str):
-                # bool, float, and int are mutually exclusive
+            primitive_types = [bool, float, int, str]
+            # if both int and float are in self.types, then use an int if it is exact;
+            # otherwise, use a float
+            if float in self.types and int in self.types:
+                try:
+                    x_float = float(val)
+                    x_int = int(x_float)
+                except (TypeError, ValueError):
+                    pass
+                else:
+                    if x_float == x_int:
+                        primitive_types.remove(float)
+
+            for t in primitive_types:
+
                 if t in self.types:
                     try:
                         return to_bool(val) if t is bool else t(val)
@@ -224,7 +282,9 @@ class HparamsType:
                         pass
 
             raise TypeError(f'Unable to convert value {val} for field {field_name} to type {self}')
-        raise RuntimeError(f'Unknown type for field {field_name}')
+        if isinstance(val, self.type):
+            return val
+        raise RuntimeError(f'convert() cannot be used with type {self.type} for field {field_name}')
 
     @property
     def is_enum(self) -> bool:
@@ -239,9 +299,9 @@ class HparamsType:
         """
         Whether the annotation allows for a
         :class:`bool`, :class:`int`, :class:`str`, or :class:`float`,
-        or a list of such types.
+        a list of such types, or is always ``None``.
         """
-        return len(self.types) > 0 and all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
+        return all(safe_issubclass(t, _PRIMITIVE_TYPES) for t in self.types)
 
     @property
     def is_boolean(self) -> bool:
@@ -266,23 +326,24 @@ class HparamsType:
         return self.types[0]
 
     def __str__(self) -> str:
-        ans = None
-        if self.is_primitive:  # str, float, int, bool
+        if len(self.types) == 0:
+            ans = None
+        elif self.is_enum:
+            assert issubclass(self.type, Enum)
+            enum_values_string = ', '.join([x.name for x in self.type])
+            ans = f'{self.type.__name__}{{{enum_values_string}}}'
+
+        elif self.is_primitive:  # str, float, int, bool
             if len(self.types) > 1:
                 ans = f"{' | '.join(t.__name__ for t in self.types)}"
             else:
                 ans = self.type.__name__
 
-        if self.is_enum:
-            assert issubclass(self.type, Enum)
-            enum_values_string = ', '.join([x.name for x in self.type])
-            ans = f'{self.type.__name__}{{{enum_values_string}}}'
-
-        if self.is_hparams_dataclass:
-            ans = self.type.__name__
-
-        if self.is_json_dict:
+        elif self.is_json_dict:
             ans = 'JSON'
+
+        else:
+            ans = ', '.join(getattr(t, '__name__', str(t)) for t in self.types)
 
         if ans is None:
             # always None

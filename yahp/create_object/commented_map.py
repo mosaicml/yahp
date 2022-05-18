@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import MISSING, fields
 from enum import Enum
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Type, get_type_hints
+from typing import TYPE_CHECKING, Callable, List, NamedTuple, Optional, Type, get_type_hints
 
 import yahp as hp
+from yahp.create_object.create_object import ensure_hparams_cls
 from yahp.utils.interactive import query_with_options
 from yahp.utils.iter_helpers import ensure_tuple, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, safe_issubclass
@@ -75,6 +76,13 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
         otherwise, a :class:`~ruamel.yaml.comments.CommentedMap``
     """
     field_name = path_with_fname[-1]
+    if hparams.hparams_registry is None:
+        raise ValueError((
+            f'{hparams.__name__}.{path_with_fname[-1]} is abstract, but {hparams.__name__} does not have an '
+            f'hparams_registry dictionary. To fix, set {hparams.__name__}.hparams_registry to '
+            'a registry dictionary. See '
+            'https://docs.mosaicml.com/projects/yahp/en/stable/api_ref/hparams.html#yahp.hparams.Hparams.hparams_registry'
+            ' for additional information.'))
     possible_sub_hparams = hparams.hparams_registry[field_name]
     possible_keys = list(possible_sub_hparams.keys())
     if options.interactive:
@@ -108,7 +116,7 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
     sub_hparams = CommentedMap()
     for sub_key, sub_type in possible_sub_hparams.items():
         sub_map = to_commented_map(
-            cls=sub_type,
+            constructor=sub_type,
             path=list(path_with_fname) + [sub_key],
             options=options,
         )
@@ -123,7 +131,7 @@ def _process_abstract_hparams(hparams: Type[hp.Hparams], path_with_fname: List[s
 
 
 def to_commented_map(
-    cls: Type[hp.Hparams],
+    constructor: Callable,
     options: CMOptions,
     path: List[str],
 ) -> YAML:
@@ -143,6 +151,9 @@ def to_commented_map(
         YAML: YAML template for ``cls``.
     """
     # TODO(averylamp) accept existing fields to create a new template from an existing one
+
+    # Convert the class to an hparams class if a constructor was passed in
+    cls = ensure_hparams_cls(constructor)
     output = CommentedMap()
     field_types = get_type_hints(cls)
     for f in fields(cls):
@@ -166,7 +177,10 @@ def to_commented_map(
         if default == MISSING and 'template_default' in f.metadata:
             default = f.metadata['template_default']
         choices = []
-        if not ftype.is_hparams_dataclass:
+
+        # The hparams type could be a primitive, enum, hparams class, custom object, or a list
+
+        if not ftype.is_recursive:
             if default != MISSING:
                 output[f.name] = _to_json_primitive(default)
             elif ftype.is_list:
@@ -178,15 +192,15 @@ def to_commented_map(
             else:
                 output[f.name] = None
         # it's a dataclass, or list of dataclasses
-        elif f.name not in cls.hparams_registry:
+        elif cls.hparams_registry is None or f.name not in cls.hparams_registry:
             # non-abstract hparams
             if default is None:
                 output[f.name] = None
             else:
                 if default == MISSING:
-                    assert issubclass(ftype.type, hp.Hparams)
+                    # TODO(ravi): Repsect the allow_recursion flag
                     output[f.name] = [(to_commented_map(
-                        cls=ftype.type,
+                        constructor=ftype.type,
                         path=path_with_fname,
                         options=options,
                     ))]
@@ -206,10 +220,12 @@ def to_commented_map(
             else:
                 if ftype.is_list:
                     output[f.name] = list_to_deduplicated_dict([{
-                        inverted_hparams[type(x)]: x.to_dict()
+                        inverted_hparams[type(x)]: x.to_dict() if isinstance(x, hp.Hparams) else {}
                     } for x in ensure_tuple(default)])
                 else:
-                    output[f.name] = {inverted_hparams[type(default)]: default.to_dict()}
+                    output[f.name] = {
+                        inverted_hparams[type(default)]: default.to_dict() if isinstance(default, hp.Hparams) else {},
+                    }
         if options.add_docs:
             _add_commenting(cm=output,
                             comment_key=f.name,

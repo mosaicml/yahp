@@ -8,7 +8,7 @@ import pytest
 import yahp as hp
 
 
-@pytest.mark.parametrize('val,expected', [('1', 1), ('1ep', '1ep'), (2, 2)])
+@pytest.mark.parametrize('val,expected', [('1', '1'), ('1ep', '1ep'), (2, 2)])
 def test_union(val: Union[str, int], expected: Union[str, int]):
 
     @dataclass

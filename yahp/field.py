@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import inspect
 import logging
+import warnings
 from dataclasses import _MISSING_TYPE, MISSING, field
-from typing import Any, Callable, Union, overload
+from typing import Any, Callable, Optional, TypeVar, Union, overload
 
 import docstring_parser
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['required', 'optional', 'auto']
+
+TObject = TypeVar('TObject')
 
 
 @overload
@@ -43,12 +46,12 @@ def required(doc: str, *, template_default: Any = MISSING):
 
 
 @overload
-def optional(doc: str, *, default: Any) -> Any:
+def optional(doc: str, *, default: TObject) -> TObject:
     ...
 
 
 @overload
-def optional(doc: str, *, default_factory: Callable[[], Any]) -> Any:
+def optional(doc: str, *, default_factory: Callable[[], TObject]) -> TObject:
     ...
 
 
@@ -81,7 +84,21 @@ def optional(doc: str, *, default: Any = MISSING, default_factory: Union[_MISSIN
     )
 
 
-def auto(constructor: Callable, arg_name: str):
+def _extract_doc_from_docstring(docstring: str, arg_name: str):
+    # Extract the documentation from the docstring
+
+    parsed_docstring = docstring_parser.parse(docstring)
+    docstring_params = parsed_docstring.params
+    doc = None
+    for param in docstring_params:
+        if param.arg_name == arg_name:
+            doc = param.description
+    if doc is None:
+        raise ValueError(f'Argument {arg_name} is not in the docstring')
+    return doc
+
+
+def auto(constructor: Callable, arg_name: str, doc: Optional[str] = None, ignore_docstring_errors: bool = False):
     """A field automatically inferred from the docstring and signature.
 
     This helper will automatically parse the docstring and signature of a class or function to determine
@@ -114,30 +131,46 @@ def auto(constructor: Callable, arg_name: str):
     Args:
         cls (Callable): The class or function.
         arg_name (str): The argument name within the class or function signature and docstring.
+        doc (str, optional): If provided, use this value for argparse documentation, instead of attempting
+            to extract it from the docstring.
+        ignore_docstring_errors (bool, optional): If False, ignore any errors from parsing the docstring.
+            Useful if the ``constructor`` is in a third-party library.
 
     Returns:
         A yahp field.
     """
     sig = inspect.signature(constructor)
-    parameter = sig.parameters[arg_name]
+    try:
+        parameter = sig.parameters[arg_name]
+    except KeyError:
+        raise ValueError(f'Constructor {constructor} does not have an argument named {arg_name}')
 
-    # Extract the documentation from the docstring
-    docstring = constructor.__doc__
-    if type(constructor) == type and constructor.__init__.__doc__ is not None:
-        # If `constructor` is a class, then the docstring may be under `__init__`
-        docstring = constructor.__init__.__doc__
-
-    if docstring is None:
-        raise ValueError(f'{constructor.__name__} does not have a docstring')
-    parsed_docstring = docstring_parser.parse(docstring)
-    docstring_params = parsed_docstring.params
-    doc = None
-    for param in docstring_params:
-        if param.arg_name == arg_name:
-            doc = param.description
     if doc is None:
-        raise ValueError(f'{constructor.__name__} does not contain a docstring entry for argument {arg_name}')
+        docstring = constructor.__doc__
+        if type(constructor) == type and constructor.__init__.__doc__ is not None:
+            # If `constructor` is a class, then the docstring may be under `__init__`
+            docstring = constructor.__init__.__doc__
 
+        if docstring is None:
+            msg = f'{constructor.__name__} has no docstring. Argument {arg_name} will be undocumented.'
+            if ignore_docstring_errors:
+                warnings.warn(msg)
+            else:
+                raise ValueError(msg)
+            doc = arg_name
+        else:
+            try:
+                doc = _extract_doc_from_docstring(docstring=docstring, arg_name=arg_name)
+            except (docstring_parser.ParseError, ValueError) as e:
+                msg = (f'Unable to extract docstring for argument {arg_name} from {constructor.__name__}. '
+                       f'Argument {arg_name} will be undocumented.')
+                if ignore_docstring_errors:
+                    warnings.warn(f'{msg}: {e}')
+                    doc = arg_name
+                else:
+                    raise ValueError(msg) from e
+
+    assert doc is not None, 'doc was set above'
     if parameter.default == inspect.Parameter.empty:
         return required(doc)
     else:

@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
       - name: Cache pip
         uses: actions/cache@v2
         with:
@@ -29,5 +29,8 @@ jobs:
           set -ex
           python -m pip install -e .[all]
       - uses: ./.github/actions/pyright
+        with:
+          working_directory: ${{ github.workspace }}
+      - uses: ./.github/actions/doctest
         with:
           working_directory: ${{ github.workspace }}
