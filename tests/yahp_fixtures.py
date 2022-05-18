@@ -4,7 +4,7 @@ import pathlib
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, NamedTuple, Optional, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Union, cast
 
 import pytest
 import yaml
@@ -527,11 +527,12 @@ class KitchenSinkHparams(hp.Hparams):
                                                                             default=None)
 
     optional_list_union_bool_str_field_default_hello: List[Union[bool, str]] = hp.optional(
-        'optional list_union_bool_str field default hello', default_factory=lambda: ['hello'])
+        'optional list_union_bool_str field default hello',
+        default_factory=lambda: cast(List[Union[bool, str]], ['hello']))
     optional_list_union_bool_str_field_default_none: Optional[List[Union[bool, str]]] = hp.optional(
         'optional list_union_bool_str field default None', default=None)
     optional_list_union_bool_str_field_default_true: Optional[List[Union[bool, str]]] = hp.optional(
-        'optional list_union_bool_str field default True', default_factory=lambda: [True])
+        'optional list_union_bool_str field default True', default_factory=lambda: cast(List[Union[bool, str]], [True]))
 
     optional_subhparams_field_default_not_none: OptionalBooleansHparam = hp.optional(
         'optional subhparams field default not none', default=OptionalBooleansHparam())
@@ -548,7 +549,7 @@ class KitchenSinkHparams(hp.Hparams):
         'optional subhparams field default None', default=None)
 
     optional_choice_default_not_none_list: List[ChoiceHparamParent] = hp.optional(
-        doc='choice Hparam field', default_factory=lambda: [ChoiceOneHparam(False, 0)])
+        doc='choice Hparam field', default_factory=lambda: cast(List[ChoiceHparamParent], [ChoiceOneHparam(False, 0)]))
     optional_choice_default_none_list: Optional[List[ChoiceHparamParent]] = hp.optional(doc='choice Hparam field',
                                                                                         default=None)
 
