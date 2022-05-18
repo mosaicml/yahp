@@ -55,7 +55,8 @@ def generate_hparams_cls(constructor: Callable,
 
     for param_name in parameters:
         # Using the `type_hints` dictionary to ensure that forward references are resolved
-        param_annotation = type_hints[param_name]
+        # If it is untyped, resolve to 'Any'
+        param_annotation = type_hints.get(param_name, Any)
         assert not isinstance(param_annotation, str), 'type hints must be resolved'
         # Attempt to parse the annotation to ensure it is valid
         try:
