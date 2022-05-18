@@ -234,6 +234,9 @@ class HparamsType:
                 return None
         if not self.is_optional and val is None:
             raise ValueError(f'{field_name} is None, but a value is required.')
+        if any(isinstance(val, t) for t in self.types):
+            # It is already a valid type
+            return val
         if self.is_list:
             # If given a list, then return a list of converted values
             if wrap_singletons:

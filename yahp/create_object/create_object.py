@@ -152,10 +152,8 @@ def _create(
                     if not is_field_required(f):
                         # if it's a primitive and there's a default value,
                         # then convert and use it.
-                        # Sometimes primitives will not have correct default values
-                        # (e.g. type is float, but the default is an int)
                         default_value = get_default_value(f)
-                        kwargs[f.name] = ftype.convert(default_value, full_name)
+                        kwargs[f.name] = default_value
                     # if the field is required and not specified, then let the hparams constructor
                     # error
                 else:

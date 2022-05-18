@@ -364,8 +364,8 @@ class Hparams(ABC):
             for x in value:
                 if not isinstance(x, ftype.type):
                     raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                assert isinstance(x, Hparams)
-                x.validate()
+                if isinstance(x, Hparams):
+                    x.validate()
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()
