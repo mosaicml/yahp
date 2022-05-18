@@ -170,6 +170,7 @@ def auto(constructor: Callable, arg_name: str, doc: Optional[str] = None, ignore
                 else:
                     raise ValueError(msg) from e
 
+    assert doc is not None, 'doc was set above'
     if parameter.default == inspect.Parameter.empty:
         return required(doc)
     else:
