@@ -1,6 +1,6 @@
 import abc
 import dataclasses
-from typing import Any, Dict, Optional, TextIO, Type, Union
+from typing import Any, Callable, Dict, Optional, TextIO, Type, Union
 
 import pytest
 
@@ -191,9 +191,17 @@ class UnsupportedType:
 
 
 def test_unsupported_class_errors():
-    msg = r"Type annotation <class 'typing\.TextIO'> for field UnsupportedType.filename is not supported"
+    msg = (
+        r"Argument filename with type annotation \<class 'typing\.TextIO'\> is abstract; however, abstract types are not supported "
+        r'without the concrete implementations defined in the hparams_registry')
+
+    def new_init(self):
+        return
+
+    TextIO.__init__ = new_init
     with pytest.raises(TypeError, match=msg):
-        hp.create(UnsupportedType, {})
+        unsupported_type = hp.create(UnsupportedType, {})
+        print(unsupported_type)
 
 
 class UnsupportedTypeWithOptional:
@@ -217,6 +225,38 @@ def test_unsupported_type_with_optional():
     instance = hp.create(UnsupportedTypeWithOptional, config)
     assert isinstance(instance, UnsupportedTypeWithOptional)
     assert instance.filename is None
+
+
+def foo(a: int, b: float):
+    """Foo.
+
+    Args:
+        a (int): A.
+        b (float): B.
+    """
+    return lambda: a * b
+
+
+class UnsupportedTypeWithRegistry:
+    """Class
+
+    Args:
+        func: Function
+    """
+    hparams_registry = {'func': {'foo': foo}}
+
+    def __init__(
+        self,
+        func: Callable,
+    ) -> None:
+        self.func = func
+
+
+def test_unsupported_type_with_registry():
+    config: Dict[str, JSON] = {'func': {'foo': {'a': 5, 'b': 3.0}}}
+    instance = hp.create(UnsupportedTypeWithRegistry, config)
+    assert isinstance(instance, UnsupportedTypeWithRegistry)
+    assert instance.func() == 15
 
 
 class AbstractClass(abc.ABC):

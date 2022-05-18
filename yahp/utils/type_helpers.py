@@ -78,17 +78,6 @@ class HparamsType:
         >>> _extract_type(Union[str, Dataclass]) raises a TypeError, since Hparam dataclasses cannot appear in non-optional unions
         """
         origin = get_origin(item)
-        if origin is None:
-            # the item can be anything
-            if item is None or item is type(None):
-                return [], True, False
-            is_optional = False
-            is_list = False
-            try:
-                item_types = self._get_item_types([item])
-            except TypeError as e:
-                raise TypeError(f'Type annotation {item} is not supported') from e
-            return item_types, is_optional, is_list
         if origin is Union:
             args = cast(Sequence[Any], get_args(item))
             is_optional = type(None) in args
@@ -118,7 +107,17 @@ class HparamsType:
             is_optional = False
             is_list = False
             return [_JSONDict], is_optional, is_list
-        raise TypeError(f'Type annotation {item} is not supported')
+
+        # the item can be anything
+        if item is None or item is type(None):
+            return [], True, False
+        is_optional = False
+        is_list = False
+        try:
+            item_types = self._get_item_types([item])
+        except TypeError as e:
+            raise TypeError(f'Type annotation {item} is not supported') from e
+        return item_types, is_optional, is_list
 
     def _get_item_types(self, args: Sequence[Type[Any]]):
         # Convert any 'Any' types to be a Union[int, str, bool, float]
@@ -137,11 +136,6 @@ class HparamsType:
                 args.append(float)
             if str not in args:
                 args.append(str)
-
-        # Remove any types that are from the  `typing`, `typing_extensions`
-        # or `types` module, as type annotations are not real classes that can be parsed into
-        # This is a heuristic to avoid common mistakes, but it is not foolproof
-        args = [arg for arg in args if arg.__module__ not in ('typing', 'typing_extensions', 'types')]
 
         if len(args) > 1:
             # Args is a union two or more elements.

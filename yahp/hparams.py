@@ -11,8 +11,7 @@ from abc import ABC
 from dataclasses import dataclass, fields
 from enum import Enum
 from io import StringIO
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast,
-                    get_type_hints)
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast
 
 import yaml
 
@@ -313,59 +312,11 @@ class Hparams(ABC):
         sub_registry[class_key] = register_class
 
     def validate(self):
-        """Validate that the hparams are of the correct types.
-        Recurses through sub-hparams.
-
-        Raises:
-            TypeError: Raises a :class:`TypeError` if any fields are an incorrect type.
-        """
-        field_types = get_type_hints(self.__class__)
-        for f in fields(self):
-            if not f.init:
-                continue
-            fname = f.name
-            ftype = type_helpers.HparamsType(field_types[f.name])
-            value = getattr(self, f.name)
-            if ftype.is_optional:
-                if value is None:
-                    continue
-            if ftype.is_json_dict:
-                if not isinstance(value, dict):
-                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
-                continue
-            if ftype.is_primitive or ftype.is_enum:
-                if ftype.is_list:
-                    if not isinstance(value, list):
-                        raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
-                else:
-                    value = [value]
-                for x in value:
-                    if ftype.is_enum:
-                        if not isinstance(x, ftype.type):
-                            raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                        continue
-                    if ftype.is_primitive:
-                        is_allowed = False
-                        for allowed_type in ftype.types:
-                            if isinstance(x, allowed_type):
-                                is_allowed = True
-                                break
-                        if not is_allowed:
-                            raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                        continue
-                    warnings.warn(f'{ftype} cannot be validated. This is a bug in YAHP. Please submit a bug report.')
-                continue
-            # is hparams
-            if ftype.is_list:
-                if not isinstance(value, list):
-                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
-                continue
-            value = [value]
-            for x in value:
-                if not isinstance(x, ftype.type):
-                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                if isinstance(x, Hparams):
-                    x.validate()
+        """Validate is deprecated"""
+        warnings.warn(
+            f'{type(self).__name__}.validate() is deprecated. Instead, perform any validation directly in initialize_object()',
+            category=DeprecationWarning,
+        )
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()

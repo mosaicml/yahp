@@ -101,6 +101,15 @@ def _create(
         The result of invoking ``constructor``, or if ``constructor`` is a subclass of AutoInitializedHparams
         and ``allow_autoinitialization`` is True, then ``constructor.initialize_object()``.
     """
+    # Heuristic:
+    # If the constructor is from `typing`, `typing_extensions`, or `types`, then YAHP cannot instantiate
+    # the object. Such type annotations are only supported when using a registry, and the registry contains
+    # a class that implements the abstract type annotation
+    if constructor.__module__ in ('typing', 'typing_extensions', 'types'):
+        raise TypeError((f"Argument {'.'.join(prefix)} with type annotation {constructor} is abstract; however, "
+                         'abstract types are not supported without the concrete implementations defined in the '
+                         'hparams_registry.'))
+
     kwargs: Dict[str, HparamsField] = {}
     deferred_create_calls: Dict[str, Union[_DeferredCreateCall,  # singleton field
                                            List[_DeferredCreateCall],  # list field

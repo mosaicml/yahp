@@ -29,13 +29,16 @@ class AutoInitializedHparams(Hparams, abc.ABC):
         return super().initialize_object()
 
 
-def generate_hparams_cls(constructor: Callable, auto_initialize: bool = True) -> Type[Hparams]:
+def generate_hparams_cls(constructor: Callable,
+                         auto_initialize: bool = True,
+                         ignore_docstring_errors: bool = False) -> Type[Hparams]:
     """Generate a :class:`.Hparams` from the signature and docstring of a callable.
 
     Args:
         constructor (Callable): A function or class
         auto_initialize (bool, optional): Whether to auto-initialize the class when instantiating it from
             configuration.
+        ignore_docstring_errors (bool, optional): Whether to ignore any docstring errors.
 
     Returns:
         Type[Hparams]: A subclass of :class:`.Hparams` where :meth:`.Hparams.initialize_object()` returns
@@ -62,12 +65,7 @@ def generate_hparams_cls(constructor: Callable, auto_initialize: bool = True) ->
                 f'Type annotation {param_annotation} for field {constructor.__name__}.{param_name} is not supported'
             ) from e
 
-        try:
-            auto_field = yahp.field.auto(constructor, param_name)
-        except ValueError as e:
-            raise TypeError(
-                f'Type annotation {param_annotation} for field {constructor.__name__}.{param_name} is not supported'
-            ) from e
+        auto_field = yahp.field.auto(constructor, param_name, ignore_docstring_errors=ignore_docstring_errors)
 
         field_list.append((param_name, param_annotation, auto_field))
 
