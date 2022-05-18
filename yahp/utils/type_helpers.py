@@ -343,7 +343,7 @@ class HparamsType:
             ans = 'JSON'
 
         else:
-            ans = ', '.join(t.__name__ for t in self.types)
+            ans = ', '.join(str(t) for t in self.types)
 
         if ans is None:
             # always None

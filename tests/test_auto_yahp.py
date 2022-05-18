@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import sys
 from typing import Any, Callable, Dict, Optional, TextIO, Type, Union
 
 import pytest
@@ -202,11 +203,18 @@ class UnsupportedType:
 
 
 def test_unsupported_class_errors():
-    msg = (
-        r"Argument filename with type annotation \<class 'typing\.TextIO'\> is abstract; however, abstract types are not supported "
-        r'without the concrete implementations defined in the hparams_registry')
 
-    with pytest.raises(TypeError, match=msg):
+    if (sys.version_info.major, sys.version_info.minor) < (3, 9):
+        # TextIO has *args as its init
+        msg = r'Unable to extract docstring for argument args from TextIO. Argument args will be undocumented.'
+        ctx = pytest.raises(ValueError, match=msg)
+    else:
+        msg = (r"Argument filename with type annotation \<class 'typing\.TextIO'\> is abstract; "
+               r'however, abstract types are not supported '
+               r'without the concrete implementations defined in the hparams_registry')
+        ctx = pytest.raises(TypeError, match=msg)
+
+    with ctx:
         unsupported_type = hp.create(UnsupportedType, {})
         print(unsupported_type)
 
