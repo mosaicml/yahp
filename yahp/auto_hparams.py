@@ -71,12 +71,6 @@ def generate_hparams_cls(constructor: Callable, auto_initialize: bool = True) ->
 
         field_list.append((param_name, param_annotation, auto_field))
 
-    # if len(field_list) == 0:
-    #     # This is pointless to store something in yaml if it takes no arguments
-    #     # Instead, it's more likely a mistake (e.g. a type annotation helper)
-    #     # that yahp cannot parse into
-    #     raise TypeError(f'Type annotation {constructor} is not supported as it takes no arguments')
-
     # Build the hparams class dynamically
 
     hparams_cls = dataclasses.make_dataclass(
