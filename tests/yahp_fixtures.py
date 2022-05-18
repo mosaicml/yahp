@@ -441,11 +441,6 @@ class DummyEnum(IntEnum):
 
 
 @dataclass
-class FloatToBoolFixture(hp.Hparams):
-    float_field: float = hp.optional(doc='please autoconvert to float', default=1)
-
-
-@dataclass
 class KitchenSinkHparams(hp.Hparams):
     hparams_registry = {
         fname: {
@@ -514,7 +509,8 @@ class KitchenSinkHparams(hp.Hparams):
     optional_bool_field_default_true: Optional[bool] = hp.optional('optional bool field default True', default=True)
     optional_bool_field_default_none: Optional[bool] = hp.optional('optional bool field default None', default=None)
 
-    optional_enum_field_default_red: Optional[DummyEnum] = hp.optional('optional enum field default red', default='red')
+    optional_enum_field_default_red: Optional[DummyEnum] = hp.optional('optional enum field default red',
+                                                                       default=DummyEnum.RED)
     optional_enum_field_default_none: Optional[DummyEnum] = hp.optional('optional enum field default None',
                                                                         default=None)
 

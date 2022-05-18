@@ -5,13 +5,15 @@ from __future__ import annotations
 import inspect
 import logging
 from dataclasses import _MISSING_TYPE, MISSING, field
-from typing import Any, Callable, Union, overload
+from typing import Any, Callable, TypeVar, Union, overload
 
 import docstring_parser
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['required', 'optional', 'auto']
+
+TObject = TypeVar('TObject')
 
 
 @overload
@@ -43,12 +45,12 @@ def required(doc: str, *, template_default: Any = MISSING):
 
 
 @overload
-def optional(doc: str, *, default: Any) -> Any:
+def optional(doc: str, *, default: TObject) -> TObject:
     ...
 
 
 @overload
-def optional(doc: str, *, default_factory: Callable[[], Any]) -> Any:
+def optional(doc: str, *, default_factory: Callable[[], TObject]) -> TObject:
     ...
 
 

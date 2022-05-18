@@ -150,8 +150,9 @@ def _create(
             if not ftype.is_recursive:
                 if argparse_or_yaml_value == MISSING:
                     if not is_field_required(f):
-                        # if it's a primitive and there's a default value,
-                        # then convert and use it.
+                        # if it's a primitive and there's a default value, use it
+                        # do not attempt to auto-convert fields if the default value is not specified by the type annotations,
+                        # as it may be a custom class or other sentential. Instead, let the static type checkers complain
                         default_value = get_default_value(f)
                         kwargs[f.name] = default_value
                     # if the field is required and not specified, then let the hparams constructor
