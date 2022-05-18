@@ -20,6 +20,7 @@ from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, g
                                          get_hparams_file_from_cli, retrieve_args)
 from yahp.hparams import Hparams, THparams
 from yahp.inheritance import load_yaml_with_inheritance
+from yahp.serialization import register_hparams_for_instance, register_hparams_registry_key_for_instance
 from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict, list_to_deduplicated_dict
 from yahp.utils.type_helpers import HparamsType, get_default_value, is_field_required, is_none_like
 
@@ -360,8 +361,15 @@ def _create(
 
     if cli_args is None:
         for fname, create_calls in deferred_create_calls.items():
-            sub_hparams = [
-                _create(
+            registry = None
+            if cls.hparams_registry is not None and fname in cls.hparams_registry:
+                registry = cls.hparams_registry[fname]
+                inverted_registry = {v: k for (k, v) in registry.items()}
+            else:
+                inverted_registry = {}
+            sub_hparams = []
+            for deferred_call in ensure_tuple(create_calls):
+                obj = _create(
                     constructor=deferred_call.constructor,
                     data=deferred_call.data,
                     parsed_args={},
@@ -371,8 +379,12 @@ def _create(
                     argparsers=argparsers,
                     allow_autoinitialization=True,
                     allow_recursion=isinstance(constructor, type) and issubclass(constructor, Hparams),
-                ) for deferred_call in ensure_tuple(create_calls)
-            ]
+                )
+                sub_hparams.append(obj)
+                if registry is not None:
+                    register_hparams_registry_key_for_instance(obj, registry,
+                                                               inverted_registry[deferred_call.constructor])
+
             if isinstance(create_calls, list):
                 kwargs[fname] = sub_hparams
             else:
@@ -386,6 +398,12 @@ def _create(
         argparse_name_registry.assign_shortnames()
         for fname, create_calls in deferred_create_calls.items():
             # TODO parse args from
+            registry = None
+            if cls.hparams_registry is not None and fname in cls.hparams_registry:
+                registry = cls.hparams_registry[fname]
+                inverted_registry = {v: k for (k, v) in registry.items()}
+            else:
+                inverted_registry = {}
             sub_hparams: List[Hparams] = []
             for create_call in ensure_tuple(create_calls):
                 if create_call.parser_args is None:
@@ -412,6 +430,9 @@ def _create(
                         allow_autoinitialization=True,
                         allow_recursion=isinstance(constructor, type) and issubclass(constructor, Hparams),
                     ))
+                if registry is not None:
+                    register_hparams_registry_key_for_instance(sub_hparams[-1], registry,
+                                                               inverted_registry[create_call.constructor])
             if isinstance(create_calls, list):
                 kwargs[fname] = sub_hparams
             else:
@@ -430,11 +451,19 @@ def _create(
         raise _MissingRequiredFieldException(*missing_required_fields)
     obj = constructor(**kwargs)
 
+    if not isinstance(obj, Hparams):
+        hparams_instance_for_obj = cls(**kwargs)
+        register_hparams_for_instance(obj, hparams_instance_for_obj)
+
     if isinstance(obj, AutoInitializedHparams) and allow_autoinitialization:
         # If a subclass of AutoInitializedHparams was passed to create,
         # and allow_autoinitialization is True (i.e. it was nested), then
         # auto-initialize it
-        return obj.initialize_object()
+        # Keep track of the hparams for this object, so we can later convert it to a dict
+        hparams_instance_for_obj = cls(**kwargs)
+        constructed_obj = obj.initialize_object()
+        register_hparams_for_instance(constructed_obj, hparams_instance_for_obj)
+        return constructed_obj
     else:
         # Otherwise, return the hparams class
         return cast(TObject, obj)
@@ -568,7 +597,9 @@ def create(
         sys.exit(0)
 
     if isinstance(hparams, AutoInitializedHparams):
-        return hparams.initialize_object()
+        constructed_obj = hparams.initialize_object()
+        register_hparams_for_instance(constructed_obj, hparams)
+        return constructed_obj
     else:
         return cast(TObject, hparams)
 

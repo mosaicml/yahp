@@ -6,6 +6,7 @@ import pytest
 
 import yahp as hp
 from yahp.auto_hparams import generate_hparams_cls
+from yahp.serialization import serialize
 from yahp.types import JSON
 
 
@@ -44,6 +45,8 @@ def test_primitive_class(cls: Union[Type[PrimitiveClass], Type[PrimitiveClassWit
     assert isinstance(instance, cls)
     assert instance.int_arg == 69
 
+    assert serialize(instance) == config
+
 
 class PrimitiveClassWithDefaults:
     """Class
@@ -67,6 +70,8 @@ def test_primitive_class_with_defaults(use_default: bool):
     instance = hp.create(PrimitiveClassWithDefaults, config)
     assert isinstance(instance, PrimitiveClassWithDefaults)
     assert instance.int_arg == 42 if use_default else 69
+
+    assert serialize(instance) == {'int_arg': 42 if use_default else 69}
 
 
 class ClassWithNestedNonHparams:
@@ -108,6 +113,8 @@ def test_class_with_nested_hparams(cls: Union[Type[ClassWithNestedHparams], Type
     instance = hp.create(cls, config)
     assert isinstance(instance, cls)
     assert instance.nested_arg.int_arg == 42
+
+    assert serialize(instance) == config
 
 
 class ClassWithDoubleNestingNonHparams:
@@ -152,6 +159,8 @@ def test_class_with_double_nesting_with_hparams():
     assert isinstance(instance, ClassWithDoubleNestingHparams)
     assert instance.nested_arg.nested_arg.int_arg == 42
 
+    assert serialize(instance) == config
+
 
 class UnionWithSupportedAndUnsupportedType:
     """Class
@@ -174,6 +183,8 @@ def test_union_with_unsupported_types():
     assert isinstance(instance, UnionWithSupportedAndUnsupportedType)
     assert instance.filename == 'log.txt'
 
+    assert serialize(instance) == config
+
 
 class UnsupportedType:
     """Class
@@ -195,10 +206,6 @@ def test_unsupported_class_errors():
         r"Argument filename with type annotation \<class 'typing\.TextIO'\> is abstract; however, abstract types are not supported "
         r'without the concrete implementations defined in the hparams_registry')
 
-    def new_init(self):
-        return
-
-    TextIO.__init__ = new_init
     with pytest.raises(TypeError, match=msg):
         unsupported_type = hp.create(UnsupportedType, {})
         print(unsupported_type)
@@ -225,6 +232,7 @@ def test_unsupported_type_with_optional():
     instance = hp.create(UnsupportedTypeWithOptional, config)
     assert isinstance(instance, UnsupportedTypeWithOptional)
     assert instance.filename is None
+    assert serialize(instance) == config
 
 
 def foo(a: int, b: float):
@@ -257,6 +265,7 @@ def test_unsupported_type_with_registry():
     instance = hp.create(UnsupportedTypeWithRegistry, config)
     assert isinstance(instance, UnsupportedTypeWithRegistry)
     assert instance.func() == 15
+    assert serialize(instance) == config
 
 
 class AbstractClass(abc.ABC):
@@ -287,6 +296,7 @@ def test_dataclass_with_abstract_class():
     assert isinstance(instance, DataclassWithAbstractClass)
     assert isinstance(instance.item, ConcreteClass)
     assert instance.item.int_arg == 42
+    assert serialize(instance) == config
 
 
 @dataclasses.dataclass
@@ -317,6 +327,7 @@ def test_class_with_mixed_hparams_registry(key: str):
     assert isinstance(instance, ClassWithMixedHparamsRegistry)
     assert isinstance(instance.item, ConcreteClass)
     assert instance.item.int_arg == 42
+    assert serialize(instance) == config
 
 
 class ClassWithAny:
@@ -336,3 +347,4 @@ def test_any_arg(any_arg: Any):
     instance = hp.create(ClassWithAny, config)
     assert type(instance.any_arg) == type(any_arg)
     assert instance.any_arg == any_arg
+    assert serialize(instance) == config

@@ -145,6 +145,7 @@ class Hparams(ABC):
         Returns:
             The instance, as a JSON dictionary.
         """
+        from yahp.serialization import get_key_for_instance_and_registry, serialize
 
         res: Dict[str, JSON] = {}
         for f in fields(self):
@@ -161,22 +162,30 @@ class Hparams(ABC):
                 if isinstance(attr, list):
                     field_list: List[JSON] = []
                     for x in attr:
-                        if not isinstance(x, Hparams):
-                            # Impossible to convert a class back into its hparams
-                            raise TypeError(
-                                f'Cannot serialize {type(self).__name__}.{f.name} of type {type(x).__name__}')
-                        field_name = inverted_registry[type(x)]
-                        field_list.append({field_name: x.to_dict()})
+                        x_type = type(x)
+                        key = get_key_for_instance_and_registry(x, self.hparams_registry[f.name])
+                        if key is not None:
+                            field_list.append({key: serialize(x)})
+                        elif x_type in inverted_registry:
+                            field_name = inverted_registry[x_type]
+                            field_list.append({field_name: serialize(x)})
+                        else:
+                            # Cannot determine the key from the type
+                            field_list.append(serialize(x))
                     res[f.name] = list_to_deduplicated_dict(field_list)
                 else:
-                    if not isinstance(attr, Hparams):
-                        # Impossible to convert a class back into its hparams
-                        raise TypeError(
-                            f'Cannot serialize {type(self).__name__}.{f.name} of type {type(attr).__name__}')
-                    field_dict: Dict[str, JSON] = {}
-                    field_name = inverted_registry[type(attr)]
-                    # Generic hparams. Make sure to index by the key in the hparams registry
-                    field_dict[field_name] = attr.to_dict()
+                    field_dict = {}
+                    attr_type = type(attr)
+                    key = get_key_for_instance_and_registry(attr, self.hparams_registry[f.name])
+                    if key is not None:
+                        field_dict[key] = serialize(attr)
+                    elif attr_type in inverted_registry:
+                        field_name = inverted_registry[type(attr)]
+                        # Generic hparams. Make sure to index by the key in the hparams registry
+                        field_dict[field_name] = serialize(attr)
+                    else:
+                        # Cannot determine the key from the type
+                        field_dict = serialize(attr)
                     res[f.name] = field_dict
 
             else:
@@ -186,12 +195,10 @@ class Hparams(ABC):
                     attr = [attr]
                 ans = []
                 for x in attr:
-                    if isinstance(x, Hparams):
-                        ans.append(x.to_dict())
-                    elif x is None or isinstance(x, (str, float, bool, int, Enum, dict)):
+                    if x is None or isinstance(x, (str, float, bool, int, Enum, dict)):
                         ans.append(x.name if isinstance(x, Enum) else x)
                     else:
-                        raise TypeError(f'Cannot serialize {type(self).__name__}.{f.name} of type {type(x).__name__}')
+                        ans.append(serialize(x))
                 if not is_list:
                     ans = ans[0]
                 res[f.name] = ans
