@@ -1,6 +1,5 @@
 # Copyright 2021 MosaicML. All Rights Reserved.
 
-import abc
 import dataclasses
 import inspect
 from typing import Any, Callable, Type, get_type_hints
@@ -10,28 +9,12 @@ from yahp.hparams import Hparams
 from yahp.utils.type_helpers import HparamsType
 
 __all__ = [
-    'AutoInitializedHparams',
     'generate_hparams_cls',
     'ensure_hparams_cls',
 ]
 
 
-@dataclasses.dataclass
-class AutoInitializedHparams(Hparams, abc.ABC):
-    """Subclass of :class:`.Hparams` where :meth:`.initialize_object` will be invoked automatically
-    when being created from serialized data or the CLI.
-
-    Unlike the generic :class:`.Hparams`, :meth:`.initialize_object` must take no arguments
-    (other than self), since it will be invoked automatically.
-    """
-
-    def initialize_object(self) -> Any:
-        return super().initialize_object()
-
-
-def generate_hparams_cls(constructor: Callable,
-                         auto_initialize: bool = True,
-                         ignore_docstring_errors: bool = False) -> Type[Hparams]:
+def generate_hparams_cls(constructor: Callable, ignore_docstring_errors: bool = False) -> Type[Hparams]:
     """Generate a :class:`.Hparams` from the signature and docstring of a callable.
 
     Args:
@@ -75,7 +58,7 @@ def generate_hparams_cls(constructor: Callable,
     hparams_cls = dataclasses.make_dataclass(
         cls_name=constructor.__name__ + 'Hparams',
         fields=field_list,
-        bases=(AutoInitializedHparams if auto_initialize else Hparams,),
+        bases=(Hparams,),
         namespace={
             # If there was a registry, bind it -- otherwise set it to None
             'hparams_registry':
@@ -105,4 +88,4 @@ def ensure_hparams_cls(constructor: Callable) -> Type[Hparams]:
     if isinstance(constructor, type) and issubclass(constructor, Hparams):
         return constructor
     else:
-        return generate_hparams_cls(constructor, auto_initialize=True)
+        return generate_hparams_cls(constructor)
