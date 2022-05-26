@@ -15,10 +15,10 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence
 
 import yaml
 
-from yahp.auto_hparams import AutoInitializedHparams, ensure_hparams_cls
+from yahp.auto_hparams import ensure_hparams_cls
 from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
                                          get_hparams_file_from_cli, retrieve_args)
-from yahp.hparams import Hparams, THparams
+from yahp.hparams import Hparams
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.serialization import register_hparams_for_instance, register_hparams_registry_key_for_instance
 from yahp.utils.iter_helpers import ensure_tuple, extract_only_item_from_dict, list_to_deduplicated_dict
@@ -42,6 +42,7 @@ class _DeferredCreateCall:
     data: Dict[str, JSON]
     prefix: List[str]
     parser_args: Optional[Sequence[ParserArgument]]
+    initialize: bool
 
 
 def _get_split_key(key: str, splitter: str = '+') -> Tuple[str, Any]:
@@ -57,20 +58,52 @@ def _get_split_key(key: str, splitter: str = '+') -> Tuple[str, Any]:
 logger = logging.getLogger(__name__)
 
 
+def _construct_object_from_deferred_create(
+    create_call: _DeferredCreateCall,
+    argparse_name_registry,
+    parsed_arg_dict,
+    argparsers: List[argparse.ArgumentParser],
+    cli_args: Optional[List[str]],
+    allow_recursion: bool,
+):
+
+    obj_hparams = _create(
+        constructor=create_call.constructor,
+        data=create_call.data,
+        parsed_args=parsed_arg_dict,
+        cli_args=cli_args,
+        prefix=create_call.prefix,
+        argparse_name_registry=argparse_name_registry,
+        argparsers=argparsers,
+        allow_recursion=allow_recursion,
+    )
+    if create_call.initialize:
+        obj = obj_hparams.initialize_object()
+    else:
+        obj = obj_hparams
+
+    if not isinstance(obj, Hparams):
+        register_hparams_for_instance(obj, obj_hparams)
+
+    return obj
+
+
 def _create(
     *,
-    constructor: Union[Type[THparams], Callable[..., TObject]],
+    constructor: Callable,
     data: Dict[str, JSON],
     parsed_args: Dict[str, str],
     cli_args: Optional[List[str]],
     prefix: List[str],
     argparse_name_registry: ArgparseNameRegistry,
     argparsers: List[argparse.ArgumentParser],
-    allow_autoinitialization: bool,
     allow_recursion: bool,
-) -> Union[THparams, TObject]:
-    """Helper method to invoke ``constructor``, extracting parameters and sub-classes
-    recursively.
+) -> Hparams:
+    """Helper method that returns an instance of an hparams class from ``constructor``.
+
+    *   If ``constructor`` is an :class:`.Hparams` class, then an instance of that hparams class is returned.
+    *   Otherwise, an :class:`.Hparams` class will be dynamically generated. This dynamical class will have a
+        :meth:`.initialize_object` that takes no arguments, and when invoked, calls and returns ``constructor``.
 
     Args:
         constructor (Type[Hparams]): The hparams class or a constructor
@@ -90,17 +123,15 @@ def _create(
         argparsers (List[argparse.ArgumentParser]):
             A list of :class:`~argparse.ArgumentParser` instances,
             which is extended in-place.
-        allow_autoinitialization (bool): Whether to call :meth:~.Hparams.initialize_object` if
-            ``constructor`` is a subclass of :class:`.AutoInitializedHparams` or a non-hparams
-            class
         allow_recursion (bool): Whether to recurse into sub-types if ``constructor`` is not a
             a subclass of :class:`.Hparams`. If ``false``, and the signautre of ``constructor``
             contains a non-primitive class, then a :exc:`TypeError` will be raised.
             Recursion is always allowed for :class:`.Hparams`.
 
     Returns:
-        The result of invoking ``constructor``, or if ``constructor`` is a subclass of AutoInitializedHparams
-        and ``allow_autoinitialization`` is True, then ``constructor.initialize_object()``.
+        *   If ``constructor`` is an :class:`.Hparams` class, then an instance of that hparams class is returned.
+        *   Otherwise, an :class:`.Hparams` class will be dynamically generated. This dynamical class will have a
+            :meth:`.initialize_object` that takes no arguments, and when invoked, calls and returns ``constructor``.
     """
     # Heuristic:
     # If the constructor is from `typing`, `typing_extensions`, or `types`, then YAHP cannot instantiate
@@ -202,9 +233,12 @@ def _create(
                                 constructor=ftype.type,
                                 data=sub_yaml,
                                 prefix=prefix_with_fname,
-                                parser_args=retrieve_args(constructor=ftype.type,
-                                                          prefix=prefix_with_fname,
-                                                          argparse_name_registry=argparse_name_registry),
+                                parser_args=retrieve_args(
+                                    constructor=ftype.type,
+                                    prefix=prefix_with_fname,
+                                    argparse_name_registry=argparse_name_registry,
+                                ),
+                                initialize=not (isinstance(ftype.type, type) and issubclass(ftype.type, Hparams)),
                             )
                     else:
                         # list of concrete hparams
@@ -240,6 +274,8 @@ def _create(
                                         data=sub_yaml_item,
                                         prefix=prefix_with_fname + [key],
                                         parser_args=None,
+                                        initialize=not (isinstance(ftype.type, type) and
+                                                        issubclass(ftype.type, Hparams)),
                                     ))
                             deferred_create_calls[f.name] = deferred_calls
                 else:
@@ -289,9 +325,12 @@ def _create(
                                 constructor=cls.hparams_registry[f.name][key],
                                 prefix=prefix_with_fname + [key],
                                 data=yaml_val,
-                                parser_args=retrieve_args(constructor=cls.hparams_registry[f.name][key],
-                                                          prefix=prefix_with_fname + [key],
-                                                          argparse_name_registry=argparse_name_registry),
+                                parser_args=retrieve_args(
+                                    constructor=cls.hparams_registry[f.name][key],
+                                    prefix=prefix_with_fname + [key],
+                                    argparse_name_registry=argparse_name_registry,
+                                ),
+                                initialize=not (isinstance(ftype.type, type) and issubclass(ftype.type, Hparams)),
                             )
                     else:
                         # list of abstract hparams
@@ -353,11 +392,15 @@ def _create(
                                             prefix=prefix_with_fname + [key],
                                             argparse_name_registry=argparse_name_registry,
                                         ),
+                                        initialize=not (isinstance(ftype.type, type) and
+                                                        issubclass(ftype.type, Hparams)),
                                     ))
                             deferred_create_calls[f.name] = deferred_calls
         except _MissingRequiredFieldException as e:
             missing_required_fields.extend(e.args)
             # continue processing the other fields and gather everything together
+
+    allow_recursion = isinstance(constructor, type) and issubclass(constructor, Hparams)
 
     if cli_args is None:
         for fname, create_calls in deferred_create_calls.items():
@@ -368,22 +411,23 @@ def _create(
             else:
                 inverted_registry = {}
             sub_hparams = []
-            for deferred_call in ensure_tuple(create_calls):
-                obj = _create(
-                    constructor=deferred_call.constructor,
-                    data=deferred_call.data,
-                    parsed_args={},
-                    cli_args=None,
-                    prefix=deferred_call.prefix,
+            for create_call in ensure_tuple(create_calls):
+                obj = _construct_object_from_deferred_create(
+                    create_call=create_call,
                     argparse_name_registry=argparse_name_registry,
+                    parsed_arg_dict={},
                     argparsers=argparsers,
-                    allow_autoinitialization=True,
-                    allow_recursion=isinstance(constructor, type) and issubclass(constructor, Hparams),
+                    cli_args=cli_args,
+                    allow_recursion=allow_recursion,
                 )
+
                 sub_hparams.append(obj)
                 if registry is not None:
-                    register_hparams_registry_key_for_instance(obj, registry,
-                                                               inverted_registry[deferred_call.constructor])
+                    register_hparams_registry_key_for_instance(
+                        obj,
+                        registry,
+                        inverted_registry[create_call.constructor],
+                    )
 
             if isinstance(create_calls, list):
                 kwargs[fname] = sub_hparams
@@ -418,18 +462,15 @@ def _create(
                             arg.add_to_argparse(group)
                     parsed_arg_namespace, cli_args[:] = parser.parse_known_args(cli_args)
                     parsed_arg_dict = vars(parsed_arg_namespace)
-                sub_hparams.append(
-                    _create(
-                        constructor=create_call.constructor,
-                        data=create_call.data,
-                        parsed_args=parsed_arg_dict,
-                        cli_args=cli_args,
-                        prefix=create_call.prefix,
-                        argparse_name_registry=argparse_name_registry,
-                        argparsers=argparsers,
-                        allow_autoinitialization=True,
-                        allow_recursion=isinstance(constructor, type) and issubclass(constructor, Hparams),
-                    ))
+                obj = _construct_object_from_deferred_create(
+                    create_call=create_call,
+                    argparse_name_registry=argparse_name_registry,
+                    parsed_arg_dict=parsed_arg_dict,
+                    argparsers=argparsers,
+                    cli_args=cli_args,
+                    allow_recursion=allow_recursion,
+                )
+                sub_hparams.append(obj)
                 if registry is not None:
                     register_hparams_registry_key_for_instance(sub_hparams[-1], registry,
                                                                inverted_registry[create_call.constructor])
@@ -449,24 +490,8 @@ def _create(
         # if there are any missing fields from this class, or optional but partially-filled-in subclasses,
         # then propegate back the missing fields
         raise _MissingRequiredFieldException(*missing_required_fields)
-    obj = constructor(**kwargs)
 
-    if not isinstance(obj, Hparams):
-        hparams_instance_for_obj = cls(**kwargs)
-        register_hparams_for_instance(obj, hparams_instance_for_obj)
-
-    if isinstance(obj, AutoInitializedHparams) and allow_autoinitialization:
-        # If a subclass of AutoInitializedHparams was passed to create,
-        # and allow_autoinitialization is True (i.e. it was nested), then
-        # auto-initialize it
-        # Keep track of the hparams for this object, so we can later convert it to a dict
-        hparams_instance_for_obj = cls(**kwargs)
-        constructed_obj = obj.initialize_object()
-        register_hparams_for_instance(constructed_obj, hparams_instance_for_obj)
-        return constructed_obj
-    else:
-        # Otherwise, return the hparams class
-        return cast(TObject, obj)
+    return cls(**kwargs)
 
 
 def _add_help(argparsers: Sequence[argparse.ArgumentParser], cli_args: Sequence[str]) -> None:
@@ -489,7 +514,7 @@ def _get_remaining_cli_args(cli_args: Union[List[str], bool]) -> List[str]:
 
 
 def create(
-    constructor: Union[Type[TObject], Callable[..., TObject]],
+    constructor: Callable[..., TObject],
     data: Optional[Dict[str, JSON]] = None,
     f: Union[str, TextIO, pathlib.PurePath, None] = None,
     cli_args: Union[List[str], bool] = True,
@@ -596,12 +621,12 @@ def create(
                 f.write(hparams.to_yaml())
         sys.exit(0)
 
-    if isinstance(hparams, AutoInitializedHparams):
+    if isinstance(constructor, type) and issubclass(constructor, Hparams):
+        return cast(TObject, hparams)
+    else:
         constructed_obj = hparams.initialize_object()
         register_hparams_for_instance(constructed_obj, hparams)
         return constructed_obj
-    else:
-        return cast(TObject, hparams)
 
 
 def _get_hparams(
@@ -676,7 +701,6 @@ def _get_hparams(
         parsed_args=parsed_arg_dict,
         argparse_name_registry=argparse_name_registry,
         argparsers=argparsers,
-        allow_autoinitialization=False,  # don't auto-initialize here, as the caller may need the hparams.
         allow_recursion=True,
     )
     return hparams, output_f
