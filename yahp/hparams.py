@@ -11,12 +11,10 @@ from abc import ABC
 from dataclasses import dataclass, fields
 from enum import Enum
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast, get_type_hints
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast
 
 import yaml
 
-from yahp.create.commented_map import CMOptions, to_commented_map
-from yahp.create.create import create, get_argparse
 from yahp.utils import type_helpers
 from yahp.utils.iter_helpers import list_to_deduplicated_dict
 
@@ -54,7 +52,7 @@ class Hparams(ABC):
 
     # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
     # and would treat it like an instance variable. Instead, using the python2-style annotations
-    hparams_registry = {}  # type: Dict[str, Dict[str, Type["Hparams"]]]
+    hparams_registry = None  # type: Optional[Dict[str, Dict[str, Union[Callable[..., Any], Type["Hparams"]]]]]
 
     @classmethod
     def validate_keys(cls,
@@ -116,6 +114,7 @@ class Hparams(ABC):
         Returns:
             Hparams: An instance of the class.
         """
+        from yahp.create_object.create_object import create
         return create(cls, data=data, f=f, cli_args=cli_args)
 
     @classmethod
@@ -125,6 +124,7 @@ class Hparams(ABC):
         data: Optional[Dict[str, JSON]] = None,
         cli_args: Union[List[str], bool] = True,
     ) -> argparse.ArgumentParser:
+        from yahp.create_object.create_object import get_argparse
         return get_argparse(cls, data=data, f=f, cli_args=cli_args)
 
     def to_yaml(self, **yaml_args: Any) -> str:
@@ -145,55 +145,64 @@ class Hparams(ABC):
         Returns:
             The instance, as a JSON dictionary.
         """
+        from yahp.serialization import get_key_for_instance_and_registry, serialize
 
         res: Dict[str, JSON] = {}
-        field_types = get_type_hints(self.__class__)
         for f in fields(self):
             if not f.init:
                 continue
-            ftype = type_helpers.HparamsType(field_types[f.name])
             attr = getattr(self, f.name)
             if attr is None:  # first, take care of the optionals
                 res[f.name] = None
                 continue
-            if ftype.is_hparams_dataclass:
-                # Could be: List[Generic Hparams], Generic Hparams,
-                # List[Specific Hparams], or Specific Hparams
-                # If it's in the registry, it's generic. Otherwise, it's specific
-                if f.name in self.hparams_registry:
-                    inverted_registry = {v: k for (k, v) in self.hparams_registry[f.name].items()}
-                    if isinstance(attr, list):
-                        field_list: List[JSON] = []
-                        for x in attr:
-                            assert isinstance(x, Hparams)
-                            field_name = inverted_registry[type(x)]
-                            field_list.append({field_name: x.to_dict()})
-                        res[f.name] = list_to_deduplicated_dict(field_list)
-                    else:
-                        field_dict: Dict[str, JSON] = {}
+
+            # Is the field in the hparams registry?
+            if self.hparams_registry is not None and f.name in self.hparams_registry:
+                inverted_registry = {v: k for (k, v) in self.hparams_registry[f.name].items()}
+                if isinstance(attr, list):
+                    field_list: List[JSON] = []
+                    for x in attr:
+                        x_type = type(x)
+                        key = get_key_for_instance_and_registry(x, self.hparams_registry[f.name])
+                        if key is not None:
+                            field_list.append({key: serialize(x)})
+                        elif x_type in inverted_registry:
+                            field_name = inverted_registry[x_type]
+                            field_list.append({field_name: serialize(x)})
+                        else:
+                            # Cannot determine the key from the type
+                            field_list.append(serialize(x))
+                    res[f.name] = list_to_deduplicated_dict(field_list)
+                else:
+                    field_dict = {}
+                    attr_type = type(attr)
+                    key = get_key_for_instance_and_registry(attr, self.hparams_registry[f.name])
+                    if key is not None:
+                        field_dict[key] = serialize(attr)
+                    elif attr_type in inverted_registry:
                         field_name = inverted_registry[type(attr)]
                         # Generic hparams. Make sure to index by the key in the hparams registry
-                        field_dict[field_name] = attr.to_dict()
-                        res[f.name] = field_dict
-                else:
-                    # Specific -- either a list or not
-                    if isinstance(attr, list):
-                        res[f.name] = {str(i): x.to_dict() for i, x in enumerate(attr)}
+                        field_dict[field_name] = serialize(attr)
                     else:
-                        assert isinstance(attr, Hparams)
-                        res[f.name] = attr.to_dict()
+                        # Cannot determine the key from the type
+                        field_dict = serialize(attr)
+                    res[f.name] = field_dict
+
             else:
-                # Not a hparams type
-                if isinstance(attr, list):
-                    if ftype.is_enum:
-                        res[f.name] = [x.name for x in attr]
+                # If it's not in the registry, then it must be specific
+                is_list = isinstance(attr, list)
+                if not is_list:
+                    attr = [attr]
+                ans = []
+                for x in attr:
+                    if x is None or isinstance(x, (str, float, bool, int, Enum, dict)):
+                        ans.append(x.name if isinstance(x, Enum) else x)
                     else:
-                        res[f.name] = attr
-                else:
-                    if isinstance(attr, Enum):
-                        res[f.name] = attr.name
-                    else:
-                        res[f.name] = attr
+                        ans.append(serialize(x))
+                if not is_list:
+                    ans = ans[0]
+                res[f.name] = ans
+
         return res
 
     def initialize_object(self, *args: Any, **kwargs: Any) -> Any:
@@ -232,8 +241,10 @@ class Hparams(ABC):
                 Whether to interactively generate the template.
                 Defaults to False.
         """
+        from yahp.create_object.commented_map import CMOptions, to_commented_map
+
         cm = to_commented_map(
-            cls=cls,
+            constructor=cls,
             options=CMOptions(
                 add_docs=add_docs,
                 typing_column=typing_column,
@@ -291,7 +302,7 @@ class Hparams(ABC):
             message = f'Unable to find field: {class_key}.{field} in: {cls.__name__}'
             logger.warning(message)
             raise ValueError(message)
-        if field not in cls.hparams_registry:
+        if cls.hparams_registry is None or field not in cls.hparams_registry:
             message = f'Unable to find field: {class_key}.{field} in: {cls.__name__} registry. \n'
             message += 'Is it a choose one or list Hparam?'
             logger.warning(message)
@@ -308,59 +319,11 @@ class Hparams(ABC):
         sub_registry[class_key] = register_class
 
     def validate(self):
-        """Validate that the hparams are of the correct types.
-        Recurses through sub-hparams.
-
-        Raises:
-            TypeError: Raises a :class:`TypeError` if any fields are an incorrect type.
-        """
-        field_types = get_type_hints(self.__class__)
-        for f in fields(self):
-            if not f.init:
-                continue
-            fname = f.name
-            ftype = type_helpers.HparamsType(field_types[f.name])
-            value = getattr(self, f.name)
-            if ftype.is_optional:
-                if value is None:
-                    continue
-            if ftype.is_json_dict:
-                if not isinstance(value, dict):
-                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
-                continue
-            if not ftype.is_hparams_dataclass:
-                if ftype.is_list:
-                    if not isinstance(value, list):
-                        raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
-                else:
-                    value = [value]
-                for x in value:
-                    if ftype.is_enum:
-                        if not isinstance(x, ftype.type):
-                            raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                        continue
-                    if ftype.is_primitive:
-                        is_allowed = False
-                        for allowed_type in ftype.types:
-                            if isinstance(x, allowed_type):
-                                is_allowed = True
-                                break
-                        if not is_allowed:
-                            raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                        continue
-                    warnings.warn(f'{ftype} cannot be validated. This is a bug in YAHP. Please submit a bug report.')
-                continue
-            # is hparams
-            if ftype.is_list:
-                if not isinstance(value, list):
-                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(value).__name__}')
-                continue
-            value = [value]
-            for x in value:
-                if not isinstance(x, ftype.type):
-                    raise TypeError(f'{fname} must be a {ftype}; instead it is of type {type(x).__name__}')
-                assert isinstance(x, Hparams)
-                x.validate()
+        """Validate is deprecated"""
+        warnings.warn(
+            f'{type(self).__name__}.validate() is deprecated. Instead, perform any validation directly in initialize_object()',
+            category=DeprecationWarning,
+        )
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()

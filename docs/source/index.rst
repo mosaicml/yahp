@@ -22,6 +22,7 @@ YAHP
    :caption: API Reference
 
    api_ref/hparams
+   api_ref/create
    api_ref/field
    api_ref/inheritance
    api_ref/types

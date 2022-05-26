@@ -2,12 +2,12 @@
 
 package:
   name: yahp
-  version: "0.1.0"
+  version: "0.1.1"
 
 source:
   git_url: https://github.com/mosaicml/yahp.git
-  git_rev: v0.1.0
-  git_depth: 1
+  git_rev: v0.1.1
+  git_depth: -1
 
 channels:
   - defaults
@@ -21,6 +21,10 @@ build:
 requirements:
   host:
     - python >=3.7
+    - setuptools
+    - git
+  build:
+    - git
   run:
     - python >=3.7
     - pyyaml >=5.4.1

@@ -52,6 +52,7 @@ reportUnusedCoroutine = "error"
 filterwarnings = [
     "error",
     "ignore:ExtraArgumentWarning",
+    '''ignore:.*validate\(\) is deprecated:DeprecationWarning''',
 ]
 
 # Coverage
