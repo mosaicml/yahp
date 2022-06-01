@@ -28,7 +28,7 @@ requirements:
   run:
     - python >=3.7
     - pyyaml >=5.4.1
-    - docstring_parser >=0.14.1,<=0.15
+    - docstring_parser ==0.13
     - ruamel.yaml >=0.17.10
 
 test:
