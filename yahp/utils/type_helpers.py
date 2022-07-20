@@ -415,70 +415,60 @@ def is_none_like(x: Any, *, allow_list: bool) -> bool:
     return False
 
 
-def get_type_json_schema(f_type: Any):
+def get_type_json_schema(f_type: HparamsType):
+    print(f_type, f_type.types[0])
     res = {}
-    # Primitive Types
-    if f_type is str:
-        res = {'type': 'string'}
-    elif f_type is bool:
-        res = {'type': 'boolean'}
-    elif f_type is int:
-        res = {'type': 'integer'}
-    elif f_type is float:
-        res = {'type': 'number'}
     # List
-    elif f_type is list:
-        res = {'type': 'array'}
-    # typing.List
-    elif hasattr(f_type, '__origin__') and f_type.__origin__ is list:
-        list_type = f_type.__args__[0]
-        res = {'type': 'array', 'items': {'type': get_type_json_schema(list_type)}}
+    if f_type.is_list:
+        res = {'type': 'array', 'items': {'type': get_list_type_json_schema(f_type)}}
         # Remove additional properties if its empty, such as if value_type is JSON
         if len(res['items']['type'].keys()) == 0:
             del res['items']
-    # dict
-    elif f_type is dict:
-        res = {
-            'type': 'object',
-        }
-    # typing.Dict
-    elif hasattr(f_type, '__origin__') and f_type.__origin__ is dict:
-        # Note that we are unable to type key values as they must be strings in JSONs.
-        _, value_type = f_type.__args__
-        res = {'type': 'object', 'additionalProperties': get_type_json_schema(value_type)}
-        # Remove additional properties if its empty, such as if value_type is JSON
-        if len(res['additionalProperties'].keys()) == 0:
-            del res['additionalProperties']
-    # typing.Union
-    elif hasattr(f_type, '__origin__') and f_type.__origin__ is Union:
-        # Type introspection shows JSON by giving a union of all types. If we have JSON, return {} and
-        # apply no typing restrictions
-        json_type = [str, float, int, type(None), list, dict]
-        union_types = f_type.__args__
-        # Strip off generic typing
-        base_union_types = [
-            union_type.__origin__ if hasattr(union_type, '__origin__') else union_type for union_type in union_types
-        ]
-        is_json = True
-        for json_type_part in json_type:
-            if json_type_part not in base_union_types:
-                is_json = False
-                break
-        if is_json:
-            return {}
-        # Add all union types using oneOf
-        res = {'oneOf': []}
-        for union_type in union_types:
-            res['oneOf'].append(get_type_json_schema(union_type))
+    # Union
+    if len(f_type.types) > 1:
+        res = get_list_type_json_schema(f_type)
+    # Primitive Types
+    if f_type.types[0] is str:
+        res = {'type': 'string'}
+    elif f_type.types[0] is bool:
+        res = {'type': 'boolean'}
+    elif f_type.types[0] is int:
+        res = {'type': 'integer'}
+    elif f_type.types[0] is float:
+        res = {'type': 'number'}
+    # # dict
+    # elif f_type is dict:
+    #     res = {
+    #         'type': 'object',
+    #     }
+    # # typing.Dict
+    # elif hasattr(f_type, '__origin__') and f_type.__origin__ is dict:
+    #     # Note that we are unable to type key values as they must be strings in JSONs.
+    #     _, value_type = f_type.__args__
+    #     res = {'type': 'object', 'additionalProperties': get_type_json_schema(value_type)}
+    #     # Remove additional properties if its empty, such as if value_type is JSON
+    #     if len(res['additionalProperties'].keys()) == 0:
+    #         del res['additionalProperties']
     # Enum
-    elif inspect.isclass(f_type) and issubclass(f_type, Enum):
+    elif inspect.isclass(f_type.types[0]) and issubclass(f_type.types[0], Enum):
         # Enum attributes can either be specified lowercase or uppercase
-        member_names = [name.lower() for name in f_type._member_names_]
-        member_names.extend([name.upper() for name in f_type._member_names_])
+        member_names = [name.lower() for name in f_type.types[0]._member_names_]
+        member_names.extend([name.upper() for name in f_type.types[0]._member_names_])
         res = {'enum': member_names}
-    # Object
+    # JSON
     else:
         res = {
             'type': 'object',
         }
+    return res
+
+
+def get_list_type_json_schema(f_type: HparamsType):
+    if len(f_type.types) > 1:
+        # Add all union types using oneOf
+        res = {'oneOf': []}
+        for union_type in f_type.types:
+            res['oneOf'].append(get_list_type_json_schema(HparamsType(union_type)))
+    else:
+        res = {'type': f_type.types[0]}
     return res

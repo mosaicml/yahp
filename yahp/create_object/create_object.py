@@ -17,7 +17,7 @@ import yaml
 
 from yahp.auto_hparams import ensure_hparams_cls
 from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
-                                         get_hparams_file_from_cli, retrieve_args, validate_hparams_file_from_cli)
+                                         get_hparams_file_from_cli, retrieve_args)
 from yahp.hparams import Hparams
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.serialization import register_hparams_for_instance, register_hparams_registry_key_for_instance
@@ -638,21 +638,6 @@ def _get_hparams(
 ) -> Tuple[Hparams, Optional[str]]:
     argparse_name_registry = ArgparseNameRegistry()
 
-    v_options = validate_hparams_file_from_cli(
-        cli_args=remaining_cli_args,
-        argparse_name_registry=argparse_name_registry,
-        argument_parsers=argparsers,
-    )
-    if v_options is not None:
-        validate_file, validate_data, validate = v_options
-        if validate:
-            print(f'Validating YAML against {constructor.__name__}...')
-            cls = ensure_hparams_cls(constructor)
-            cls.validate_yaml(f=validate_file, data=validate_data)
-            # exit so we don't attempt to parse and instantiate
-            print('\nSuccessfully validated YAML!')
-            sys.exit(0)
-
     cm_options = get_commented_map_options_from_cli(
         cli_args=remaining_cli_args,
         argparse_name_registry=argparse_name_registry,
@@ -673,9 +658,18 @@ def _get_hparams(
         print('\nFinished')
         sys.exit(0)
 
-    cli_f, output_f = get_hparams_file_from_cli(cli_args=remaining_cli_args,
-                                                argparse_name_registry=argparse_name_registry,
-                                                argument_parsers=argparsers)
+    cli_f, output_f, validate = get_hparams_file_from_cli(cli_args=remaining_cli_args,
+                                                          argparse_name_registry=argparse_name_registry,
+                                                          argument_parsers=argparsers)
+    # Validate was specified, so only validate instead of instantiating
+    if validate:
+        print(f'Validating YAML against {constructor.__name__}...')
+        cls = ensure_hparams_cls(constructor)
+        cls.validate_yaml(f=cli_f)
+        # exit so we don't attempt to parse and instantiate
+        print('\nSuccessfully validated YAML!')
+        sys.exit(0)
+
     if cli_f is not None:
         if f is not None:
             raise ValueError('File cannot be specified via both function arguments and the CLI')

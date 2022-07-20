@@ -10,10 +10,11 @@ import pathlib
 import textwrap
 import warnings
 from abc import ABC
-from dataclasses import MISSING, dataclass, fields
+from dataclasses import dataclass, fields
 from enum import Enum
 from io import StringIO, TextIOWrapper
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast,
+                    get_type_hints)
 
 import jsonschema
 import yaml
@@ -336,21 +337,28 @@ class Hparams(ABC):
             'type': 'object',
             'properties': {},
             'required': [],
+            'additionalProperties': False,
         }
+        class_type_hints = get_type_hints(cls)
         for f in fields(cls):
             if not f.init:
                 continue
 
             # Required field
-            if f.default == MISSING:
+            if type_helpers.is_field_required(f):
                 res['required'].append(f.name)
 
+            # if hparams_type.is_recursive:
+            #     ftype = ensure_hparams_type(hparams_type.ftype)
+
+            hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
             # Hparams, recurse
             if inspect.isclass(f.type) and issubclass(f.type, Hparams):
                 res['properties'][f.name] = f.type.get_json_schema()
             # Otherwise, build schema for type
             else:
-                res['properties'][f.name] = type_helpers.get_type_json_schema(f.type)
+                res['properties'][f.name] = type_helpers.get_type_json_schema(hparams_type)
+            res['properties'][f.name]['description'] = f.metadata['doc']
 
         # Delete required list if no fields are required
         if len(res['required']) == 0:
@@ -392,6 +400,8 @@ class Hparams(ABC):
                     jsonschema.validate(yaml.safe_load(file), cls.get_json_schema())
         elif data:
             jsonschema.validate(yaml.safe_load(data), cls.get_json_schema())
+        else:
+            raise ValueError('Neither file nor data were provided, so there is no YAML to validate.')
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()

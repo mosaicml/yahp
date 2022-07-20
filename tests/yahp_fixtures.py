@@ -118,7 +118,7 @@ def primitive_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
     floatfield: 0.5
     boolfield: true
     enumintfield: ONE
-    enumstringfield: pytorch_lightning
+    enumstringfield: mosaic
     jsonfield:
       empty_item: {}
       random_item: 1
