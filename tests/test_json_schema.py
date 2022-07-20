@@ -1,4 +1,6 @@
+import json
 import os
+import tempfile
 import textwrap
 from typing import Type
 
@@ -92,9 +94,40 @@ def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bo
     [ShavingBearsHparam, True,
      os.path.join(os.path.dirname(__file__), 'inheritance/shaving_bears.yaml')],
 ])
-def test_validate_json_schema_from_file2(hparam_class: Type[Hparams], success: bool, file: str):
+def test_validate_json_schema_from_file(hparam_class: Type[Hparams], success: bool, file: str):
     if success:
         hparam_class.validate_yaml(f=file)
     else:
         with pytest.raises(ValidationError):
             hparam_class.validate_yaml(f=file)
+
+
+@pytest.mark.parametrize('hparam_class', [
+    ShavingBearsHparam,
+    ChoiceHparamParent,
+    PrimitiveHparam,
+])
+def test_write_and_read_json_schema_from_name(hparam_class: Type[Hparams]):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file = os.path.join(tmpdirname, 'schema.json')
+        hparam_class.dump_jsonschema(file)
+        with open(file) as f:
+            loaded_schema = json.load(f)
+        generated_schema = hparam_class.get_json_schema()
+        assert loaded_schema == generated_schema
+
+
+@pytest.mark.parametrize('hparam_class', [
+    ShavingBearsHparam,
+    ChoiceHparamParent,
+    PrimitiveHparam,
+])
+def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams]):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file = os.path.join(tmpdirname, 'schema.json')
+        with open(file, 'w') as f:
+            hparam_class.dump_jsonschema(f)
+        with open(file) as f:
+            loaded_schema = json.load(f)
+        generated_schema = hparam_class.get_json_schema()
+        assert loaded_schema == generated_schema

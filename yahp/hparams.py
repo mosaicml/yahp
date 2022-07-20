@@ -12,7 +12,7 @@ import warnings
 from abc import ABC
 from dataclasses import MISSING, dataclass, fields
 from enum import Enum
-from io import StringIO
+from io import StringIO, TextIOWrapper
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast
 
 import jsonschema
@@ -361,10 +361,10 @@ class Hparams(ABC):
     @classmethod
     def dump_jsonschema(cls, f: Union[TextIO, str, pathlib.Path]):
         """Dump the JSONSchema to ``f``."""
-        if isinstance(f, TextIO):
+        if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
             json.dump(cls.get_json_schema(), f)
         else:
-            with open(f) as file:
+            with open(f, 'w') as file:
                 json.dump(cls.get_json_schema(), file)
 
     @classmethod
@@ -385,7 +385,7 @@ class Hparams(ABC):
         if f and data:
             raise ValueError('File and data cannot both be specified.')
         elif f:
-            if isinstance(f, TextIO):
+            if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
                 jsonschema.validate(yaml.safe_load(f), cls.get_json_schema())
             else:
                 with open(f) as file:
