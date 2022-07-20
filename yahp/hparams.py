@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
-import jsonschema
 import logging
 import pathlib
 import textwrap
@@ -16,6 +15,7 @@ from enum import Enum
 from io import StringIO
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast
 
+import jsonschema
 import yaml
 
 from yahp.utils import type_helpers
@@ -331,11 +331,11 @@ class Hparams(ABC):
     @classmethod
     def get_json_schema(cls) -> Dict[str, Any]:
         """Generates and returns a JSONSchema dictionary."""
-        
-        res: Dict[str, JSON] = {
-            "type": "object",
-            "properties": {},
-            "required": [],
+
+        res = {
+            'type': 'object',
+            'properties': {},
+            'required': [],
         }
         for f in fields(cls):
             if not f.init:
@@ -343,58 +343,56 @@ class Hparams(ABC):
 
             # Required field
             if f.default == MISSING:
-                res["required"].append(f.name)
+                res['required'].append(f.name)
 
             # Hparams, recurse
             if inspect.isclass(f.type) and issubclass(f.type, Hparams):
-                res["properties"][f.name] = f.type.get_json_schema()
+                res['properties'][f.name] = f.type.get_json_schema()
             # Otherwise, build schema for type
             else:
-                res["properties"][f.name] = type_helpers.get_type_json_schema(f.type)
+                res['properties'][f.name] = type_helpers.get_type_json_schema(f.type)
 
         # Delete required list if no fields are required
-        if len(res["required"]) == 0:
-            del res["required"]
+        if len(res['required']) == 0:
+            del res['required']
 
         return res
 
     @classmethod
     def dump_jsonschema(cls, f: Union[TextIO, str, pathlib.Path]):
         """Dump the JSONSchema to ``f``."""
-        if type(f) == TextIO:
-            json.dump(type_helpers.get_type_json_schema(), f)
+        if isinstance(f, TextIO):
+            json.dump(cls.get_json_schema(), f)
         else:
             with open(f) as file:
-                json.dump(type_helpers.get_type_json_schema(), file)
+                json.dump(cls.get_json_schema(), file)
 
     @classmethod
-    def validate_yaml(
-        cls: Type[THparams],
-        f: Union[str, None, TextIO, pathlib.PurePath] = None,
-        data: Optional[str] = None
-    ):
+    def validate_yaml(cls: Type[THparams],
+                      f: Union[str, None, TextIO, pathlib.PurePath] = None,
+                      data: Optional[str] = None):
         """Validate yaml against JSON schema.
 
         Args:
             f (Union[str, None, TextIO, pathlib.PurePath], optional):
                 If specified, loads values and validates from a YAML file. Can be either a
-                filepath or file-like object. 
+                filepath or file-like object.
                 Cannot be specified with ``data``.
             data (Optional[str], optional):
-                If specified, validates YAML specified by string :class:`Hparams`. 
+                If specified, validates YAML specified by string :class:`Hparams`.
                 Cannot be specified with ``f``.
         """
         if f and data:
             raise ValueError('File and data cannot both be specified.')
         elif f:
-            if type(f) == TextIO:
+            if isinstance(f, TextIO):
                 jsonschema.validate(yaml.safe_load(f), cls.get_json_schema())
             else:
                 with open(f) as file:
                     jsonschema.validate(yaml.safe_load(file), cls.get_json_schema())
         elif data:
             jsonschema.validate(yaml.safe_load(data), cls.get_json_schema())
-        
+
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()
         yaml_str = textwrap.indent(yaml_str, '  ')

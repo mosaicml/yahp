@@ -1,18 +1,18 @@
 import os
-import pytest
 import textwrap
-import tempfile
 from typing import Type
+
+import pytest
 from jsonschema import ValidationError
-import json
 
-from tests.yahp_fixtures import PrimitiveHparam, ChoiceHparamParent, ShavingBearsHparam
-
+from tests.yahp_fixtures import ChoiceHparamParent, PrimitiveHparam, ShavingBearsHparam
 from yahp.hparams import Hparams
 
-@pytest.mark.parametrize('hparam_class,success,data', 
+
+@pytest.mark.parametrize('hparam_class,success,data', [
     [
-        [PrimitiveHparam, True, textwrap.dedent("""
+        PrimitiveHparam, True,
+        textwrap.dedent("""
             ---
             intfield: 1
             strfield: hello
@@ -38,8 +38,11 @@ from yahp.hparams import Hparams
                       sub_dict_item: 1
                     - sub_dict2: 14
                       sub_dict_item: 43
-        """)],
-        [PrimitiveHparam, False, textwrap.dedent("""
+        """)
+    ],
+    [
+        PrimitiveHparam, False,
+        textwrap.dedent("""
             ---
             strfield: hello
             floatfield: 0.5
@@ -64,17 +67,19 @@ from yahp.hparams import Hparams
                       sub_dict_item: 1
                     - sub_dict2: 14
                       sub_dict_item: 43
-        """)],
-        [ChoiceHparamParent, True, textwrap.dedent("""
+        """)
+    ],
+    [ChoiceHparamParent, True,
+     textwrap.dedent("""
             ---
             commonfield: True
         """)],
-        [ChoiceHparamParent, False, textwrap.dedent("""
+    [ChoiceHparamParent, False,
+     textwrap.dedent("""
             ---
             commonfield: 1
         """)],
-    ]
-)
+])
 def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bool, data: str):
     if success:
         hparam_class.validate_yaml(data=data)
@@ -82,28 +87,14 @@ def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bo
         with pytest.raises(ValidationError):
             hparam_class.validate_yaml(data=data)
 
-@pytest.mark.parametrize('hparam_class,success', 
-    [
-        [ShavingBearsHparam, True],
-    ]
-)
-def test_validate_json_schema_from_file(hparam_class: Type[Hparams], success: bool):
-    print(json.dumps(hparam_class.get_json_schema(), sort_keys=False, indent=4))
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        shaving_bears = textwrap.dedent("""
-        ---
-        parameters:
-            random_field: 12
-            shaved_bears:
-                first_action: "Procure bears"
-                last_action: "Release bears into wild with stylish new haircuts"
-            other_random_field: "cool"
-        """)
-        filename = os.path.join(tmpdirname, "shaving_bears.yaml")
-        with open(filename, 'w') as f:
-            f.write(shaving_bears)
-        if success:
-            hparam_class.validate_yaml(f=filename)
-        else:
-            with pytest.raises(ValidationError):
-                hparam_class.validate_yaml(f=filename)
+
+@pytest.mark.parametrize('hparam_class,success,file', [
+    [ShavingBearsHparam, True,
+     os.path.join(os.path.dirname(__file__), 'inheritance/shaving_bears.yaml')],
+])
+def test_validate_json_schema_from_file2(hparam_class: Type[Hparams], success: bool, file: str):
+    if success:
+        hparam_class.validate_yaml(f=file)
+    else:
+        with pytest.raises(ValidationError):
+            hparam_class.validate_yaml(f=file)

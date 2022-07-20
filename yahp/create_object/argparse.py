@@ -192,20 +192,17 @@ def validate_hparams_file_from_cli(
     cli_args: List[str],
     argparse_name_registry: ArgparseNameRegistry,
     argument_parsers: List[argparse.ArgumentParser],
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Tuple[Optional[str], Optional[str], Optional[bool]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
-    argparse_name_registry.reserve('f', 'file', 'd', 'dump', 'v', 'validate')
-    parser.add_argument('-f',
-                        '--file',
+    argparse_name_registry.reserve('validate_file', 'validate_data', 'v', 'validate')
+    parser.add_argument('--validate_file',
                         type=str,
                         default=None,
-                        dest='file',
                         required=False,
                         help='Load data from this YAML file to validate against Hparams.')
     parser.add_argument(
-        '-d',
-        '--data',
+        '--validate_data',
         type=str,
         default=None,
         required=False,
@@ -214,12 +211,12 @@ def validate_hparams_file_from_cli(
     parser.add_argument(
         '-v',
         '--validate',
-        type=bool,
         action='store_true',
+        required=False,
         help='Whether to validate YAML against Hparams.',
     )
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
-    return parsed_args.file, parsed_args.data, parsed_args.validate
+    return parsed_args.validate_file, parsed_args.validate_data, parsed_args.validate
 
 
 def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:

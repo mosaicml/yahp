@@ -16,8 +16,8 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence
 import yaml
 
 from yahp.auto_hparams import ensure_hparams_cls
-from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli, validate_hparams_file_from_cli,
-                                         get_hparams_file_from_cli, retrieve_args)
+from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
+                                         get_hparams_file_from_cli, retrieve_args, validate_hparams_file_from_cli)
 from yahp.hparams import Hparams
 from yahp.inheritance import load_yaml_with_inheritance
 from yahp.serialization import register_hparams_for_instance, register_hparams_registry_key_for_instance
@@ -644,14 +644,13 @@ def _get_hparams(
         argument_parsers=argparsers,
     )
     if v_options is not None:
-        input_file, data, validate = v_options
+        validate_file, validate_data, validate = v_options
         if validate:
-            print(f'Validating YAML against {constructor.__name__}')
+            print(f'Validating YAML against {constructor.__name__}...')
             cls = ensure_hparams_cls(constructor)
-            cls.validate_yaml(f=input_file, data=data)
+            cls.validate_yaml(f=validate_file, data=validate_data)
             # exit so we don't attempt to parse and instantiate
-            print()
-            print('Finished')
+            print('\nSuccessfully validated YAML!')
             sys.exit(0)
 
     cm_options = get_commented_map_options_from_cli(
@@ -661,7 +660,7 @@ def _get_hparams(
     )
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
-        print(f'Generating a template for {constructor.__name__}')
+        print(f'Generating a template for {constructor.__name__}...')
         cls = ensure_hparams_cls(constructor)
         if output_file == 'stdout':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
@@ -671,8 +670,7 @@ def _get_hparams(
             with open(output_file, 'x') as f:
                 cls.dump(add_docs=add_docs, interactive=interactive, output=f)
         # exit so we don't attempt to parse and instantiate if generate template is passed
-        print()
-        print('Finished')
+        print('\nFinished')
         sys.exit(0)
 
     cli_f, output_f = get_hparams_file_from_cli(cli_args=remaining_cli_args,
