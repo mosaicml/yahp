@@ -377,7 +377,7 @@ class Hparams(ABC):
 
     @classmethod
     def validate_yaml(cls: Type[THparams],
-                      f: Union[str, None, TextIO, pathlib.PurePath] = None,
+                      f: Union[str, None, TextIO, pathlib.Path] = None,
                       data: Optional[str] = None):
         """Validate yaml against JSON schema.
 
