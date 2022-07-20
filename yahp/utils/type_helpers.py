@@ -6,13 +6,10 @@ import inspect
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Sequence, Tuple, Type, Union, cast
+from typing import Any, Dict, Sequence, Tuple, Type, Union, cast
 
 from yahp.utils.iter_helpers import ensure_tuple
 from yahp.utils.typing_future import get_args, get_origin
-
-if TYPE_CHECKING:
-    from yahp.types import JSON
 
 
 class _JSONDict:  # sentential for representing JSON dictionary types
@@ -418,7 +415,7 @@ def is_none_like(x: Any, *, allow_list: bool) -> bool:
     return False
 
 
-def get_type_json_schema(f_type: Any) -> JSON:
+def get_type_json_schema(f_type: Any):
     res = {}
     # Primitive Types
     if f_type is str:
