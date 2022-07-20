@@ -591,3 +591,35 @@ def optional_required_yaml_input(hparams_tempdir) -> YamlInput:
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath='optional_required.yaml')
+
+@dataclass
+class ShavedBearsHparam(hp.Hparams):
+    first_action: str = hp.required(doc='str field')
+    last_action: str = hp.required(doc='str field')
+
+    def validate(self):
+        assert isinstance(self.first_action, str)
+        assert isinstance(self.last_action, str)
+        super().validate()
+
+@dataclass
+class ParametersHparam(hp.Hparams):
+    random_field: int = hp.required(doc='int field')
+    shaved_bears: ShavedBearsHparam = hp.required(doc='ShavedBears Hparams')
+    other_random_field: str = hp.required(doc='str field')
+
+    def validate(self):
+        assert isinstance(self.random_field, int)
+        assert isinstance(self.shaved_bears, ParametersHparam)
+        self.shaved_bears.validate()
+        assert isinstance(self.other_random_field, str)
+        super().validate()
+
+@dataclass
+class ShavingBearsHparam(hp.Hparams):
+    parameters: ParametersHparam = hp.required(doc='Parameters Hparams')
+
+    def validate(self):
+        assert isinstance(self.parameters, ParametersHparam)
+        self.parameters.validate()
+        super().validate()

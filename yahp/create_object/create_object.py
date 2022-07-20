@@ -16,7 +16,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence
 import yaml
 
 from yahp.auto_hparams import ensure_hparams_cls
-from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
+from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli, validate_hparams_file_from_cli,
                                          get_hparams_file_from_cli, retrieve_args)
 from yahp.hparams import Hparams
 from yahp.inheritance import load_yaml_with_inheritance
@@ -637,6 +637,22 @@ def _get_hparams(
     argparsers: List[argparse.ArgumentParser],
 ) -> Tuple[Hparams, Optional[str]]:
     argparse_name_registry = ArgparseNameRegistry()
+
+    v_options = validate_hparams_file_from_cli(
+        cli_args=remaining_cli_args,
+        argparse_name_registry=argparse_name_registry,
+        argument_parsers=argparsers,
+    )
+    if v_options is not None:
+        input_file, data, validate = v_options
+        if validate:
+            print(f'Validating YAML against {constructor.__name__}')
+            cls = ensure_hparams_cls(constructor)
+            cls.validate_yaml(f=input_file, data=data)
+            # exit so we don't attempt to parse and instantiate
+            print()
+            print('Finished')
+            sys.exit(0)
 
     cm_options = get_commented_map_options_from_cli(
         cli_args=remaining_cli_args,

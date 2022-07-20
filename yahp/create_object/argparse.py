@@ -187,6 +187,41 @@ def get_commented_map_options_from_cli(
     return parsed_args.save_template, parsed_args.interactive, not parsed_args.concise
 
 
+def validate_hparams_file_from_cli(
+    *,
+    cli_args: List[str],
+    argparse_name_registry: ArgparseNameRegistry,
+    argument_parsers: List[argparse.ArgumentParser],
+) -> Tuple[Optional[str], Optional[str]]:
+    parser = argparse.ArgumentParser(add_help=False)
+    argument_parsers.append(parser)
+    argparse_name_registry.reserve('f', 'file', 'd', 'dump', 'v', 'validate')
+    parser.add_argument('-f',
+                        '--file',
+                        type=str,
+                        default=None,
+                        dest='file',
+                        required=False,
+                        help='Load data from this YAML file to validate against Hparams.')
+    parser.add_argument(
+        '-d',
+        '--data',
+        type=str,
+        default=None,
+        required=False,
+        help='YAML string used to validate against Hparams.',
+    )
+    parser.add_argument(
+        '-v',
+        '--validate',
+        type=bool,
+        action='store_true',
+        help='Whether to validate YAML against Hparams.',
+    )
+    parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
+    return parsed_args.file, parsed_args.data, parsed_args.validate
+
+
 def cli_parse(val: Union[str, _MISSING_TYPE]) -> Union[str, None, _MISSING_TYPE]:
     # Helper to parse CLI input
     # Almost like the default of `str`, but handles MISSING and "none" gracefully
