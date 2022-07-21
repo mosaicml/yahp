@@ -20,7 +20,7 @@ import yaml
 
 from yahp.utils import type_helpers
 from yahp.utils.iter_helpers import list_to_deduplicated_dict
-from yahp.utils.json_schema_helpers import get_type_json_schema
+from yahp.utils.json_schema_helpers import get_registry_json_schema, get_type_json_schema
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -349,7 +349,11 @@ class Hparams(ABC):
                 res['required'].append(f.name)
 
             hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
-            res['properties'][f.name] = get_type_json_schema(hparams_type)
+            # Name is found in registry, set possible values as types in a union type
+            if cls.hparams_registry and f.name in cls.hparams_registry and len(cls.hparams_registry[f.name].keys()) > 0:
+                res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name])
+            else:
+                res['properties'][f.name] = get_type_json_schema(hparams_type)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
         # Delete required list if no fields are required

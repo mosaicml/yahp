@@ -4,12 +4,13 @@ import pathlib
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, NamedTuple, Optional, Union, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Type, Union, cast
 
 import pytest
 import yaml
 
 import yahp as hp
+from yahp.hparams import Hparams
 from yahp.types import JSON
 
 
@@ -605,6 +606,17 @@ class ShavedBearsHparam(hp.Hparams):
 
 
 @dataclass
+class UnshavedBearsHparam(hp.Hparams):
+    second_action: str = hp.required(doc='str field')
+    third_action: str = hp.required(doc='str field')
+
+    def validate(self):
+        assert isinstance(self.second_action, str)
+        assert isinstance(self.third_action, str)
+        super().validate()
+
+
+@dataclass
 class ParametersHparam(hp.Hparams):
     random_field: Optional[int] = hp.required(doc='int field')
     shaved_bears: ShavedBearsHparam = hp.required(doc='ShavedBears Hparams')
@@ -626,3 +638,19 @@ class ShavingBearsHparam(hp.Hparams):
         assert isinstance(self.parameters, ParametersHparam)
         self.parameters.validate()
         super().validate()
+
+
+bears_registry: Dict[str, Type[hp.Hparams]] = {
+    'shaved_bears': ShavedBearsHparam,
+    'unshaved_bears': UnshavedBearsHparam,
+}
+
+
+@dataclass
+class BearsHparams(hp.Hparams):
+
+    hparams_registry = {
+        'bears': bears_registry,
+    }
+
+    bears: Optional[List[Hparams]] = hp.required(doc='bear field')

@@ -8,7 +8,8 @@ from typing import Type
 import pytest
 from jsonschema import ValidationError
 
-from tests.yahp_fixtures import ChoiceHparamParent, KitchenSinkHparams, PrimitiveHparam, ShavingBearsHparam
+from tests.yahp_fixtures import (BearsHparams, ChoiceHparamParent, KitchenSinkHparams, PrimitiveHparam,
+                                 ShavingBearsHparam)
 from yahp.hparams import Hparams
 
 
@@ -94,8 +95,46 @@ from yahp.hparams import Hparams
                 other_random_field: "cool"
         """)
     ],
+    [BearsHparams, True, textwrap.dedent("""
+            ---
+            bears:
+        """)],
+    [
+        BearsHparams, True,
+        textwrap.dedent("""
+            ---
+            bears:
+                - shaved_bears:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+        """)
+    ],
+    [
+        BearsHparams, True,
+        textwrap.dedent("""
+            ---
+            bears:
+                - unshaved_bears:
+                    second_action: "Procure bears"
+                    third_action: "Release bears into wild with stylish new haircuts"
+        """)
+    ],
+    [
+        BearsHparams, True,
+        textwrap.dedent("""
+            ---
+            bears:
+                - shaved_bears:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+                - unshaved_bears:
+                    second_action: "Procure bears"
+                    third_action: "Release bears into wild with stylish new haircuts"
+        """)
+    ],
 ])
 def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bool, data: str):
+    print(json.dumps(hparam_class.get_json_schema(), indent=4))
     with contextlib.nullcontext() if success else pytest.raises(ValidationError):
         hparam_class.validate_yaml(data=data)
 
@@ -114,6 +153,7 @@ def test_validate_json_schema_from_file(hparam_class: Type[Hparams], success: bo
     ChoiceHparamParent,
     PrimitiveHparam,
     KitchenSinkHparams,
+    BearsHparams,
 ])
 def test_write_and_read_json_schema_from_name(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
     file = os.path.join(tmp_path, 'schema.json')
@@ -129,6 +169,7 @@ def test_write_and_read_json_schema_from_name(hparam_class: Type[Hparams], tmp_p
     ChoiceHparamParent,
     PrimitiveHparam,
     KitchenSinkHparams,
+    BearsHparams,
 ])
 def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
     file = os.path.join(tmp_path, 'schema.json')
@@ -139,3 +180,10 @@ def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams], tmp_p
     generated_schema = hparam_class.get_json_schema()
     assert loaded_schema == generated_schema
 
+
+# @pytest.mark.parametrize('hparam_class', [
+#     KitchenSinkHparams,
+# ])
+# def test_write_and_read_json_schema_from_file2(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
+#     print(json.dumps(hparam_class.get_json_schema(), indent=4))
+#     assert False
