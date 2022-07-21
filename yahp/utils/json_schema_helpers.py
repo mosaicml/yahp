@@ -1,11 +1,10 @@
-from enum import Enum
 import inspect
+from enum import Enum
 
 from yahp.utils import type_helpers
 
 
 def get_type_json_schema(f_type: type_helpers.HparamsType):
-    print(f_type, f_type.types[0], callable(f_type.types[0]))
     # Import inside function to resovle circular dependencies
     from yahp.auto_hparams import ensure_hparams_cls
 
@@ -44,7 +43,16 @@ def get_type_json_schema(f_type: type_helpers.HparamsType):
         return hparam_class.get_json_schema()
     # JSON
     else:
-        raise ValueError("Unexpected type when constructing JSON Schema.")
+        raise ValueError('Unexpected type when constructing JSON Schema.')
+    if f_type.is_optional:
+        res = {
+            'anyOf': [
+                {
+                    'type': 'null'
+                },
+                res,
+            ]
+        }
     return res
 
 

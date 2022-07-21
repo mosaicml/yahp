@@ -606,7 +606,7 @@ class ShavedBearsHparam(hp.Hparams):
 
 @dataclass
 class ParametersHparam(hp.Hparams):
-    random_field: int = hp.required(doc='int field')
+    random_field: Optional[int] = hp.required(doc='int field')
     shaved_bears: ShavedBearsHparam = hp.required(doc='ShavedBears Hparams')
     other_random_field: str = hp.required(doc='str field')
 

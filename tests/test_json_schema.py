@@ -82,9 +82,20 @@ from yahp.hparams import Hparams
             ---
             commonfield: 1
         """)],
+    [
+        ShavingBearsHparam, True,
+        textwrap.dedent("""
+            ---
+            parameters:
+                random_field:
+                shaved_bears:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+                other_random_field: "cool"
+        """)
+    ],
 ])
 def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bool, data: str):
-    print(json.dumps(hparam_class.get_json_schema(), indent=4))
     with contextlib.nullcontext() if success else pytest.raises(ValidationError):
         hparam_class.validate_yaml(data=data)
 
@@ -94,7 +105,6 @@ def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bo
      os.path.join(os.path.dirname(__file__), 'inheritance/shaving_bears.yaml')],
 ])
 def test_validate_json_schema_from_file(hparam_class: Type[Hparams], success: bool, file: str):
-    print(json.dumps(hparam_class.get_json_schema(), indent=4))
     with contextlib.nullcontext() if success else pytest.raises(ValidationError):
         hparam_class.validate_yaml(f=file)
 
@@ -118,6 +128,7 @@ def test_write_and_read_json_schema_from_name(hparam_class: Type[Hparams], tmp_p
     ShavingBearsHparam,
     ChoiceHparamParent,
     PrimitiveHparam,
+    KitchenSinkHparams,
 ])
 def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
     file = os.path.join(tmp_path, 'schema.json')
@@ -128,10 +139,3 @@ def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams], tmp_p
     generated_schema = hparam_class.get_json_schema()
     assert loaded_schema == generated_schema
 
-
-# @pytest.mark.parametrize('hparam_class', [
-#     KitchenSinkHparams,
-# ])
-# def test_write_and_read_json_schema_from_file2(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
-#     print(json.dumps(hparam_class.get_json_schema(), indent=4))
-#     assert False
