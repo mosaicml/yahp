@@ -9,9 +9,9 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
     """Convert type into corresponding JSON Schema. As the given name is in the `hparams_registry`,
     create objects for each possible entry in the registry and treat as union type.
     """
-    res = {'oneOf': []}
+    res = {'anyOf': []}
     for key, value in registry.items():
-        res['oneOf'].append({
+        res['anyOf'].append({
             'type': 'object',
             'properties': {
                 key: get_type_json_schema(type_helpers.HparamsType(value))
@@ -31,10 +31,10 @@ def get_type_json_schema(f_type: type_helpers.HparamsType):
 
     # Union
     if len(f_type.types) > 1:
-        # Add all union types using oneOf
-        res = {'oneOf': []}
+        # Add all union types using anyOf
+        res = {'anyOf': []}
         for union_type in f_type.types:
-            res['oneOf'].append(get_type_json_schema(type_helpers.HparamsType(union_type)))
+            res['anyOf'].append(get_type_json_schema(type_helpers.HparamsType(union_type)))
     # Primitive Types
     elif f_type.types[0] is str:
         res = {'type': 'string'}
