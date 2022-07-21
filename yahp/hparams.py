@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import inspect
 import json
 import logging
 import pathlib
@@ -21,6 +20,7 @@ import yaml
 
 from yahp.utils import type_helpers
 from yahp.utils.iter_helpers import list_to_deduplicated_dict
+from yahp.utils.json_schema_helpers import get_type_json_schema
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -348,16 +348,8 @@ class Hparams(ABC):
             if type_helpers.is_field_required(f):
                 res['required'].append(f.name)
 
-            # if hparams_type.is_recursive:
-            #     ftype = ensure_hparams_type(hparams_type.ftype)
-
             hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
-            # Hparams, recurse
-            if inspect.isclass(f.type) and issubclass(f.type, Hparams):
-                res['properties'][f.name] = f.type.get_json_schema()
-            # Otherwise, build schema for type
-            else:
-                res['properties'][f.name] = type_helpers.get_type_json_schema(hparams_type)
+            res['properties'][f.name] = get_type_json_schema(hparams_type)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
         # Delete required list if no fields are required
@@ -377,7 +369,7 @@ class Hparams(ABC):
 
     @classmethod
     def validate_yaml(cls: Type[THparams],
-                      f: Union[str, None, TextIO, pathlib.Path] = None,
+                      f: Union[str, None, TextIO, pathlib.PurePath] = None,
                       data: Optional[str] = None):
         """Validate yaml against JSON schema.
 

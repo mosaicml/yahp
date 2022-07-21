@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 from dataclasses import MISSING, Field
 from enum import Enum
@@ -413,62 +412,3 @@ def is_none_like(x: Any, *, allow_list: bool) -> bool:
     if allow_list and isinstance(x, (tuple, list)) and len(x) == 1:
         return is_none_like(x[0], allow_list=allow_list)
     return False
-
-
-def get_type_json_schema(f_type: HparamsType):
-    print(f_type, f_type.types[0])
-    res = {}
-    # List
-    if f_type.is_list:
-        res = {'type': 'array', 'items': {'type': get_list_type_json_schema(f_type)}}
-        # Remove additional properties if its empty, such as if value_type is JSON
-        if len(res['items']['type'].keys()) == 0:
-            del res['items']
-    # Union
-    if len(f_type.types) > 1:
-        res = get_list_type_json_schema(f_type)
-    # Primitive Types
-    if f_type.types[0] is str:
-        res = {'type': 'string'}
-    elif f_type.types[0] is bool:
-        res = {'type': 'boolean'}
-    elif f_type.types[0] is int:
-        res = {'type': 'integer'}
-    elif f_type.types[0] is float:
-        res = {'type': 'number'}
-    # # dict
-    # elif f_type is dict:
-    #     res = {
-    #         'type': 'object',
-    #     }
-    # # typing.Dict
-    # elif hasattr(f_type, '__origin__') and f_type.__origin__ is dict:
-    #     # Note that we are unable to type key values as they must be strings in JSONs.
-    #     _, value_type = f_type.__args__
-    #     res = {'type': 'object', 'additionalProperties': get_type_json_schema(value_type)}
-    #     # Remove additional properties if its empty, such as if value_type is JSON
-    #     if len(res['additionalProperties'].keys()) == 0:
-    #         del res['additionalProperties']
-    # Enum
-    elif inspect.isclass(f_type.types[0]) and issubclass(f_type.types[0], Enum):
-        # Enum attributes can either be specified lowercase or uppercase
-        member_names = [name.lower() for name in f_type.types[0]._member_names_]
-        member_names.extend([name.upper() for name in f_type.types[0]._member_names_])
-        res = {'enum': member_names}
-    # JSON
-    else:
-        res = {
-            'type': 'object',
-        }
-    return res
-
-
-def get_list_type_json_schema(f_type: HparamsType):
-    if len(f_type.types) > 1:
-        # Add all union types using oneOf
-        res = {'oneOf': []}
-        for union_type in f_type.types:
-            res['oneOf'].append(get_list_type_json_schema(HparamsType(union_type)))
-    else:
-        res = {'type': f_type.types[0]}
-    return res

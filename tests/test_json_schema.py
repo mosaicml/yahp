@@ -84,6 +84,7 @@ from yahp.hparams import Hparams
         """)],
 ])
 def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bool, data: str):
+    print(json.dumps(hparam_class.get_json_schema(), indent=4))
     with contextlib.nullcontext() if success else pytest.raises(ValidationError):
         hparam_class.validate_yaml(data=data)
 
@@ -128,3 +129,9 @@ def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams], tmp_p
     assert loaded_schema == generated_schema
 
 
+# @pytest.mark.parametrize('hparam_class', [
+#     KitchenSinkHparams,
+# ])
+# def test_write_and_read_json_schema_from_file2(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
+#     print(json.dumps(hparam_class.get_json_schema(), indent=4))
+#     assert False
