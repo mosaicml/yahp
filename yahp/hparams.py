@@ -336,7 +336,6 @@ class Hparams(ABC):
         res = {
             'type': 'object',
             'properties': {},
-            'required': [],
             'additionalProperties': False,
         }
         class_type_hints = get_type_hints(cls)
@@ -346,6 +345,8 @@ class Hparams(ABC):
 
             # Required field
             if type_helpers.is_field_required(f):
+                if 'required' not in res.keys():
+                    res['required'] = []
                 res['required'].append(f.name)
 
             hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
@@ -355,10 +356,6 @@ class Hparams(ABC):
             else:
                 res['properties'][f.name] = get_type_json_schema(hparams_type)
             res['properties'][f.name]['description'] = f.metadata['doc']
-
-        # Delete required list if no fields are required
-        if len(res['required']) == 0:
-            del res['required']
 
         return res
 
@@ -374,7 +371,7 @@ class Hparams(ABC):
     @classmethod
     def validate_yaml(cls: Type[THparams],
                       f: Union[str, None, TextIO, pathlib.PurePath] = None,
-                      data: Optional[str] = None):
+                      data: Optional[Dict[str, Any]] = None):
         """Validate yaml against JSON schema.
 
         Args:
@@ -395,7 +392,7 @@ class Hparams(ABC):
                 with open(f) as file:
                     jsonschema.validate(yaml.safe_load(file), cls.get_json_schema())
         elif data:
-            jsonschema.validate(yaml.safe_load(data), cls.get_json_schema())
+            jsonschema.validate(data, cls.get_json_schema())
         else:
             raise ValueError('Neither file nor data were provided, so there is no YAML to validate.')
 

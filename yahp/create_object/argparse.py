@@ -120,7 +120,7 @@ def get_hparams_file_from_cli(
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
-    argparse_name_registry.reserve('f', 'file', 'd', 'dump', 'v', 'validate')
+    argparse_name_registry.reserve('f', 'file', 'd', 'dump', 'validate')
     parser.add_argument('-f',
                         '--file',
                         type=str,
@@ -140,7 +140,6 @@ def get_hparams_file_from_cli(
         help='Dump the resulting Hparams to the specified YAML file (defaults to `stdout`) and exit.',
     )
     parser.add_argument(
-        '-v',
         '--validate',
         action='store_true',
         help='Whether to validate YAML against Hparams.',

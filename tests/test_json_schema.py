@@ -6,6 +6,7 @@ import textwrap
 from typing import Type
 
 import pytest
+import yaml
 from jsonschema import ValidationError
 
 from tests.yahp_fixtures import (BearsHparams, ChoiceHparamParent, KitchenSinkHparams, PrimitiveHparam,
@@ -73,6 +74,51 @@ from yahp.hparams import Hparams
                       sub_dict_item: 43
         """)
     ],
+    [
+        KitchenSinkHparams,
+        True,
+        textwrap.dedent("""
+            ---
+            required_int_field: 1
+            nullable_required_int_field:
+            required_bool_field: False
+            nullable_required_bool_field:
+            required_enum_field_list:
+                - RED
+                - red
+            required_enum_field_with_default: green
+            nullable_required_enum_field: None
+            nullable_required_enum_field:
+            required_union_bool_str_field: hi
+            nullable_required_union_bool_str_field:
+            required_int_list_field:
+                - 1
+                - 2
+                - 42
+            nullable_required_list_int_field:
+                - 24
+            nullable_required_list_union_bool_str_field:
+            required_list_union_bool_str_field:
+                - True
+                - hi
+                - False
+                - bye
+            required_subhparams_field: { default_false: False, default_true: True }
+            nullable_required_subhparams_field:
+            required_subhparams_field_list:
+                - { default_false: False }
+                - {}
+            nullable_required_subhparams_field_list:
+            required_choice:
+                one:
+                    commonfield: True
+                    intfield: 3
+            nullable_required_choice:
+            required_choice_list: []
+            nullable_required_choice_list:
+            optional_float_field_default_1: 1.1
+        """),
+    ],
     [ChoiceHparamParent, True,
      textwrap.dedent("""
             ---
@@ -133,10 +179,9 @@ from yahp.hparams import Hparams
         """)
     ],
 ])
-def test_validate_json_schema_from_data(hparam_class: Type[Hparams], success: bool, data: str):
-    print(json.dumps(hparam_class.get_json_schema(), indent=4))
+def test_validate_json_schema_from_strings(hparam_class: Type[Hparams], success: bool, data: str):
     with contextlib.nullcontext() if success else pytest.raises(ValidationError):
-        hparam_class.validate_yaml(data=data)
+        hparam_class.validate_yaml(data=yaml.safe_load(data))
 
 
 @pytest.mark.parametrize('hparam_class,success,file', [
@@ -179,11 +224,3 @@ def test_write_and_read_json_schema_from_file(hparam_class: Type[Hparams], tmp_p
         loaded_schema = json.load(f)
     generated_schema = hparam_class.get_json_schema()
     assert loaded_schema == generated_schema
-
-
-# @pytest.mark.parametrize('hparam_class', [
-#     KitchenSinkHparams,
-# ])
-# def test_write_and_read_json_schema_from_file2(hparam_class: Type[Hparams], tmp_path: pathlib.Path):
-#     print(json.dumps(hparam_class.get_json_schema(), indent=4))
-#     assert False
