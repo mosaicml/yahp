@@ -330,8 +330,20 @@ class Hparams(ABC):
         )
 
     @classmethod
-    def get_json_schema(cls) -> Dict[str, Any]:
-        """Generates and returns a JSONSchema dictionary."""
+    def get_json_schema(cls: Type[THparams], _cls_def: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Generates and returns a JSONSchema dictionary.
+
+        Args:
+            _cls_def (Optional[Dict[str, Any]]): Keeps a reference to previously built Hparmam
+                classes and enums which can be used with references to make schemas more concise
+                and readable.
+        """
+
+        root_schema = False
+        if _cls_def is None:
+            root_schema = True
+            # counter is used to give unique key names for entries related to list definitions
+            _cls_def = {'counter': 0}
 
         res = {
             'type': 'object',
@@ -352,15 +364,30 @@ class Hparams(ABC):
             hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
             # Name is found in registry, set possible values as types in a union type
             if cls.hparams_registry and f.name in cls.hparams_registry and len(cls.hparams_registry[f.name].keys()) > 0:
-                res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name])
+                res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name],
+                                                                     _cls_def)
             else:
-                res['properties'][f.name] = get_type_json_schema(hparams_type)
+                res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def)
             res['properties'][f.name]['description'] = f.metadata['doc']
+
+        _cls_def[cls.__name__] = res
+        _cls_def[cls.__name__]['referenced'] = False
+
+        # Add definitions to top level of schema
+        if root_schema:
+            del _cls_def['counter']
+            for key, value in _cls_def.items():
+                # Only add to definitions if class has been referenced
+                if value['referenced']:
+                    del value['referenced']
+                    if '$defs' not in res:
+                        res['$defs'] = {}
+                    res['$defs'][key] = value
 
         return res
 
     @classmethod
-    def dump_jsonschema(cls, f: Union[TextIO, str, pathlib.Path]):
+    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path]):
         """Dump the JSONSchema to ``f``."""
         if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
             json.dump(cls.get_json_schema(), f)
