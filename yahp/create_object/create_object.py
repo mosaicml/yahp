@@ -14,6 +14,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence
                     cast, get_type_hints)
 
 import yaml
+from jsonschema.exceptions import ValidationError
 
 from yahp.auto_hparams import ensure_hparams_cls
 from yahp.create_object.argparse import (ArgparseNameRegistry, ParserArgument, get_commented_map_options_from_cli,
@@ -661,14 +662,22 @@ def _get_hparams(
     cli_f, output_f, validate = get_hparams_file_from_cli(cli_args=remaining_cli_args,
                                                           argparse_name_registry=argparse_name_registry,
                                                           argument_parsers=argparsers)
-    # Validate was specified, so only validate instead of instantiating
+
+    print(f'Validating YAML against {constructor.__name__}...')
+    cls = ensure_hparams_cls(constructor)
+    # Validate was specified, so only validate and error on failures
     if validate:
-        print(f'Validating YAML against {constructor.__name__}...')
-        cls = ensure_hparams_cls(constructor)
         cls.validate_yaml(f=cli_f)
         # exit so we don't attempt to parse and instantiate
-        print('\nSuccessfully validated YAML!')
+        print('Successfully validated YAML!')
         sys.exit(0)
+    # Otherwise, try to validate yaml and print failures as warnings
+    else:
+        try:
+            cls.validate_yaml(f=cli_f)
+            print('Successfully validated YAML!')
+        except ValidationError as e:
+            warnings.warn(str(e))
 
     if cli_f is not None:
         if f is not None:
