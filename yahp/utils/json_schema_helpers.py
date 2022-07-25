@@ -1,7 +1,7 @@
 import inspect
 import re
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, TextIO
 
 from yahp.utils import type_helpers
 
@@ -57,8 +57,8 @@ def get_type_json_schema(f_type: type_helpers.HparamsType):
         member_names = [name.lower() for name in f_type.type._member_names_]
         member_names.extend([name.upper() for name in f_type.type._member_names_])
         res = {'enum': member_names}
-    # JSON
-    elif f_type.type == type_helpers._JSONDict:
+    # JSON or unschemable types
+    elif f_type.type == type_helpers._JSONDict or f_type.type == TextIO:
         res = {
             'type': 'object',
         }
