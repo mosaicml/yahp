@@ -1,9 +1,9 @@
 import inspect
 from enum import Enum
-import types
 from typing import Any, Dict
 
 from yahp.utils import type_helpers
+
 
 def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[str, Any]):
     """Convert type into corresponding JSON Schema. As the given name is in the `hparams_registry`,
@@ -64,10 +64,10 @@ def get_type_json_schema(f_type: type_helpers.HparamsType):
             hparam_class = ensure_hparams_cls(f_type.type)
             res = hparam_class.get_json_schema()
         except TypeError as e:
-            # Callable fails get_type_hints in ensure_hparams_cls, which is likely because the 
+            # Callable fails get_type_hints in ensure_hparams_cls, which is likely because the
             # callable is a parameter to a class. As the function has not yet been specified, it
             # we cannot generate a schema for it, so we treat it as an arbitrary object
-            if "is not a module, class, method, or function" in str(e):
+            if 'is not a module, class, method, or function' in str(e):
                 res = {
                     'type': 'object',
                 }
