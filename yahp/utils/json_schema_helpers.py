@@ -1,4 +1,5 @@
 import inspect
+import re
 from enum import Enum
 from typing import Any, Dict
 
@@ -11,10 +12,13 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
     """
     res = {'anyOf': []}
     for key, value in registry.items():
+        # Accept any string prefixed by the key. In yahp, a key can be specified multiple times using
+        # key+X syntax, so prefix checking is required. Note that we assume key does not have any
+        # special regex characters.
         res['anyOf'].append({
             'type': 'object',
-            'properties': {
-                key: get_type_json_schema(type_helpers.HparamsType(value))
+            'patternProperties': {
+                f'^{re.escape(key)}': get_type_json_schema(type_helpers.HparamsType(value))
             },
             'additionalProperties': False,
         })

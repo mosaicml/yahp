@@ -178,6 +178,19 @@ from yahp.hparams import Hparams
                     third_action: "Release bears into wild with stylish new haircuts"
         """)
     ],
+    [
+        BearsHparams, True,
+        textwrap.dedent("""
+            ---
+            bears:
+                - shaved_bears+first:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+                - shaved_bears+second:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+        """)
+    ],
 ])
 def test_validate_json_schema_from_strings(hparam_class: Type[Hparams], success: bool, data: str):
     with contextlib.nullcontext() if success else pytest.raises(ValidationError):
