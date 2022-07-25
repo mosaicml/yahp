@@ -83,14 +83,26 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
     """Wrap JSON Schema with list schema or optional schema if specified.
     """
     res = schema
-    # Wrap type in list
-    if f_type.is_list:
+    # Wrap type in list, accepting singletons, and optional
+    if f_type.is_list and f_type.is_optional:
         res = {
-            'type': 'array',
-            'items': res,
+            'oneOf': [{
+                'type': 'null'
+            }, res, {
+                'type': 'array',
+                'items': res,
+            }]
+        }
+    # Wrap type in list, accepting singletons
+    elif f_type.is_list:
+        res = {
+            'oneOf': [res, {
+                'type': 'array',
+                'items': res,
+            }]
         }
     # Wrap type for optional
-    if f_type.is_optional:
+    elif f_type.is_optional:
         res = {
             'oneOf': [
                 {
