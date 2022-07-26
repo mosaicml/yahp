@@ -57,6 +57,7 @@ class Hparams(ABC):
     # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
     # and would treat it like an instance variable. Instead, using the python2-style annotations
     hparams_registry = None  # type: Optional[Dict[str, Dict[str, Union[Callable[..., Any], Type["Hparams"]]]]]
+    from_autoyahp = False  # type: bool
 
     @classmethod
     def validate_keys(cls,
@@ -365,9 +366,9 @@ class Hparams(ABC):
             # Name is found in registry, set possible values as types in a union type
             if cls.hparams_registry and f.name in cls.hparams_registry and len(cls.hparams_registry[f.name].keys()) > 0:
                 res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name],
-                                                                     _cls_def)
+                                                                     _cls_def, cls.from_autoyahp)
             else:
-                res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def)
+                res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, cls.from_autoyahp)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
         _cls_def[cls.__name__] = res

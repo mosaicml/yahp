@@ -4,12 +4,13 @@ import copy
 import inspect
 import re
 from enum import Enum
-from typing import Any, Dict, TextIO
+from typing import Any, Dict
 
 from yahp.utils import type_helpers
 
 
-def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[str, Any], _cls_def: Dict[str, Any]):
+def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[str, Any], _cls_def: Dict[str, Any],
+                             from_autoyahp: bool):
     """Convert type into corresponding JSON Schema. As the given name is in the `hparams_registry`,
     create objects for each possible entry in the registry and treat as union type.
 
@@ -19,6 +20,7 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
         _cls_def ([Dict[str, Any]]): Keeps a reference to previously built Hparmam
             classes and enums which can be used with references to make schemas more concise
             and readable.
+        from_autoyahp (bool): Indicates whether parent Hparam class was autoyahp generated
     """
     res = {'anyOf': []}
     for key, value in registry.items():
@@ -28,14 +30,15 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
         res['anyOf'].append({
             'type': 'object',
             'patternProperties': {
-                f'^{re.escape(key)}($|\\+)': get_type_json_schema(type_helpers.HparamsType(value), _cls_def)
+                f'^{re.escape(key)}($|\\+)':
+                    get_type_json_schema(type_helpers.HparamsType(value), _cls_def, from_autoyahp)
             },
             'additionalProperties': False,
         })
     return _check_for_list_and_optional(f_type, res, _cls_def)
 
 
-def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, Any]):
+def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, Any], from_autoyahp: bool):
     """Convert type into corresponding JSON Schema. We first check for union types and recursively
     handle each component. If a type is not union, we know it is a singleton type, so it must be
     either a primitive, Enum, JSON, or Hparam-like. Dictionaries are treated as JSON types, and
@@ -46,6 +49,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         _cls_def ([Dict[str, Any]]): Keeps a reference to previously built Hparmam
             classes and enums which can be used with references to make schemas more concise
             and readable.
+        from_autoyahp (bool): Indicates whether parent Hparam class was autoyahp generated
     """
     # Import inside function to resolve circular dependencies
     from yahp.auto_hparams import ensure_hparams_cls
@@ -57,7 +61,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         # Add all union types using anyOf
         res = {'anyOf': []}
         for union_type in f_type.types:
-            res['anyOf'].append(get_type_json_schema(type_helpers.HparamsType(union_type), _cls_def))
+            res['anyOf'].append(get_type_json_schema(type_helpers.HparamsType(union_type), _cls_def, from_autoyahp))
     # Primitive Types
     elif f_type.type is str:
         res = {'type': 'string'}
@@ -89,29 +93,25 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             _cls_def[f_type.type.__name__] = copy.deepcopy(res)
             _cls_def[f_type.type.__name__]['referenced'] = False
     # JSON or unschemable types
-    elif f_type.type == type_helpers._JSONDict or f_type.type == TextIO:
+    elif f_type.type == type_helpers._JSONDict:
         res = {
             'type': 'object',
         }
     # Hparam class
     elif callable(f_type.type):
-        try:
+        # If the parent class was autoyahped, do not try autoyahping parameters
+        if from_autoyahp:
+            res = {
+                'type': 'object',
+            }
+        # Otherwise, attempt to autoyahp
+        else:
             hparam_class = ensure_hparams_cls(f_type.type)
             if hparam_class in _cls_def:
                 _cls_def[hparam_class.__name__]['referenced'] = True
                 res = {'$ref': f'#/$defs/{hparam_class.__name__}'}
             else:
                 res = hparam_class.get_json_schema(_cls_def)
-        except TypeError as e:
-            # Callable fails get_type_hints in ensure_hparams_cls, which is likely because the
-            # callable is a parameter to a class. As the function has not yet been specified, it
-            # we cannot generate a schema for it, so we treat it as an arbitrary object
-            if 'is not a module, class, method, or function' in str(e):
-                res = {
-                    'type': 'object',
-                }
-            else:
-                raise
     else:
         raise ValueError('Unexpected type when constructing JSON Schema.')
 
