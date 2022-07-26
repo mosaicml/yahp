@@ -57,7 +57,6 @@ class Hparams(ABC):
     # note: hparams_registry cannot be typed the normal way -- dataclass reads the type annotations
     # and would treat it like an instance variable. Instead, using the python2-style annotations
     hparams_registry = None  # type: Optional[Dict[str, Dict[str, Union[Callable[..., Any], Type["Hparams"]]]]]
-    from_autoyahp = False  # type: bool
 
     @classmethod
     def validate_keys(cls,
@@ -331,13 +330,14 @@ class Hparams(ABC):
         )
 
     @classmethod
-    def _get_json_schema(cls: Type[THparams], _cls_def: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_json_schema(cls: Type[THparams], _cls_def: Dict[str, Any], allow_recursion: bool) -> Dict[str, Any]:
         """Recursive private helper for generating and returning a JSONSchema dictionary.
 
         Args:
             _cls_def (Optional[Dict[str, Any]]): Keeps a reference to previously built Hparmam
                 classes and enums which can be used with references to make schemas more concise
                 and readable.
+            allow_recursion (bool): Whether to recursively parse subclasses.
         """
         res = {
             'type': 'object',
@@ -359,9 +359,9 @@ class Hparams(ABC):
             # Name is found in registry, set possible values as types in a union type
             if cls.hparams_registry and f.name in cls.hparams_registry and len(cls.hparams_registry[f.name].keys()) > 0:
                 res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name],
-                                                                     _cls_def, cls.from_autoyahp)
+                                                                     _cls_def, allow_recursion)
             else:
-                res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, cls.from_autoyahp)
+                res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, allow_recursion)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
         _cls_def[cls.__qualname__] = res
@@ -372,7 +372,7 @@ class Hparams(ABC):
     def get_json_schema(cls: Type[THparams]) -> Dict[str, Any]:
         """Generates and returns a JSONSchema dictionary."""
         _cls_def = {}
-        res = cls._get_json_schema(_cls_def)
+        res = cls._get_json_schema(_cls_def, True)
 
         # Delete top level name
         del _cls_def[cls.__qualname__]

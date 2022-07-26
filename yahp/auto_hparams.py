@@ -68,10 +68,6 @@ def generate_hparams_cls(constructor: Callable, ignore_docstring_errors: bool = 
             # constructor
             'initialize_object':
                 lambda self: constructor(**{f.name: getattr(self, f.name) for f in dataclasses.fields(self)}),
-
-            # Indicate if constructed from autoyahp
-            'from_autoyahp':
-                True,
         },
     )
     assert issubclass(hparams_cls, Hparams)
