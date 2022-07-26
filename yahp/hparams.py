@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import logging
 import pathlib
@@ -332,21 +331,14 @@ class Hparams(ABC):
         )
 
     @classmethod
-    def get_json_schema(cls: Type[THparams], _cls_def: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Generates and returns a JSONSchema dictionary.
+    def _get_json_schema(cls: Type[THparams], _cls_def: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Recursive private helper for generating and returning a JSONSchema dictionary. 
 
         Args:
             _cls_def (Optional[Dict[str, Any]]): Keeps a reference to previously built Hparmam
                 classes and enums which can be used with references to make schemas more concise
                 and readable.
         """
-
-        root_schema = False
-        if _cls_def is None:
-            root_schema = True
-            # counter is used to give unique key names for entries related to list definitions
-            _cls_def = {'counter': 0}
-
         res = {
             'type': 'object',
             'properties': {},
@@ -372,19 +364,27 @@ class Hparams(ABC):
                 res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, cls.from_autoyahp)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
-        _cls_def[cls.__name__] = copy.deepcopy(res)
-        _cls_def[cls.__name__]['referenced'] = False
+        _cls_def[cls.__name__] = res
 
+        return res
+
+
+    @classmethod
+    def get_json_schema(cls: Type[THparams]) -> Dict[str, Any]:
+        """Generates and returns a JSONSchema dictionary."""
+        # counter is used to give unique key names for entries related to list definitions
+        _cls_def = {'counter': 0}
+
+        res = cls._get_json_schema(_cls_def)
+
+        # Delete counter and top level name
+        del _cls_def['counter']
+        del _cls_def[cls.__name__]
         # Add definitions to top level of schema
-        if root_schema:
-            del _cls_def['counter']
-            for key, value in _cls_def.items():
-                # Only add to definitions if class has been referenced
-                if value['referenced']:
-                    del value['referenced']
-                    if '$defs' not in res:
-                        res['$defs'] = {}
-                    res['$defs'][key] = value
+        for key, value in _cls_def.items():
+            if '$defs' not in res:
+                res['$defs'] = {}
+            res['$defs'][key] = value
 
         return res
 

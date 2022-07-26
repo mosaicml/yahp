@@ -25,8 +25,7 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
     res = {'anyOf': []}
     for key in sorted(registry.keys()):
         # Accept any string prefixed by the key. In yahp, a key can be specified multiple times using
-        # key+X syntax, so prefix checking is required. Note that we assume key does not have any
-        # special regex characters.
+        # key+X syntax, so prefix checking is required
         res['anyOf'].append({
             'type': 'object',
             'patternProperties': {
@@ -87,7 +86,6 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             member_names = sorted(list(set(member_names)), key=lambda x: str(x))
             res = {'enum': member_names}
             _cls_def[f_type.type.__name__] = copy.deepcopy(res)
-            _cls_def[f_type.type.__name__]['referenced'] = True
         res = {'$ref': f'#/$defs/{f_type.type.__name__}'}
     # JSON or unschemable types
     elif f_type.type == type_helpers._JSONDict:
@@ -104,11 +102,10 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         # Otherwise, attempt to autoyahp
         else:
             hparam_class = ensure_hparams_cls(f_type.type)
-            # Build schema and add to _cls_def if not present. get_json_schema adds to _cls_def
+            # Build schema and add to _cls_def if not present. _get_json_schema adds to _cls_def
             # internally, so we only need to call the function.
             if hparam_class not in _cls_def:
-                hparam_class.get_json_schema(_cls_def)
-            _cls_def[hparam_class.__name__]['referenced'] = True
+                hparam_class._get_json_schema(_cls_def)
             res = {'$ref': f'#/$defs/{hparam_class.__name__}'}
     else:
         raise ValueError('Unexpected type when constructing JSON Schema.')
@@ -129,7 +126,6 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
         # based on classes, lists may be of primitive types, meaning we can't generate unique
         # names.
         _cls_def[f"{_cls_def['counter']}_list"] = copy.deepcopy(schema)
-        _cls_def[f"{_cls_def['counter']}_list"]['referenced'] = True
         schema = {'$ref': f"#/$defs/{_cls_def['counter']}_list"}
         _cls_def['counter'] += 1
 
@@ -150,7 +146,6 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
         key_name = f'{f_type.type}_{f_type.is_list}_{f_type.is_optional}'
         if key_name not in _cls_def:
             _cls_def[key_name] = copy.deepcopy(res)
-            _cls_def[key_name]['referenced'] = True
         res = {'$ref': f'#/$defs/{key_name}'}
 
     return res
