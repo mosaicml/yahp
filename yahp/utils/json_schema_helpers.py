@@ -125,8 +125,8 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
     if not f_type.is_list and not f_type.is_optional:
         return schema
 
-    # Use defs to avoid duplicate schema
-    if f_type.is_list:
+    # Use defs to avoid duplicate schema for more complex types
+    if f_type.is_list and (len(f_type.types) > 1 or f_type.type not in (str, bool, int, float)):
         # Use counter to give unique key name. While enums and hparams can generate unique names
         # based on classes, lists may be of primitive types, meaning we can't generate unique
         # names.
