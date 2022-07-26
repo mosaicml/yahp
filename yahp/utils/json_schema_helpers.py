@@ -74,7 +74,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
     # Enum
     elif inspect.isclass(f_type.type) and issubclass(f_type.type, Enum):
         # Pull schema from _cls_def
-        if f_type.type in _cls_def:
+        if f_type.type.__name__ in _cls_def:
             res = {'$ref': f'#/$defs/{f_type.type.__name__}'}
             _cls_def[f_type.type.__name__]['referenced'] = True
         # Otherwise build schema and add to _cls_def
