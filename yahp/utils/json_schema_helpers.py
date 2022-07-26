@@ -134,11 +134,4 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
     if f_type.is_optional:
         res['oneOf'].append({'type': 'null'})
 
-    # Explicitly shortcut primitives
-    if len(f_type.types) == 1 and f_type.type in (str, bool, int, float):
-        key_name = f"{f_type.type.__qualname__}{'_list' if f_type.is_list else ''}{'_optional' if f_type.is_optional else ''}"
-        if key_name not in _cls_def:
-            _cls_def[key_name] = copy.deepcopy(res)
-        res = {'$ref': f'#/$defs/{key_name}'}
-
     return res
