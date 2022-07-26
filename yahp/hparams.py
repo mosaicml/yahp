@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import logging
 import pathlib
@@ -371,7 +372,7 @@ class Hparams(ABC):
                 res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, cls.from_autoyahp)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
-        _cls_def[cls.__name__] = res
+        _cls_def[cls.__name__] = copy.deepcopy(res)
         _cls_def[cls.__name__]['referenced'] = False
 
         # Add definitions to top level of schema
