@@ -73,12 +73,8 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         res = {'type': 'number'}
     # Enum
     elif inspect.isclass(f_type.type) and issubclass(f_type.type, Enum):
-        # Pull schema from _cls_def
-        if f_type.type.__name__ in _cls_def:
-            res = {'$ref': f'#/$defs/{f_type.type.__name__}'}
-            _cls_def[f_type.type.__name__]['referenced'] = True
-        # Otherwise build schema and add to _cls_def
-        else:
+        # Build schema and add to _cls_def if not present
+        if f_type.type.__name__ not in _cls_def:
             # Enum attributes can either be specified lowercase or uppercase
             member_names = [name.lower() for name in f_type.type._member_names_]
             member_names.extend([name.upper() for name in f_type.type._member_names_])
@@ -91,7 +87,8 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             member_names = sorted(list(set(member_names)), key=lambda x: str(x))
             res = {'enum': member_names}
             _cls_def[f_type.type.__name__] = copy.deepcopy(res)
-            _cls_def[f_type.type.__name__]['referenced'] = False
+            _cls_def[f_type.type.__name__]['referenced'] = True
+        res = {'$ref': f'#/$defs/{f_type.type.__name__}'}
     # JSON or unschemable types
     elif f_type.type == type_helpers._JSONDict:
         res = {
@@ -107,11 +104,12 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         # Otherwise, attempt to autoyahp
         else:
             hparam_class = ensure_hparams_cls(f_type.type)
-            if hparam_class in _cls_def:
-                _cls_def[hparam_class.__name__]['referenced'] = True
-                res = {'$ref': f'#/$defs/{hparam_class.__name__}'}
-            else:
-                res = hparam_class.get_json_schema(_cls_def)
+            # Build schema and add to _cls_def if not present. get_json_schema adds to _cls_def
+            # internally, so we only need to call the function.
+            if hparam_class not in _cls_def:
+                hparam_class.get_json_schema(_cls_def)
+            _cls_def[hparam_class.__name__]['referenced'] = True
+            res = {'$ref': f'#/$defs/{hparam_class.__name__}'}
     else:
         raise ValueError('Unexpected type when constructing JSON Schema.')
 
@@ -146,4 +144,13 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
     # Wrap type for optional
     if f_type.is_optional:
         res['oneOf'].append({'type': 'null'})
+
+    # Explicitly shortcut primitives
+    if len(f_type.types) == 1 and f_type.type in (str, bool, int, float):
+        key_name = f'{f_type.type}_{f_type.is_list}_{f_type.is_optional}'
+        if key_name not in _cls_def:
+            _cls_def[key_name] = copy.deepcopy(res)
+            _cls_def[key_name]['referenced'] = True
+        res = {'$ref': f'#/$defs/{key_name}'}
+
     return res
