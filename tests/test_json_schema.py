@@ -192,6 +192,19 @@ from yahp.hparams import Hparams
         """)
     ],
     [
+        BearsHparams, False,
+        textwrap.dedent("""
+            ---
+            bears:
+                - shaved_bearsfirst:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+                - shaved_bearssecond:
+                    first_action: "Procure bears"
+                    last_action: "Release bears into wild with stylish new haircuts"
+        """)
+    ],
+    [
         BearsHparams, True,
         textwrap.dedent("""
             ---

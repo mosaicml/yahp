@@ -22,21 +22,22 @@ def test_primitive_hparams_field_types(primitive_hparam: PrimitiveHparam):
 
 def test_primitive_hparams_enum(primitive_yaml_input: YamlInput):
     data = primitive_yaml_input.dict_data
-    data['enumintfield'] = 'one'
+    data['enumintfield'] = 1
     PrimitiveHparam.create(data=data)
     data['enumintfield'] = 'ONE'
     PrimitiveHparam.create(data=data)
     with pytest.raises(Exception):
+        # TODO: Determine if '1' should fail
         data['enumintfield'] = '1'
         PrimitiveHparam.create(data=data)
         data['enumintfield'] = 'TWELVE'
         PrimitiveHparam.create(data=data)
         data['enumintfield'] = 12
         PrimitiveHparam.create(data=data)
-    data['enumintfield'] = 'one'
-    data['enumstringfield'] = 'mosaic'
+    data['enumintfield'] = 1
+    data['enumstringfield'] = 'ptl'
     PrimitiveHparam.create(data=data)
-    data['enumstringfield'] = 'mosaic'
+    data['enumstringfield'] = 'PYTORCH_LIGHTNING'
     PrimitiveHparam.create(data=data)
     with pytest.raises(Exception):
         data['enumstringfield'] = 12

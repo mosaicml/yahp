@@ -28,7 +28,7 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
         res['anyOf'].append({
             'type': 'object',
             'patternProperties': {
-                f'^{re.escape(key)}': get_type_json_schema(type_helpers.HparamsType(value), _cls_def)
+                f'^{re.escape(key)}($|\\+)': get_type_json_schema(type_helpers.HparamsType(value), _cls_def)
             },
             'additionalProperties': False,
         })
@@ -78,6 +78,13 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             # Enum attributes can either be specified lowercase or uppercase
             member_names = [name.lower() for name in f_type.type._member_names_]
             member_names.extend([name.upper() for name in f_type.type._member_names_])
+            for name in f_type.type:
+                name = name.value
+                if type(name) == str:
+                    member_names.extend([name.upper(), name.lower()])
+                else:
+                    member_names.append(name)
+            member_names = list(set(member_names))
             res = {'enum': member_names}
             _cls_def[f_type.type.__name__] = copy.deepcopy(res)
             _cls_def[f_type.type.__name__]['referenced'] = False
@@ -115,44 +122,28 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
                                  _cls_def: Dict[str, Any]) -> Dict[str, Any]:
     """Wrap JSON Schema with list schema or optional schema if specified.
     """
-    res = schema
+    if not f_type.is_list and not f_type.is_optional:
+        return schema
 
     # Use defs to avoid duplicate schema
     if f_type.is_list:
         # Use counter to give unique key name. While enums and hparams can generate unique names
         # based on classes, lists may be of primitive types, meaning we can't generate unique
         # names.
-        _cls_def[f"{_cls_def['counter']}_list"] = copy.deepcopy(res)
+        _cls_def[f"{_cls_def['counter']}_list"] = copy.deepcopy(schema)
         _cls_def[f"{_cls_def['counter']}_list"]['referenced'] = True
-        res = {'$ref': f"#/$defs/{_cls_def['counter']}_list"}
+        schema = {'$ref': f"#/$defs/{_cls_def['counter']}_list"}
         _cls_def['counter'] += 1
 
-    # Wrap type in list, accepting singletons, and optional
-    if f_type.is_list and f_type.is_optional:
-        res = {
-            'oneOf': [{
-                'type': 'null'
-            }, res, {
-                'type': 'array',
-                'items': res,
-            }]
-        }
-    # Wrap type in list, accepting singletons
-    elif f_type.is_list:
-        res = {
-            'oneOf': [res, {
-                'type': 'array',
-                'items': res,
-            }]
-        }
+    # Accept singletons
+    res = {'oneOf': [schema]}
+    # Wrap type in list
+    if f_type.is_list:
+        res['oneOf'].append({
+            'type': 'array',
+            'items': schema,
+        })
     # Wrap type for optional
-    elif f_type.is_optional:
-        res = {
-            'oneOf': [
-                {
-                    'type': 'null'
-                },
-                res,
-            ]
-        }
+    if f_type.is_optional:
+        res['oneOf'].append({'type': 'null'})
     return res
