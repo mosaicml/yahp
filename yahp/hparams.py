@@ -331,8 +331,8 @@ class Hparams(ABC):
         )
 
     @classmethod
-    def _get_json_schema(cls: Type[THparams], _cls_def: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Recursive private helper for generating and returning a JSONSchema dictionary. 
+    def _get_json_schema(cls: Type[THparams], _cls_def: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursive private helper for generating and returning a JSONSchema dictionary.
 
         Args:
             _cls_def (Optional[Dict[str, Any]]): Keeps a reference to previously built Hparmam
@@ -364,10 +364,9 @@ class Hparams(ABC):
                 res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, cls.from_autoyahp)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
-        _cls_def[cls.__name__] = res
+        _cls_def[cls.__qualname__] = res
 
         return res
-
 
     @classmethod
     def get_json_schema(cls: Type[THparams]) -> Dict[str, Any]:
@@ -379,7 +378,7 @@ class Hparams(ABC):
 
         # Delete counter and top level name
         del _cls_def['counter']
-        del _cls_def[cls.__name__]
+        del _cls_def[cls.__qualname__]
         # Add definitions to top level of schema
         for key, value in _cls_def.items():
             if '$defs' not in res:

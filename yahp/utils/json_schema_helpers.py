@@ -73,7 +73,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
     # Enum
     elif inspect.isclass(f_type.type) and issubclass(f_type.type, Enum):
         # Build schema and add to _cls_def if not present
-        if f_type.type.__name__ not in _cls_def:
+        if f_type.type.__qualname__ not in _cls_def:
             # Enum attributes can either be specified lowercase or uppercase
             member_names = [name.lower() for name in f_type.type._member_names_]
             member_names.extend([name.upper() for name in f_type.type._member_names_])
@@ -85,8 +85,8 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
                     member_names.append(name)
             member_names = sorted(list(set(member_names)), key=lambda x: str(x))
             res = {'enum': member_names}
-            _cls_def[f_type.type.__name__] = copy.deepcopy(res)
-        res = {'$ref': f'#/$defs/{f_type.type.__name__}'}
+            _cls_def[f_type.type.__qualname__] = copy.deepcopy(res)
+        res = {'$ref': f'#/$defs/{f_type.type.__qualname__}'}
     # JSON or unschemable types
     elif f_type.type == type_helpers._JSONDict:
         res = {
@@ -106,7 +106,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             # internally, so we only need to call the function.
             if hparam_class not in _cls_def:
                 hparam_class._get_json_schema(_cls_def)
-            res = {'$ref': f'#/$defs/{hparam_class.__name__}'}
+            res = {'$ref': f'#/$defs/{hparam_class.__qualname__}'}
     else:
         raise ValueError('Unexpected type when constructing JSON Schema.')
 
@@ -143,7 +143,7 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
 
     # Explicitly shortcut primitives
     if len(f_type.types) == 1 and f_type.type in (str, bool, int, float):
-        key_name = f'{f_type.type}_{f_type.is_list}_{f_type.is_optional}'
+        key_name = f"{f_type.type.__qualname__}{'_list' if f_type.is_list else ''}{'_optiona' if f_type.is_optional else ''}"
         if key_name not in _cls_def:
             _cls_def[key_name] = copy.deepcopy(res)
         res = {'$ref': f'#/$defs/{key_name}'}
