@@ -371,13 +371,10 @@ class Hparams(ABC):
     @classmethod
     def get_json_schema(cls: Type[THparams]) -> Dict[str, Any]:
         """Generates and returns a JSONSchema dictionary."""
-        # counter is used to give unique key names for entries related to list definitions
-        _cls_def = {'counter': 0}
-
+        _cls_def = {}
         res = cls._get_json_schema(_cls_def)
 
-        # Delete counter and top level name
-        del _cls_def['counter']
+        # Delete top level name
         del _cls_def[cls.__qualname__]
         # Add definitions to top level of schema
         for key, value in _cls_def.items():
@@ -388,8 +385,13 @@ class Hparams(ABC):
         return res
 
     @classmethod
-    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path], **kwargs):
-        """Dump the JSONSchema to ``f``."""
+    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path], **kwargs: Optional[Dict[str, Any]]):
+        """Dump the JSONSchema to ``f``.
+
+        Args:
+            f (Union[str, None, TextIO, pathlib.PurePath], optional): Writes json to this file.
+            kwargs: (Optional[Dict[str, Any]]): Keyword args to be passed to `json.dump`.
+        """
         if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
             json.dump(cls.get_json_schema(), f, **kwargs)
         else:

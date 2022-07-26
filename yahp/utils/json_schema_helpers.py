@@ -10,7 +10,7 @@ from yahp.utils import type_helpers
 
 
 def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[str, Any], _cls_def: Dict[str, Any],
-                             from_autoyahp: bool):
+                             allow_recursion: bool):
     """Convert type into corresponding JSON Schema. As the given name is in the `hparams_registry`,
     create objects for each possible entry in the registry and treat as union type.
 
@@ -20,7 +20,7 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
         _cls_def ([Dict[str, Any]]): Keeps a reference to previously built Hparmam
             classes and enums which can be used with references to make schemas more concise
             and readable.
-        from_autoyahp (bool): Indicates whether parent Hparam class was autoyahp generated
+        allow_recursion (bool): Indicates whether parent Hparam class was autoyahp generated
     """
     res = {'anyOf': []}
     for key in sorted(registry.keys()):
@@ -30,14 +30,14 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
             'type': 'object',
             'patternProperties': {
                 f'^{re.escape(key)}($|\\+)':
-                    get_type_json_schema(type_helpers.HparamsType(registry[key]), _cls_def, from_autoyahp)
+                    get_type_json_schema(type_helpers.HparamsType(registry[key]), _cls_def, allow_recursion)
             },
             'additionalProperties': False,
         })
     return _check_for_list_and_optional(f_type, res, _cls_def)
 
 
-def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, Any], from_autoyahp: bool):
+def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, Any], allow_recursion: bool):
     """Convert type into corresponding JSON Schema. We first check for union types and recursively
     handle each component. If a type is not union, we know it is a singleton type, so it must be
     either a primitive, Enum, JSON, or Hparam-like. Dictionaries are treated as JSON types, and
@@ -48,7 +48,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         _cls_def ([Dict[str, Any]]): Keeps a reference to previously built Hparmam
             classes and enums which can be used with references to make schemas more concise
             and readable.
-        from_autoyahp (bool): Indicates whether parent Hparam class was autoyahp generated
+        allow_recursion (bool): Indicates whether parent Hparam class was autoyahp generated
     """
     # Import inside function to resolve circular dependencies
     from yahp.auto_hparams import ensure_hparams_cls
@@ -60,7 +60,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         # Add all union types using anyOf
         res = {'anyOf': []}
         for union_type in f_type.types:
-            res['anyOf'].append(get_type_json_schema(type_helpers.HparamsType(union_type), _cls_def, from_autoyahp))
+            res['anyOf'].append(get_type_json_schema(type_helpers.HparamsType(union_type), _cls_def, allow_recursion))
     # Primitive Types
     elif f_type.type is str:
         res = {'type': 'string'}
@@ -95,7 +95,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
     # Hparam class
     elif callable(f_type.type):
         # If the parent class was autoyahped, do not try autoyahping parameters
-        if from_autoyahp:
+        if allow_recursion:
             res = {
                 'type': 'object',
             }
@@ -120,15 +120,6 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
     if not f_type.is_list and not f_type.is_optional:
         return schema
 
-    # Use defs to avoid duplicate schema for more complex types
-    if f_type.is_list and (len(f_type.types) > 1 or f_type.type not in (str, bool, int, float)):
-        # Use counter to give unique key name. While enums and hparams can generate unique names
-        # based on classes, lists may be of primitive types, meaning we can't generate unique
-        # names.
-        _cls_def[f"{_cls_def['counter']}_list"] = copy.deepcopy(schema)
-        schema = {'$ref': f"#/$defs/{_cls_def['counter']}_list"}
-        _cls_def['counter'] += 1
-
     # Accept singletons
     res = {'oneOf': [schema]}
     # Wrap type in list
@@ -143,7 +134,7 @@ def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[
 
     # Explicitly shortcut primitives
     if len(f_type.types) == 1 and f_type.type in (str, bool, int, float):
-        key_name = f"{f_type.type.__qualname__}{'_list' if f_type.is_list else ''}{'_optiona' if f_type.is_optional else ''}"
+        key_name = f"{f_type.type.__qualname__}{'_list' if f_type.is_list else ''}{'_optional' if f_type.is_optional else ''}"
         if key_name not in _cls_def:
             _cls_def[key_name] = copy.deepcopy(res)
         res = {'$ref': f'#/$defs/{key_name}'}
