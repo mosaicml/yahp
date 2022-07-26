@@ -23,7 +23,7 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
         from_autoyahp (bool): Indicates whether parent Hparam class was autoyahp generated
     """
     res = {'anyOf': []}
-    for key, value in registry.items():
+    for key in sorted(registry.keys()):
         # Accept any string prefixed by the key. In yahp, a key can be specified multiple times using
         # key+X syntax, so prefix checking is required. Note that we assume key does not have any
         # special regex characters.
@@ -31,7 +31,7 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
             'type': 'object',
             'patternProperties': {
                 f'^{re.escape(key)}($|\\+)':
-                    get_type_json_schema(type_helpers.HparamsType(value), _cls_def, from_autoyahp)
+                    get_type_json_schema(type_helpers.HparamsType(registry[key]), _cls_def, from_autoyahp)
             },
             'additionalProperties': False,
         })
@@ -88,7 +88,7 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
                     member_names.extend([name.upper(), name.lower()])
                 else:
                     member_names.append(name)
-            member_names = list(set(member_names))
+            member_names = sorted(list(set(member_names)), key=lambda x: str(x))
             res = {'enum': member_names}
             _cls_def[f_type.type.__name__] = copy.deepcopy(res)
             _cls_def[f_type.type.__name__]['referenced'] = False

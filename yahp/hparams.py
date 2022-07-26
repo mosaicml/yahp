@@ -352,7 +352,7 @@ class Hparams(ABC):
             'additionalProperties': False,
         }
         class_type_hints = get_type_hints(cls)
-        for f in fields(cls):
+        for f in sorted(fields(cls), key=lambda f: f.name):
             if not f.init:
                 continue
 
@@ -388,13 +388,13 @@ class Hparams(ABC):
         return res
 
     @classmethod
-    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path]):
+    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path], **kwargs):
         """Dump the JSONSchema to ``f``."""
         if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
-            json.dump(cls.get_json_schema(), f)
+            json.dump(cls.get_json_schema(), f, **kwargs)
         else:
             with open(f, 'w') as file:
-                json.dump(cls.get_json_schema(), file)
+                json.dump(cls.get_json_schema(), file, **kwargs)
 
     @classmethod
     def validate_yaml(cls: Type[THparams],
