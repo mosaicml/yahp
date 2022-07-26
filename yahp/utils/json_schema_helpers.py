@@ -24,12 +24,19 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
     """
     res = {'anyOf': []}
     for key in sorted(registry.keys()):
+        res['anyOf'].append({
+            'type': 'object',
+            'properties': {
+                key: get_type_json_schema(type_helpers.HparamsType(registry[key]), _cls_def, allow_recursion)
+            },
+            'additionalProperties': False,
+        })
         # Accept any string prefixed by the key. In yahp, a key can be specified multiple times using
         # key+X syntax, so prefix checking is required
         res['anyOf'].append({
             'type': 'object',
             'patternProperties': {
-                f'^{re.escape(key)}($|\\+)':
+                f'^{re.escape(key)}\\+':
                     get_type_json_schema(type_helpers.HparamsType(registry[key]), _cls_def, allow_recursion)
             },
             'additionalProperties': False,
