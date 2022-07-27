@@ -330,7 +330,7 @@ class Hparams(ABC):
         )
 
     @classmethod
-    def _get_json_schema(cls: Type[THparams], _cls_def: Dict[str, Any], allow_recursion: bool) -> Dict[str, Any]:
+    def _build_json_schema(cls: Type[THparams], _cls_def: Dict[str, Any], allow_recursion: bool) -> None:
         """Recursive private helper for generating and returning a JSONSchema dictionary.
 
         Args:
@@ -364,17 +364,22 @@ class Hparams(ABC):
                 res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, allow_recursion)
             res['properties'][f.name]['description'] = f.metadata['doc']
 
+        # Add schema to _cls_def. Hparams classes are always inserted into defs and referenced to
+        # in built schemas. If this function was called from `get_type_json_schema``, that function
+        # will add a reference to this class. If this was called from the root Hparams class the
+        # schema is being generated for, res will be pulled from _cls_defs
         _cls_def[cls.__qualname__] = res
-
-        return res
 
     @classmethod
     def get_json_schema(cls: Type[THparams]) -> Dict[str, Any]:
         """Generates and returns a JSONSchema dictionary."""
         _cls_def = {}
-        res = cls._get_json_schema(_cls_def, True)
+        cls._build_json_schema(_cls_def=_cls_def, allow_recursion=True)
+        res = _cls_def[cls.__qualname__]
 
-        # Delete top level name
+        # Delete top level name. By default, all Hparams classes are added to _cls_def. However,
+        # the top level Hparams class is not referenced anywhere (as it is the root), so we can
+        # remove it from _cls_def.
         del _cls_def[cls.__qualname__]
         # Add definitions to top level of schema
         for key, value in _cls_def.items():
@@ -385,12 +390,12 @@ class Hparams(ABC):
         return res
 
     @classmethod
-    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path], **kwargs: Optional[Dict[str, Any]]):
+    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path], **kwargs: Any):
         """Dump the JSONSchema to ``f``.
 
         Args:
             f (Union[str, None, TextIO, pathlib.PurePath], optional): Writes json to this file.
-            kwargs: (Optional[Dict[str, Any]]): Keyword args to be passed to `json.dump`.
+            kwargs: (Any): Keyword args to be passed to `json.dump`.
         """
         if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
             json.dump(cls.get_json_schema(), f, **kwargs)

@@ -102,10 +102,10 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             hparam_class = ensure_hparams_cls(f_type.type)
             # Disallow recursion if class was autoyahped
             allow_recursion = hparam_class == f_type.type
-            # Build schema and add to _cls_def if not present. _get_json_schema adds to _cls_def
+            # Build schema and add to _cls_def if not present. _build_json_schema adds to _cls_def
             # internally, so we only need to call the function.
             if hparam_class not in _cls_def:
-                hparam_class._get_json_schema(_cls_def, allow_recursion)
+                hparam_class._build_json_schema(_cls_def=_cls_def, allow_recursion=allow_recursion)
             res = {'$ref': f'#/$defs/{hparam_class.__qualname__}'}
         # If the parent class was autoyahped, do not try autoyahping parameters
         else:
