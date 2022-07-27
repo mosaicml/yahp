@@ -4,7 +4,7 @@ import copy
 import inspect
 import re
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from yahp.utils import type_helpers
 
@@ -37,10 +37,12 @@ def get_registry_json_schema(f_type: type_helpers.HparamsType, registry: Dict[st
             },
             'additionalProperties': False,
         })
-    return _check_for_list_and_optional(f_type, res, _cls_def)
+    return _check_for_list_and_optional(f_type, res)
 
 
 def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, Any], allow_recursion: bool):
+    # Import inside function to avoid circular dependencies
+    from yahp.hparams import Hparams
     """Convert type into corresponding JSON Schema. We first check for union types and recursively
     handle each component. If a type is not union, we know it is a singleton type, so it must be
     either a primitive, Enum, JSON, or Hparam-like. Dictionaries are treated as JSON types, and
@@ -77,17 +79,24 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
     elif inspect.isclass(f_type.type) and issubclass(f_type.type, Enum):
         # Build schema and add to _cls_def if not present
         if f_type.type.__qualname__ not in _cls_def:
-            # Enum attributes can either be specified lowercase or uppercase
-            member_names = [name.lower() for name in f_type.type._member_names_]
-            member_names.extend([name.upper() for name in f_type.type._member_names_])
-            for name in f_type.type:
-                name = name.value
-                if type(name) == str:
-                    member_names.extend([name.upper(), name.lower()])
-                else:
-                    member_names.append(name)
-            member_names = sorted(list(set(member_names)), key=lambda x: str(x))
-            res = {'enum': member_names}
+            # Get all possible keys and values which are of type str
+            names = list(f_type.type._member_map_.keys())
+            names.extend([
+                f_type.type._member_map_[key].value for key in names if type(f_type.type._member_map_[key].value) == str
+            ])
+            names = sorted(list(set([name.upper() for name in names])))
+            # Build case insensitive regex so we match both lowercase or upper case
+            member_names: List[Dict[str, Any]] = [{
+                'type': 'string',
+                'pattern': f'(?i)^{re.escape(name)}$'
+            } for name in names]
+            # Add all non-str keys and values
+            enum_attributes = [name.value for name in f_type.type if type(name.value) != str]
+            enum_attributes = sorted(list(set(enum_attributes)), key=lambda x: str(x))
+            if len(enum_attributes) > 0:
+                member_names.append({'enum': enum_attributes})
+            # Build oneOf to create an enum which is case insensitive
+            res = {'oneOf': member_names}
             _cls_def[f_type.type.__qualname__] = copy.deepcopy(res)
         res = {'$ref': f'#/$defs/{f_type.type.__qualname__}'}
     # JSON or unschemable types
@@ -97,8 +106,9 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
         }
     # Hparam class
     elif callable(f_type.type):
-        # Attempt to autoyahp
-        if allow_recursion:
+        # Attempt to autoyahp if the parent class was not autoyahped or if the parameter is Hparams
+        # class.
+        if allow_recursion or inspect.isclass(f_type.type) and issubclass(f_type.type, Hparams):
             hparam_class = ensure_hparams_cls(f_type.type)
             # Disallow recursion if class was autoyahped
             allow_recursion = hparam_class == f_type.type
@@ -107,19 +117,17 @@ def get_type_json_schema(f_type: type_helpers.HparamsType, _cls_def: Dict[str, A
             if hparam_class not in _cls_def:
                 hparam_class._build_json_schema(_cls_def=_cls_def, allow_recursion=allow_recursion)
             res = {'$ref': f'#/$defs/{hparam_class.__qualname__}'}
-        # If the parent class was autoyahped, do not try autoyahping parameters
+        # Otherwise, if we have a callable parameter of autoyahped class, either require None if
+        # its possible or throw an error.
         else:
-            res = {
-                'type': 'object',
-            }
+            res = {'type': 'object'}
     else:
         raise ValueError('Unexpected type when constructing JSON Schema.')
 
-    return _check_for_list_and_optional(f_type, res, _cls_def)
+    return _check_for_list_and_optional(f_type, res)
 
 
-def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[str, Any],
-                                 _cls_def: Dict[str, Any]) -> Dict[str, Any]:
+def _check_for_list_and_optional(f_type: type_helpers.HparamsType, schema: Dict[str, Any]) -> Dict[str, Any]:
     """Wrap JSON Schema with list schema or optional schema if specified.
     """
     if not f_type.is_list and not f_type.is_optional:
