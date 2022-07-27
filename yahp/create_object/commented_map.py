@@ -209,7 +209,7 @@ def to_commented_map(
                 if not ftype.is_list:
                     output[f.name] = output[f.name][0]
                 else:
-                    output[f.name] = {str(i): item for i, item in enumerate(output[f.name])}
+                    output[f.name] = output[f.name]
         else:
             inverted_hparams = {v: k for (k, v) in cls.hparams_registry[f.name].items()}
             choices = [x.__name__ for x in cls.hparams_registry[f.name].values()]
