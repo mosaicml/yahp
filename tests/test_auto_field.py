@@ -63,6 +63,17 @@ def malformed_docstring(foo: str):
     """
 
 
+class DocstringWithPercentFormat:
+    """Test that autoyahp can parse docstrings with percents in them.
+
+    Args:
+        foo (str): 100% for the win!
+    """
+
+    def __init__(self, foo: str) -> None:
+        self.foo = foo
+
+
 @pytest.fixture
 def mock_required_field(monkeypatch: pytest.MonkeyPatch):
     mock = Mock()
@@ -77,6 +88,12 @@ def mock_optional_field(monkeypatch: pytest.MonkeyPatch):
     mock.return_value = 'MOCK_RETURN'
     monkeypatch.setattr(yahp.field, 'optional', mock)
     return mock
+
+
+def test_docstrings_with_percent_format():
+    """Test that docstrings with % in them are parsable with --help in autoyahp."""
+    with pytest.raises(SystemExit):
+        hp.create(DocstringWithPercentFormat, cli_args=['--help'])
 
 
 @pytest.mark.parametrize('constructor', [FooClassDocstring, FooClassAndInitDocstring, foo_func])

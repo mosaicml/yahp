@@ -51,7 +51,6 @@ reportUnusedCoroutine = "error"
 [tool.pytest.ini_options]
 filterwarnings = [
     "error",
-    "ignore:ExtraArgumentWarning",
     '''ignore:.*validate\(\) is deprecated:DeprecationWarning''',
 ]
 

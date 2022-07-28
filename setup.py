@@ -1,5 +1,8 @@
 # Copyright 2021 MosaicML. All Rights Reserved.
 
+import os
+import sys
+
 import setuptools
 from setuptools import setup
 
@@ -8,7 +11,9 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 exec(open('yahp/version.py', 'r', encoding='utf-8').read())
 
-install_requires = ['PyYAML>=5.4.1', 'ruamel.yaml>=0.17.10', 'docstring_parser>=0.14.1,<=0.15']
+install_requires = [
+    'PyYAML>=5.4.1', 'ruamel.yaml>=0.17.10', 'docstring_parser>=0.14.1,<=0.15', 'jsonschema>=4.7.2,<4.8'
+]
 
 extra_deps = {}
 
@@ -36,8 +41,13 @@ extra_deps['dev'] = {
 
 extra_deps['all'] = set(dep for deps in extra_deps.values() for dep in deps)
 
+package_name = os.environ.get('YAHP_PACKAGE_NAME', 'yahp')
+
+if package_name != 'yahp':
+    print(f'`Building yahp as `{package_name}`)', file=sys.stderr)
+
 setup(
-    name='yahp',
+    name=package_name,
     version=__version__,
     author='MosaicML',
     author_email='team@mosaicml.com',

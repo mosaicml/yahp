@@ -1,3 +1,4 @@
+import contextlib
 from dataclasses import dataclass
 from typing import Dict, List, Union
 
@@ -50,7 +51,12 @@ def get_data(baz: int, bar: bool = False, duplicate: bool = False, as_list: bool
     if duplicate:
         d['foo+1'] = {'baz': baz + 1}
     if as_list:
-        d = dict_to_list(d)
+        if bar:
+            # it's abstract
+            d = dict_to_list(d)
+        else:
+            # it's concrete; don't prefix
+            d = list(d.values())
     return d
 
 
@@ -60,28 +66,26 @@ def dict_to_list(data: Dict[str, Dict]) -> List[Dict]:
     return [{k: v} for k, v in data.items()]
 
 
-def test_list_without_registry(baz):
-    data = get_data(baz)
-    hp = ParentListHPNoRegistry.create(data={'foos': data})
+@pytest.mark.parametrize('as_list', [True, False])
+def test_list_without_registry(baz, as_list: bool):
+    data = get_data(baz, as_list=as_list)
+    ctx = contextlib.nullcontext() if as_list else pytest.warns(DeprecationWarning,
+                                                                match='foos should be a list, not a dictionary')
+    with ctx:
+        hp = ParentListHPNoRegistry.create(data={'foos': data}, cli_args=False)
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 1
     assert hp.foos[0].baz == baz
 
 
-@pytest.mark.filterwarnings('ignore:MalformedYAMLWarning')
-def test_list_without_registry_passed_list(baz):
-    data = get_data(baz, as_list=True)
-    hp = ParentListHPNoRegistry.create(data={'foos': data})
-
-    assert isinstance(hp.foos, list)
-    assert len(hp.foos) == 1
-    assert hp.foos[0].baz == baz
-
-
-def test_list_without_registry_duplicate(baz):
-    data = get_data(baz, duplicate=True)
-    hp = ParentListHPNoRegistry.create(data={'foos': data})
+@pytest.mark.parametrize('as_list', [True, False])
+def test_list_without_registry_duplicate(baz, as_list: bool):
+    data = get_data(baz, duplicate=True, as_list=as_list)
+    ctx = contextlib.nullcontext() if as_list else pytest.warns(DeprecationWarning,
+                                                                match='foos should be a list, not a dictionary')
+    with ctx:
+        hp = ParentListHPNoRegistry.create(data={'foos': data}, cli_args=False)
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
@@ -91,24 +95,23 @@ def test_list_without_registry_duplicate(baz):
     assert foo1.baz == baz + 1
 
 
-# Expected to fail while we do not allow CLI overrides of unregistered lists
-@pytest.mark.xfail
 def test_list_without_registry_cli_override(baz):
     data = get_data(baz)
     cli_args = ['--foos.foo.baz', str(baz + 2)]
-    hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={'foos': data})
+    with pytest.warns(DeprecationWarning, match='foos should be a list, not a dictionary'):
+        hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 1
-    assert hp.foos[0].baz == baz + 2
+    # should be baz, not baz + 2, as we do not allow overrides for unregistered lists
+    assert hp.foos[0].baz == baz
 
 
-# Expected to fail while we do not allow CLI overrides of unregistered lists
-@pytest.mark.xfail
 def test_list_without_registry_duplicate_cli_override(baz):
     data = get_data(baz, duplicate=True)
     cli_args = ['--foos.foo+1.baz', str(baz + 2)]
-    hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={'foos': data})
+    with pytest.warns(DeprecationWarning, match='foos should be a list, not a dictionary'):
+        hp = ParentListHPNoRegistry.create(cli_args=cli_args, data={'foos': data})
 
     assert isinstance(hp.foos, list)
     assert len(hp.foos) == 2
@@ -119,7 +122,8 @@ def test_list_without_registry_duplicate_cli_override(baz):
 
     foo1 = hp.foos[1]
     assert isinstance(foo1, Foo)
-    assert foo1.baz == baz + 2
+    # should be baz + 1, not baz + 2, as we do not allow overrides for unregistered lists
+    assert foo1.baz == baz + 1
 
 
 def test_list_with_registry(baz):
@@ -196,7 +200,6 @@ def test_list_with_registry_cli_override_custom_list(baz):
     assert foo.baz == baz
 
 
-#@pytest.mark.xfail
 def test_list_with_registry_duplicate_cli_override(baz):
     data = get_data(baz, bar=True, duplicate=True)
     cli_args = ['--foos.foo+1.baz', str(baz + 2)]
