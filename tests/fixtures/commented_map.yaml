@@ -56,7 +56,7 @@ required_choice:
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
       enumstringfield:
       jsonfield:                             #                 JSON (Required). Description: Required json type.
-    boolfield:                               #                  int (Required). Description: int field.
+    boolfield:                               #                 bool (Required). Description: bool field.
   three:                                     # ChoiceThreeHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
 #   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
@@ -75,7 +75,7 @@ required_choice:
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
           enumstringfield:
           jsonfield:                         #                 JSON (Required). Description: Required json type.
-        boolfield:                           #                  int (Required). Description: int field.
+        boolfield:                           #                 bool (Required). Description: bool field.
     strfield:                                #                  str (Required). Description: str field.
 # Optional[ChoiceHparamParent] (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 nullable_required_choice:
@@ -98,7 +98,7 @@ required_choice_list:
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
       enumstringfield:
       jsonfield:                             #                 JSON (Required). Description: Required json type.
-    boolfield:                               #                  int (Required). Description: int field.
+    boolfield:                               #                 bool (Required). Description: bool field.
   three:                                     # ChoiceThreeHparam
     commonfield:                             #                 bool (Required). Description: bool common field.
 #   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam.
@@ -117,7 +117,7 @@ required_choice_list:
 # EnumStringField{MOSAIC, PYTORCH_LIGHTNING} (Required). Description: enum int field.
           enumstringfield:
           jsonfield:                         #                 JSON (Required). Description: Required json type.
-        boolfield:                           #                  int (Required). Description: int field.
+        boolfield:                           #                 bool (Required). Description: bool field.
     strfield:                                #                  str (Required). Description: str field.
 # Optional[List[ChoiceHparamParent]] (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 nullable_required_choice_list:
