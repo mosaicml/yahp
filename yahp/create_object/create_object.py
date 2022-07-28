@@ -661,20 +661,19 @@ def _get_hparams(
     cli_f, output_f, validate = get_hparams_file_from_cli(cli_args=remaining_cli_args,
                                                           argparse_name_registry=argparse_name_registry,
                                                           argument_parsers=argparsers)
+    # Validate was specified, so only validate instead of instantiating
+    if validate:
+        print(f'Validating YAML against {constructor.__name__}...')
+        cls = ensure_hparams_cls(constructor)
+        cls.validate_yaml(f=cli_f)
+        # exit so we don't attempt to parse and instantiate
+        print('\nSuccessfully validated YAML!')
+        sys.exit(0)
 
     if cli_f is not None:
         if f is not None:
             raise ValueError('File cannot be specified via both function arguments and the CLI')
         f = cli_f
-
-    # Validate was specified, so only validate instead of instantiating
-    if validate:
-        print(f'Validating YAML against {constructor.__name__}...')
-        cls = ensure_hparams_cls(constructor)
-        cls.validate_yaml(f=f)
-        # exit so we don't attempt to parse and instantiate
-        print('\nSuccessfully validated YAML!')
-        sys.exit(0)
 
     if f is not None:
         if data is not None:
