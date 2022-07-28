@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import pathlib
 import textwrap
@@ -11,16 +10,13 @@ import warnings
 from abc import ABC
 from dataclasses import dataclass, fields
 from enum import Enum
-from io import StringIO, TextIOWrapper
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast,
-                    get_type_hints)
+from io import StringIO
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TextIO, Type, TypeVar, Union, cast
 
-import jsonschema
 import yaml
 
 from yahp.utils import type_helpers
 from yahp.utils.iter_helpers import list_to_deduplicated_dict
-from yahp.utils.json_schema_helpers import get_registry_json_schema, get_type_json_schema
 
 if TYPE_CHECKING:
     from yahp.types import JSON
@@ -328,73 +324,6 @@ class Hparams(ABC):
             f'{type(self).__name__}.validate() is deprecated. Instead, perform any validation directly in initialize_object()',
             category=DeprecationWarning,
         )
-
-    @classmethod
-    def get_json_schema(cls) -> Dict[str, Any]:
-        """Generates and returns a JSONSchema dictionary."""
-
-        res = {
-            'type': 'object',
-            'properties': {},
-            'additionalProperties': False,
-        }
-        class_type_hints = get_type_hints(cls)
-        for f in fields(cls):
-            if not f.init:
-                continue
-
-            # Required field
-            if type_helpers.is_field_required(f):
-                if 'required' not in res.keys():
-                    res['required'] = []
-                res['required'].append(f.name)
-
-            hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
-            # Name is found in registry, set possible values as types in a union type
-            if cls.hparams_registry and f.name in cls.hparams_registry and len(cls.hparams_registry[f.name].keys()) > 0:
-                res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name])
-            else:
-                res['properties'][f.name] = get_type_json_schema(hparams_type)
-            res['properties'][f.name]['description'] = f.metadata['doc']
-
-        return res
-
-    @classmethod
-    def dump_jsonschema(cls, f: Union[TextIO, str, pathlib.Path]):
-        """Dump the JSONSchema to ``f``."""
-        if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
-            json.dump(cls.get_json_schema(), f)
-        else:
-            with open(f, 'w') as file:
-                json.dump(cls.get_json_schema(), file)
-
-    @classmethod
-    def validate_yaml(cls: Type[THparams],
-                      f: Union[str, None, TextIO, pathlib.PurePath] = None,
-                      data: Optional[Dict[str, Any]] = None):
-        """Validate yaml against JSON schema.
-
-        Args:
-            f (Union[str, None, TextIO, pathlib.PurePath], optional):
-                If specified, loads values and validates from a YAML file. Can be either a
-                filepath or file-like object.
-                Cannot be specified with ``data``.
-            data (Optional[str], optional):
-                If specified, validates YAML specified by string :class:`Hparams`.
-                Cannot be specified with ``f``.
-        """
-        if f and data:
-            raise ValueError('File and data cannot both be specified.')
-        elif f:
-            if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
-                jsonschema.validate(yaml.safe_load(f), cls.get_json_schema())
-            else:
-                with open(f) as file:
-                    jsonschema.validate(yaml.safe_load(file), cls.get_json_schema())
-        elif data:
-            jsonschema.validate(data, cls.get_json_schema())
-        else:
-            raise ValueError('Neither file nor data were provided, so there is no YAML to validate.')
 
     def __str__(self) -> str:
         yaml_str = self.to_yaml().strip()

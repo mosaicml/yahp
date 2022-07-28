@@ -645,7 +645,7 @@ def _get_hparams(
     )
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
-        print(f'Generating a template for {constructor.__name__}...')
+        print(f'Generating a template for {constructor.__name__}')
         cls = ensure_hparams_cls(constructor)
         if output_file == 'stdout':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
@@ -655,21 +655,13 @@ def _get_hparams(
             with open(output_file, 'x') as f:
                 cls.dump(add_docs=add_docs, interactive=interactive, output=f)
         # exit so we don't attempt to parse and instantiate if generate template is passed
-        print('\nFinished')
+        print()
+        print('Finished')
         sys.exit(0)
 
-    cli_f, output_f, validate = get_hparams_file_from_cli(cli_args=remaining_cli_args,
-                                                          argparse_name_registry=argparse_name_registry,
-                                                          argument_parsers=argparsers)
-    # Validate was specified, so only validate instead of instantiating
-    if validate:
-        print(f'Validating YAML against {constructor.__name__}...')
-        cls = ensure_hparams_cls(constructor)
-        cls.validate_yaml(f=cli_f)
-        # exit so we don't attempt to parse and instantiate
-        print('\nSuccessfully validated YAML!')
-        sys.exit(0)
-
+    cli_f, output_f = get_hparams_file_from_cli(cli_args=remaining_cli_args,
+                                                argparse_name_registry=argparse_name_registry,
+                                                argument_parsers=argparsers)
     if cli_f is not None:
         if f is not None:
             raise ValueError('File cannot be specified via both function arguments and the CLI')
