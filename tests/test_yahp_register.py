@@ -23,7 +23,7 @@ def test_register_new_hparam_choice(choice_one_yaml_input: YamlInput):
     assert isinstance(choice_one_hparam.choice, ChoiceOneHparam)
 
     # Check that new registered hparams can be created
-    root_hparams_data['choice'] = {'empty': {}}
+    root_hparams_data['choice'] = {'empty': None}
     choice_empty = ChoiceHparamRoot.create(data=root_hparams_data)
 
     assert isinstance(choice_empty.choice, EmptyHparam)

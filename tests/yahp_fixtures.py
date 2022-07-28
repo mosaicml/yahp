@@ -261,7 +261,7 @@ def choice_one_hparams(choice_one_yaml_input: YamlInput) -> ChoiceOneHparam:
 @dataclass
 class ChoiceTwoHparam(ChoiceHparamParent):
     primitive_hparam: PrimitiveHparam = hp.required(doc='Primitive Hparams')
-    boolfield: bool = hp.required(doc='bool field')
+    boolfield: int = hp.required(doc='int field')
 
     def validate(self):
         assert isinstance(self.boolfield, bool)
@@ -411,7 +411,7 @@ def optional_field_empty_object_yaml_input(hparams_tempdir: pathlib.Path) -> Yam
 
 @pytest.fixture
 def optional_field_null_object_yaml_input(hparams_tempdir: pathlib.Path) -> YamlInput:
-    data = {'choice': {'one': {}}}
+    data = {'choice': {'one': None}}
     return generate_named_tuple_from_data(hparams_tempdir=hparams_tempdir,
                                           input_data=data,
                                           filepath='optional_field_null_object.yaml')

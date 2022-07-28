@@ -330,22 +330,16 @@ class Hparams(ABC):
         )
 
     @classmethod
-    def _build_json_schema(cls: Type[THparams], _cls_def: Dict[str, Any], allow_recursion: bool) -> None:
-        """Recursive private helper for generating and returning a JSONSchema dictionary.
+    def get_json_schema(cls) -> Dict[str, Any]:
+        """Generates and returns a JSONSchema dictionary."""
 
-        Args:
-            _cls_def (Optional[Dict[str, Any]]): Keeps a reference to previously built Hparmam
-                classes and enums which can be used with references to make schemas more concise
-                and readable.
-            allow_recursion (bool): Whether to recursively parse subclasses.
-        """
         res = {
             'type': 'object',
             'properties': {},
             'additionalProperties': False,
         }
         class_type_hints = get_type_hints(cls)
-        for f in sorted(fields(cls), key=lambda f: f.name):
+        for f in fields(cls):
             if not f.init:
                 continue
 
@@ -358,50 +352,21 @@ class Hparams(ABC):
             hparams_type = type_helpers.HparamsType(class_type_hints[f.name])
             # Name is found in registry, set possible values as types in a union type
             if cls.hparams_registry and f.name in cls.hparams_registry and len(cls.hparams_registry[f.name].keys()) > 0:
-                res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name],
-                                                                     _cls_def, allow_recursion)
+                res['properties'][f.name] = get_registry_json_schema(hparams_type, cls.hparams_registry[f.name])
             else:
-                res['properties'][f.name] = get_type_json_schema(hparams_type, _cls_def, allow_recursion)
+                res['properties'][f.name] = get_type_json_schema(hparams_type)
             res['properties'][f.name]['description'] = f.metadata['doc']
-
-        # Add schema to _cls_def. Hparams classes are always inserted into defs and referenced to
-        # in built schemas. If this function was called from `get_type_json_schema``, that function
-        # will add a reference to this class. If this was called from the root Hparams class the
-        # schema is being generated for, res will be pulled from _cls_defs
-        _cls_def[cls.__qualname__] = res
-
-    @classmethod
-    def get_json_schema(cls: Type[THparams]) -> Dict[str, Any]:
-        """Generates and returns a JSONSchema dictionary."""
-        _cls_def = {}
-        cls._build_json_schema(_cls_def=_cls_def, allow_recursion=True)
-        res = _cls_def[cls.__qualname__]
-
-        # Delete top level name. By default, all Hparams classes are added to _cls_def. However,
-        # the top level Hparams class is not referenced anywhere (as it is the root), so we can
-        # remove it from _cls_def.
-        del _cls_def[cls.__qualname__]
-        # Add definitions to top level of schema
-        for key, value in _cls_def.items():
-            if '$defs' not in res:
-                res['$defs'] = {}
-            res['$defs'][key] = value
 
         return res
 
     @classmethod
-    def dump_jsonschema(cls: Type[THparams], f: Union[TextIO, str, pathlib.Path], **kwargs: Any):
-        """Dump the JSONSchema to ``f``.
-
-        Args:
-            f (Union[str, None, TextIO, pathlib.PurePath], optional): Writes json to this file.
-            kwargs: (Any): Keyword args to be passed to `json.dump`.
-        """
+    def dump_jsonschema(cls, f: Union[TextIO, str, pathlib.Path]):
+        """Dump the JSONSchema to ``f``."""
         if isinstance(f, TextIO) or isinstance(f, TextIOWrapper):
-            json.dump(cls.get_json_schema(), f, **kwargs)
+            json.dump(cls.get_json_schema(), f)
         else:
             with open(f, 'w') as file:
-                json.dump(cls.get_json_schema(), file, **kwargs)
+                json.dump(cls.get_json_schema(), file)
 
     @classmethod
     def validate_yaml(cls: Type[THparams],
