@@ -250,19 +250,20 @@ def _create(
                         else:
                             # list of concrete hparams
                             # concrete lists not added to argparse, so just load the yaml
-                            sub_yaml = data.get(f.name)
-                            # yaml should be a dictionary. We'll discard the keys
-                            if sub_yaml is None:
-                                sub_yaml = {}
+                            sub_yaml = data.get(f.name, [])
 
-                            if isinstance(sub_yaml, list):
-                                sub_yaml = list_to_deduplicated_dict(sub_yaml)
+                            if isinstance(sub_yaml, dict):
+                                # Deprecated syntax, where it is a dict of items. It should be a list of items
+                                warnings.warn(
+                                    DeprecationWarning(
+                                        f"{'.'.join(prefix_with_fname)} should be a list, not a dictionary"))
+                                sub_yaml = list(sub_yaml.values())
 
-                            if not isinstance(sub_yaml, dict):
-                                raise TypeError(f'{full_name} must be a dict in the yaml')
+                            if not isinstance(sub_yaml, list):
+                                raise TypeError(f'{full_name} must be a list in the yaml')
 
                             deferred_calls: List[_DeferredCreateCall] = []
-                            for (key, sub_yaml_item) in sub_yaml.items():
+                            for i, sub_yaml_item in enumerate(sub_yaml):
                                 if sub_yaml_item is None:
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
@@ -272,7 +273,7 @@ def _create(
                                     _DeferredCreateCall(
                                         constructor=ftype.type,
                                         data=sub_yaml_item,
-                                        prefix=prefix_with_fname + [key],
+                                        prefix=prefix_with_fname + [str(i)],
                                         parser_args=None,
                                         initialize=not (isinstance(ftype.type, type) and
                                                         issubclass(ftype.type, Hparams)),

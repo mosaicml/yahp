@@ -34,14 +34,12 @@ nullable_required_subhparams_field:
   default_true: true                         #                 bool (Optional). Description: defaults to true.
 # List[OptionalBooleansHparam] (Required). Description: required_subhparams_field.
 required_subhparams_field_list:
-  '0':
-    default_false: true
-    default_true: true
+- default_false: true
+  default_true: true
 # Optional[List[OptionalBooleansHparam]] (Required). Description: nullable_required_subhparams_field.
 nullable_required_subhparams_field_list:
-  '0':
-    default_false: false                     #                 bool (Optional). Description: defaults to false.
-    default_true: true                       #                 bool (Optional). Description: defaults to true.
+- default_false: false                       #                 bool (Optional). Description: defaults to false.
+  default_true: true                         #                 bool (Optional). Description: defaults to true.
 #   ChoiceHparamParent (Required). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.
 required_choice:
   one:                                       # ChoiceOneHparam
@@ -172,9 +170,8 @@ optional_choice_default_not_none:
 optional_choice_default_none:
 # List[OptionalBooleansHparam] (Optional). Description: optional subhparams field default not none.
 optional_subhparams_field_default_not_none_list:
-  '0':
-    default_false: false
-    default_true: true
+- default_false: false
+  default_true: true
 # Optional[List[OptionalBooleansHparam]] (Optional). Description: optional subhparams field default None. Defaults to None.
 optional_subhparams_field_default_none_list:
 # List[ChoiceHparamParent] (Optional). Description: choice Hparam field. Options: ChoiceOneHparam, ChoiceTwoHparam, ChoiceThreeHparam.

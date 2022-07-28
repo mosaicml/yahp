@@ -53,7 +53,9 @@ class ParserArgument:
             type=cli_parse,
             dest=self.full_name,
             const=True if self.nargs == '?' else None,
-            help=self.helptext,
+            # Replacing all % with %% to escape, so argparse does not attempt to
+            # interpolate it with an argparse variable
+            help=self.helptext.replace('%', '%%'),
             metavar=metavar,
         )
 
