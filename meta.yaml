@@ -1,8 +1,8 @@
-# Anacodna configuration for yahp
+# Anaconda configuration for yahp
 
 package:
   name: yahp
-  version: "0.1.1"
+  version: "0.1.2"
 
 source:
   git_url: https://github.com/mosaicml/yahp.git
