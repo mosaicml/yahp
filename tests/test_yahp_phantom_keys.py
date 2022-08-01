@@ -8,6 +8,7 @@ import yaml
 from tests.yahp_fixtures import HairyBearsHparams
 from yahp.hparams import Hparams
 
+
 @pytest.mark.parametrize('hparam_class,success,data', [
     [
         HairyBearsHparams, True,
