@@ -259,6 +259,25 @@ def _create(
                                         f"{'.'.join(prefix_with_fname)} should be a list, not a dictionary"))
                                 sub_yaml = list(sub_yaml.values())
 
+                            # check for and unpack phantom keys for backward compatability
+                            if isinstance(sub_yaml, list):
+                                # check all items in list are phantom keys. If old syntax is being used, verify it
+                                # is used everywhere so we don't accidentally unpack a valid yaml based on this
+                                # heuristic
+                                is_list_of_phantom_keys = True
+                                unpacked_sub_yaml = []
+                                for sub_yaml_item in sub_yaml:
+                                    # heuristic for phantom keys: single key dict with dict value
+                                    if isinstance(sub_yaml_item, dict) and len(sub_yaml_item) == 1 and isinstance(
+                                            list(sub_yaml_item.values())[0], dict):
+                                        unpacked_sub_yaml.append(list(sub_yaml_item.values())[0])
+                                    else:
+                                        is_list_of_phantom_keys = False
+                                        break
+                                # unpack phantom keys
+                                if is_list_of_phantom_keys:
+                                    sub_yaml = unpacked_sub_yaml
+
                             if not isinstance(sub_yaml, list):
                                 raise TypeError(f'{full_name} must be a list in the yaml')
 
