@@ -654,3 +654,9 @@ class BearsHparams(hp.Hparams):
     }
 
     bears: Optional[List[Hparams]] = hp.required(doc='bear field')
+
+
+@dataclass
+class HairyBearsHparams(hp.Hparams):
+
+    bears: List[UnshavedBearsHparam] = hp.required(doc='bear field')

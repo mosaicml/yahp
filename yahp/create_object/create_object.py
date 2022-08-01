@@ -276,6 +276,15 @@ def _create(
                                         break
                                 # unpack phantom keys
                                 if is_list_of_phantom_keys:
+                                    key_list = ', '.join([
+                                        list(sub_yaml_item.keys())[0]
+                                        for sub_yaml_item in sub_yaml
+                                        if isinstance(sub_yaml_item, dict)
+                                    ])
+                                    warnings.warn(
+                                        DeprecationWarning(
+                                            f'Ignoring the following keys: {key_list}. When specifying an object in a yaml, the object should be directly encoded instead of adding a phantom key. See https://stackoverflow.com/questions/33989612/yaml-equivalent-of-array-of-objects-in-json for an extended explanation.'
+                                        ))
                                     sub_yaml = unpacked_sub_yaml
 
                             if not isinstance(sub_yaml, list):
