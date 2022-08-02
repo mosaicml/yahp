@@ -53,7 +53,9 @@ class ParserArgument:
             type=cli_parse,
             dest=self.full_name,
             const=True if self.nargs == '?' else None,
-            help=self.helptext,
+            # Replacing all % with %% to escape, so argparse does not attempt to
+            # interpolate it with an argparse variable
+            help=self.helptext.replace('%', '%%'),
             metavar=metavar,
         )
 
@@ -117,10 +119,10 @@ def get_hparams_file_from_cli(
     cli_args: List[str],
     argparse_name_registry: ArgparseNameRegistry,
     argument_parsers: List[argparse.ArgumentParser],
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     parser = argparse.ArgumentParser(add_help=False)
     argument_parsers.append(parser)
-    argparse_name_registry.reserve('f', 'file', 'd', 'dump')
+    argparse_name_registry.reserve('f', 'file', 'd', 'dump', 'validate')
     parser.add_argument('-f',
                         '--file',
                         type=str,
@@ -139,8 +141,13 @@ def get_hparams_file_from_cli(
         metavar='stdout',
         help='Dump the resulting Hparams to the specified YAML file (defaults to `stdout`) and exit.',
     )
+    parser.add_argument(
+        '--validate',
+        action='store_true',
+        help='Whether to validate YAML against Hparams.',
+    )
     parsed_args, cli_args[:] = parser.parse_known_args(cli_args)
-    return parsed_args.file, parsed_args.dump
+    return parsed_args.file, parsed_args.dump, parsed_args.validate
 
 
 def get_commented_map_options_from_cli(

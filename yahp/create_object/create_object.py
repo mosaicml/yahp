@@ -250,19 +250,48 @@ def _create(
                         else:
                             # list of concrete hparams
                             # concrete lists not added to argparse, so just load the yaml
-                            sub_yaml = data.get(f.name)
-                            # yaml should be a dictionary. We'll discard the keys
-                            if sub_yaml is None:
-                                sub_yaml = {}
+                            sub_yaml = data.get(f.name, [])
 
+                            if isinstance(sub_yaml, dict):
+                                # Deprecated syntax, where it is a dict of items. It should be a list of items
+                                warnings.warn(
+                                    DeprecationWarning(
+                                        f"{'.'.join(prefix_with_fname)} should be a list, not a dictionary"))
+                                sub_yaml = list(sub_yaml.values())
+
+                            # check for and unpack phantom keys for backward compatability
                             if isinstance(sub_yaml, list):
-                                sub_yaml = list_to_deduplicated_dict(sub_yaml)
+                                # check all items in list are phantom keys. If old syntax is being used, verify it
+                                # is used everywhere so we don't accidentally unpack a valid yaml based on this
+                                # heuristic
+                                is_list_of_phantom_keys = True
+                                unpacked_sub_yaml = []
+                                for sub_yaml_item in sub_yaml:
+                                    # heuristic for phantom keys: single key dict with dict value
+                                    if isinstance(sub_yaml_item, dict) and len(sub_yaml_item) == 1 and isinstance(
+                                            list(sub_yaml_item.values())[0], dict):
+                                        unpacked_sub_yaml.append(list(sub_yaml_item.values())[0])
+                                    else:
+                                        is_list_of_phantom_keys = False
+                                        break
+                                # unpack phantom keys
+                                if is_list_of_phantom_keys:
+                                    key_list = ', '.join([
+                                        list(sub_yaml_item.keys())[0]
+                                        for sub_yaml_item in sub_yaml
+                                        if isinstance(sub_yaml_item, dict)
+                                    ])
+                                    warnings.warn(
+                                        DeprecationWarning(
+                                            f'Ignoring the following keys: {key_list}. When specifying an object in a yaml, the object should be directly encoded instead of adding a phantom key. See https://stackoverflow.com/questions/33989612/yaml-equivalent-of-array-of-objects-in-json for an extended explanation.'
+                                        ))
+                                    sub_yaml = unpacked_sub_yaml
 
-                            if not isinstance(sub_yaml, dict):
-                                raise TypeError(f'{full_name} must be a dict in the yaml')
+                            if not isinstance(sub_yaml, list):
+                                raise TypeError(f'{full_name} must be a list in the yaml')
 
                             deferred_calls: List[_DeferredCreateCall] = []
-                            for (key, sub_yaml_item) in sub_yaml.items():
+                            for i, sub_yaml_item in enumerate(sub_yaml):
                                 if sub_yaml_item is None:
                                     sub_yaml_item = {}
                                 if not isinstance(sub_yaml_item, dict):
@@ -272,7 +301,7 @@ def _create(
                                     _DeferredCreateCall(
                                         constructor=ftype.type,
                                         data=sub_yaml_item,
-                                        prefix=prefix_with_fname + [key],
+                                        prefix=prefix_with_fname + [str(i)],
                                         parser_args=None,
                                         initialize=not (isinstance(ftype.type, type) and
                                                         issubclass(ftype.type, Hparams)),
@@ -645,7 +674,7 @@ def _get_hparams(
     )
     if cm_options is not None:
         output_file, interactive, add_docs = cm_options
-        print(f'Generating a template for {constructor.__name__}')
+        print(f'Generating a template for {constructor.__name__}...')
         cls = ensure_hparams_cls(constructor)
         if output_file == 'stdout':
             cls.dump(add_docs=add_docs, interactive=interactive, output=sys.stdout)
@@ -655,17 +684,26 @@ def _get_hparams(
             with open(output_file, 'x') as f:
                 cls.dump(add_docs=add_docs, interactive=interactive, output=f)
         # exit so we don't attempt to parse and instantiate if generate template is passed
-        print()
-        print('Finished')
+        print('\nFinished')
         sys.exit(0)
 
-    cli_f, output_f = get_hparams_file_from_cli(cli_args=remaining_cli_args,
-                                                argparse_name_registry=argparse_name_registry,
-                                                argument_parsers=argparsers)
+    cli_f, output_f, validate = get_hparams_file_from_cli(cli_args=remaining_cli_args,
+                                                          argparse_name_registry=argparse_name_registry,
+                                                          argument_parsers=argparsers)
+
     if cli_f is not None:
         if f is not None:
             raise ValueError('File cannot be specified via both function arguments and the CLI')
         f = cli_f
+
+    # Validate was specified, so only validate instead of instantiating
+    if validate:
+        print(f'Validating YAML against {constructor.__name__}...')
+        cls = ensure_hparams_cls(constructor)
+        cls.validate_yaml(f=f)
+        # exit so we don't attempt to parse and instantiate
+        print('\nSuccessfully validated YAML!')
+        sys.exit(0)
 
     if f is not None:
         if data is not None:
