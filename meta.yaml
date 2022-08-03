@@ -2,12 +2,10 @@
 
 package:
   name: yahp
-  version: "0.1.2"
+  version: "{{ load_setup_py_data().get('version') }}"
 
 source:
-  git_url: https://github.com/mosaicml/yahp.git
-  git_rev: v0.1.1
-  git_depth: -1
+  git_url: ./
 
 channels:
   - defaults
@@ -27,16 +25,16 @@ requirements:
     - git
   run:
     - python >=3.7
-    - pyyaml >=5.4.1
+    - pyyaml >=6.0,<7
     - docstring_parser ==0.13
-    - ruamel.yaml >=0.17.10
-    - jsonschema >=4.7.2, <4.8
+    - ruamel.yaml >=0.17.10,<0.18
+    - jsonschema >=4.7.2,<4.8
 
 test:
   requires:
-    - pytest >=7.0.0
+    - pytest >=7.1.0,<8
     - pytest-timeout >=1.4.2
-    - toml >=0.10.2
+    - toml >=0.10.2,<0.11
   files:
     - "**/yahp/**"
     - "**/tests/**"
