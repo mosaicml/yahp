@@ -11,9 +11,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 exec(open('yahp/version.py', 'r', encoding='utf-8').read())
 
-install_requires = [
-    'PyYAML>=5.4.1', 'ruamel.yaml>=0.17.10', 'docstring_parser>=0.14.1,<=0.15', 'jsonschema>=4.7.2,<4.8'
-]
+install_requires = ['PyYAML>=5.4.1', 'ruamel.yaml>=0.17.10', 'docstring_parser>=0.14.1,<=0.15', 'jsonschema>=3,<4.8']
 
 extra_deps = {}
 
