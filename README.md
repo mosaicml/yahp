@@ -1,3 +1,9 @@
+# :exclamation: Deprecation Notice
+
+YAHP has been deprecated, and will be removed from Composer in `v0.11`.
+We recommend users migrate to [OmegaConf](https://github.com/omry/omegaconf) or [Hydra](https://github.com/facebookresearch/hydra) as alternatives.
+
+
 # YAHP: Yet Another HyperParameter
 
 YAHP introduces yet another hyperparameter management tool.
