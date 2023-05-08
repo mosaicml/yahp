@@ -1,6 +1,6 @@
 # :exclamation: Deprecation Notice
 
-YAHP has been deprecated, and will be removed from Composer in `v0.11`.
+YAHP has been deprecated, and removed from [Composer](https://github.com/mosaicml/composer) in `v0.11`.
 We recommend users migrate to [OmegaConf](https://github.com/omry/omegaconf) or [Hydra](https://github.com/facebookresearch/hydra) as alternatives.
 
 
